@@ -114,10 +114,9 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          width: 'calc(100% - 32px)',
-          margin: '0 16px',
+          width: '100%',
           background: '#F9F3EE',
-          borderRadius: '20px',
+          borderRadius: '20px 20px 0 0',
           maxHeight: '92svh',
           display: 'flex',
           flexDirection: 'column',
@@ -166,27 +165,26 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <span style={lbl}>Bill Date *</span>
-                <input
-                  style={input}
-                  type="date"
-                  value={dueDate}
-                  onChange={e => setDueDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <span style={lbl}>Amount (₱) *</span>
-                <input
-                  style={input}
-                  type="number"
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={e => setAmount(e.target.value)}
-                />
-              </div>
+            <div>
+              <span style={lbl}>Bill Date *</span>
+              <input
+                style={input}
+                type="date"
+                value={dueDate}
+                onChange={e => setDueDate(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <span style={lbl}>Amount (₱) *</span>
+              <input
+                style={input}
+                type="number"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+              />
             </div>
 
             <div>

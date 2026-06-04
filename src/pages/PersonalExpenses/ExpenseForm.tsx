@@ -112,10 +112,9 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          width: 'calc(100% - 32px)',
-          margin: '0 16px',
+          width: '100%',
           background: '#F9F3EE',
-          borderRadius: '20px',
+          borderRadius: '20px 20px 0 0',
           maxHeight: '92svh',
           display: 'flex',
           flexDirection: 'column',

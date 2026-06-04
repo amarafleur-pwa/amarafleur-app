@@ -121,10 +121,9 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          width: 'calc(100% - 32px)',
-          margin: '0 16px',
+          width: '100%',
           background: '#F9F3EE',
-          borderRadius: '20px',
+          borderRadius: '20px 20px 0 0',
           maxHeight: '92svh',
           display: 'flex',
           flexDirection: 'column',
@@ -183,25 +182,24 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <span style={lbl}>Pickup Date *</span>
-                <input
-                  style={input}
-                  type="date"
-                  value={dueDate}
-                  onChange={e => setDueDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <span style={lbl}>Time</span>
-                <input
-                  style={input}
-                  type="time"
-                  value={time}
-                  onChange={e => setTime(e.target.value)}
-                />
-              </div>
+            <div>
+              <span style={lbl}>Pickup Date *</span>
+              <input
+                style={input}
+                type="date"
+                value={dueDate}
+                onChange={e => setDueDate(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <span style={lbl}>Time</span>
+              <input
+                style={input}
+                type="time"
+                value={time}
+                onChange={e => setTime(e.target.value)}
+              />
             </div>
 
             <div>
@@ -217,29 +215,28 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <span style={lbl}>Total Amount (₱)</span>
-                <input
-                  style={input}
-                  type="number"
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  value={totalAmount}
-                  onChange={e => setTotalAmount(e.target.value)}
-                />
-              </div>
-              <div>
-                <span style={lbl}>Deposit Paid (₱)</span>
-                <input
-                  style={input}
-                  type="number"
-                  inputMode="decimal"
-                  placeholder="0.00"
-                  value={depositPaid}
-                  onChange={e => setDepositPaid(e.target.value)}
-                />
-              </div>
+            <div>
+              <span style={lbl}>Total Amount (₱)</span>
+              <input
+                style={input}
+                type="number"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={totalAmount}
+                onChange={e => setTotalAmount(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <span style={lbl}>Deposit Paid (₱)</span>
+              <input
+                style={input}
+                type="number"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={depositPaid}
+                onChange={e => setDepositPaid(e.target.value)}
+              />
             </div>
 
             <div>
