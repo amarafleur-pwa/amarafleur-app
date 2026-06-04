@@ -16,6 +16,7 @@ export interface BusinessExpense {
   name: string
   amount: number
   dueDate: string
+  modeOfPayment?: string
   isPaid: boolean
   category: string
   notes?: string
