@@ -211,7 +211,7 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
             <div style={{ background: '#fff', borderRadius: '12px', padding: '14px', marginTop: '4px' }}>
               <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D', marginBottom: '12px' }}>Record Payment</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div>
                     <span style={lbl}>Amount (₱) *</span>
                     <input style={input} type="number" inputMode="decimal" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />

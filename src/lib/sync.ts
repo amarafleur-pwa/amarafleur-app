@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { db } from '../db/db'
+import { logPersonalExpense, logBusinessExpense, logOrder, logPayment } from './sheets'
 
 export async function syncPendingItems(): Promise<void> {
   if (!navigator.onLine) return
@@ -14,7 +15,10 @@ export async function syncPendingItems(): Promise<void> {
     }
     if (!e.supabaseId) {
       const { data: row, error } = await supabase.from('personal_expenses').insert(payload).select().single()
-      if (!error) await db.personalExpenses.update(e.id!, { supabaseId: row.id, pendingSync: false })
+      if (!error) {
+        await db.personalExpenses.update(e.id!, { supabaseId: row.id, pendingSync: false })
+        logPersonalExpense(e, row.id)
+      }
     } else {
       const { error } = await supabase.from('personal_expenses').update(payload).eq('id', e.supabaseId)
       if (!error) await db.personalExpenses.update(e.id!, { pendingSync: false })
@@ -31,7 +35,10 @@ export async function syncPendingItems(): Promise<void> {
     }
     if (!e.supabaseId) {
       const { data: row, error } = await supabase.from('business_expenses').insert(payload).select().single()
-      if (!error) await db.businessExpenses.update(e.id!, { supabaseId: row.id, pendingSync: false })
+      if (!error) {
+        await db.businessExpenses.update(e.id!, { supabaseId: row.id, pendingSync: false })
+        logBusinessExpense(e, row.id)
+      }
     } else {
       const { error } = await supabase.from('business_expenses').update(payload).eq('id', e.supabaseId)
       if (!error) await db.businessExpenses.update(e.id!, { pendingSync: false })
@@ -50,7 +57,10 @@ export async function syncPendingItems(): Promise<void> {
     }
     if (!o.supabaseId) {
       const { data: row, error } = await supabase.from('orders').insert(payload).select().single()
-      if (!error) await db.orders.update(o.id!, { supabaseId: row.id, pendingSync: false })
+      if (!error) {
+        await db.orders.update(o.id!, { supabaseId: row.id, pendingSync: false })
+        logOrder(o, row.id)
+      }
     } else {
       const { error } = await supabase.from('orders').update(payload).eq('id', o.supabaseId)
       if (!error) await db.orders.update(o.id!, { pendingSync: false })
@@ -68,7 +78,13 @@ export async function syncPendingItems(): Promise<void> {
     }
     if (!p.supabaseId) {
       const { data: row, error } = await supabase.from('payments').insert(payload).select().single()
-      if (!error) await db.payments.update(p.id!, { supabaseId: row.id, pendingSync: false })
+      if (!error) {
+        await db.payments.update(p.id!, { supabaseId: row.id, pendingSync: false })
+        logPayment({
+          customerName: order.customerName, orderDesc: order.description,
+          amount: p.amount, type: p.type, paidAt: p.paidAt, notes: p.notes,
+        }, row.id)
+      }
     } else {
       const { error } = await supabase.from('payments').update(payload).eq('id', p.supabaseId)
       if (!error) await db.payments.update(p.id!, { pendingSync: false })
