@@ -40,51 +40,66 @@ const moreTabs = [
 function BottomNav() {
   const location = useLocation()
   const [moreOpen, setMoreOpen] = useState(false)
-  const isMoreActive = moreTabs.some(t => t.to === location.pathname)
+  const [barW, setBarW] = useState(window.innerWidth)
+
+  useEffect(() => {
+    const fn = () => setBarW(window.innerWidth)
+    window.addEventListener('resize', fn)
+    return () => window.removeEventListener('resize', fn)
+  }, [])
 
   useEffect(() => { setMoreOpen(false) }, [location.pathname])
 
-  const leftTabs = [
-    { to: '/', icon: LayoutDashboard, label: 'Home' },
-    { to: '/personal', icon: Wallet, label: 'Personal' },
+  const tabs = [
+    { to: '/' as string | null, icon: LayoutDashboard, exact: true, more: false },
+    { to: '/personal' as string | null, icon: Wallet, exact: false, more: false },
+    { to: null as string | null, icon: MoreHorizontal, exact: false, more: true },
+    { to: '/business' as string | null, icon: ShoppingBag, exact: false, more: false },
+    { to: '/calendar' as string | null, icon: CalendarDays, exact: false, more: false },
   ]
-  const rightTabs = [
-    { to: '/business', icon: ShoppingBag, label: 'Business' },
-    { to: '/calendar', icon: CalendarDays, label: 'Orders' },
-  ]
+
+  const moreRouteActive = moreTabs.some(t => t.to === location.pathname)
+
+  const activeIdx = (() => {
+    if (moreOpen || moreRouteActive) return 2
+    const i = tabs.findIndex(t => !t.more && t.to && (t.exact ? location.pathname === t.to : location.pathname.startsWith(t.to)))
+    return i < 0 ? 0 : i
+  })()
+
+  const NAV_H = 68
+  const CR = 27
+  const slotW = barW / 5
+  const cx = (activeIdx + 0.5) * slotW
+  const sp = CR * 2.2
+
+  const waveD = `M 0 0 L ${cx - sp * 1.5} 0 C ${cx - sp} 0 ${cx - sp * 0.4} ${CR} ${cx} ${CR} C ${cx + sp * 0.4} ${CR} ${cx + sp} 0 ${cx + sp * 1.5} 0 L ${barW} 0 L ${barW} ${NAV_H} L 0 ${NAV_H} Z`
+
+  const ActiveIcon = tabs[activeIdx].icon
 
   return (
     <>
       {moreOpen && (
-        <div
-          onClick={() => setMoreOpen(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 49 }}
-        />
+        <div onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
       )}
 
       {moreOpen && (
         <div style={{
           position: 'fixed',
-          bottom: 'calc(68px + env(safe-area-inset-bottom))',
-          right: 0,
-          left: 0,
+          bottom: `calc(${NAV_H}px + env(safe-area-inset-bottom))`,
+          left: 0, right: 0, zIndex: 51,
           background: '#fff',
           borderTop: '1px solid #e5e0db',
           borderRadius: '16px 16px 0 0',
-          zIndex: 51,
-          paddingBottom: '4px',
+          paddingBottom: 4,
         }}>
           {moreTabs.map(({ to, icon: Icon, label }) => (
             <NavLink key={to} to={to} style={{ textDecoration: 'none' }}>
               {({ isActive }) => (
                 <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '14px',
+                  display: 'flex', alignItems: 'center', gap: 14,
                   padding: '14px 24px',
                   color: isActive ? '#C9848A' : '#374151',
-                  fontWeight: isActive ? 600 : 400,
-                  fontSize: '15px',
+                  fontWeight: isActive ? 600 : 400, fontSize: 15,
                 }}>
                   <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
                   {label}
@@ -95,114 +110,64 @@ function BottomNav() {
         </div>
       )}
 
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50 }}>
-        <nav style={{
-          position: 'relative',
-          height: 'calc(68px + env(safe-area-inset-bottom))',
-          background: '#fff',
-          borderRadius: '20px 20px 0 0',
-          boxShadow: '0 -4px 24px rgba(0,0,0,0.07)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-around',
-          paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)',
-          overflow: 'visible',
-        }}>
-          {/* Floating center button */}
-          <button
-            onClick={() => setMoreOpen(o => !o)}
-            style={{
-              position: 'absolute',
-              top: '-24px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '52px',
-              height: '52px',
-              background: isMoreActive || moreOpen ? '#b5737a' : '#C9848A',
-              borderRadius: '50%',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 20px #C9848A55',
-              transition: 'background 0.2s ease, box-shadow 0.2s ease',
-            }}
-          >
-            <MoreHorizontal
-              size={24}
-              color="#fff"
-              strokeWidth={2}
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, height: `calc(${NAV_H}px + env(safe-area-inset-bottom))` }}>
+        {/* SVG wave bar */}
+        <svg width={barW} height={NAV_H} viewBox={`0 0 ${barW} ${NAV_H}`}
+          style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', filter: 'drop-shadow(0 -3px 12px rgba(0,0,0,0.08))' }}>
+          <path d={waveD} fill="white" style={{ transition: 'd 0.35s cubic-bezier(0.4,0,0.2,1)' }} />
+        </svg>
+
+        {/* Safe area fill */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 'env(safe-area-inset-bottom)', background: 'white' }} />
+
+        {/* Floating active circle */}
+        <div
+          onClick={tabs[activeIdx].more ? () => setMoreOpen(o => !o) : undefined}
+          style={{
+            position: 'absolute', top: -CR, left: cx - CR,
+            width: CR * 2, height: CR * 2,
+            background: '#C9848A', borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 20px rgba(201,132,138,0.4)',
+            transition: 'left 0.35s cubic-bezier(0.4,0,0.2,1)',
+            zIndex: 2, cursor: 'pointer',
+          }}
+        >
+          <ActiveIcon size={21} color="white" strokeWidth={2.2}
+            style={tabs[activeIdx].more ? { transform: moreOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.22s ease' } : undefined}
+          />
+        </div>
+
+        {/* Tab slot icons */}
+        {tabs.map((tab, i) => {
+          const isActive = i === activeIdx
+          if (tab.more) {
+            return (
+              <button key={i} onClick={() => setMoreOpen(o => !o)}
+                style={{
+                  position: 'absolute', top: 0, left: i * slotW, width: slotW, height: NAV_H,
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 8,
+                  zIndex: 1, opacity: isActive ? 0 : 1, pointerEvents: isActive ? 'none' : 'auto',
+                  transition: 'opacity 0.25s ease',
+                }}>
+                <tab.icon size={22} color="#c4b5b5" strokeWidth={1.8} />
+              </button>
+            )
+          }
+          return (
+            <NavLink key={tab.to} to={tab.to!} end={tab.exact}
               style={{
-                transform: moreOpen ? 'rotate(90deg)' : 'rotate(0deg)',
-                transition: 'transform 0.22s ease',
+                position: 'absolute', top: 0, left: i * slotW, width: slotW, height: NAV_H,
+                textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 8,
+                zIndex: 1, opacity: isActive ? 0 : 1, pointerEvents: isActive ? 'none' : 'auto',
+                transition: 'opacity 0.25s ease',
               }}
-            />
-          </button>
-
-          {leftTabs.map(({ to, icon: Icon, label }) => (
-            <NavLink key={to} to={to} end={to === '/'} style={{ textDecoration: 'none' }}>
-              {({ isActive }) => (
-                <span style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '3px',
-                  color: isActive ? '#C9848A' : '#9ca3af',
-                  fontSize: '10px',
-                  fontWeight: isActive ? 600 : 400,
-                  minWidth: '60px',
-                  transform: isActive ? 'translateY(-3px)' : 'translateY(0)',
-                  transition: 'transform 0.22s ease, color 0.22s ease',
-                }}>
-                  <Icon size={22} strokeWidth={isActive ? 2.2 : 1.8} />
-                  {label}
-                  <span style={{
-                    width: '4px',
-                    height: '4px',
-                    borderRadius: '50%',
-                    background: isActive ? '#C9848A' : 'transparent',
-                    transition: 'background 0.22s ease',
-                    marginTop: '-1px',
-                  }} />
-                </span>
-              )}
+            >
+              <tab.icon size={22} color="#c4b5b5" strokeWidth={1.8} />
             </NavLink>
-          ))}
-
-          {/* Spacer for floating center button */}
-          <span style={{ minWidth: '60px', flexShrink: 0 }} />
-
-          {rightTabs.map(({ to, icon: Icon, label }) => (
-            <NavLink key={to} to={to} style={{ textDecoration: 'none' }}>
-              {({ isActive }) => (
-                <span style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '3px',
-                  color: isActive ? '#C9848A' : '#9ca3af',
-                  fontSize: '10px',
-                  fontWeight: isActive ? 600 : 400,
-                  minWidth: '60px',
-                  transform: isActive ? 'translateY(-3px)' : 'translateY(0)',
-                  transition: 'transform 0.22s ease, color 0.22s ease',
-                }}>
-                  <Icon size={22} strokeWidth={isActive ? 2.2 : 1.8} />
-                  {label}
-                  <span style={{
-                    width: '4px',
-                    height: '4px',
-                    borderRadius: '50%',
-                    background: isActive ? '#C9848A' : 'transparent',
-                    transition: 'background 0.22s ease',
-                    marginTop: '-1px',
-                  }} />
-                </span>
-              )}
-            </NavLink>
-          ))}
-        </nav>
+          )
+        })}
       </div>
     </>
   )
