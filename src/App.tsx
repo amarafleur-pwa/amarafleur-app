@@ -118,7 +118,7 @@ function BottomNav() {
               transform: 'translateX(-50%)',
               width: '52px',
               height: '52px',
-              background: '#C9848A',
+              background: isMoreActive || moreOpen ? '#b5737a' : '#C9848A',
               borderRadius: '50%',
               border: 'none',
               cursor: 'pointer',
@@ -126,7 +126,7 @@ function BottomNav() {
               alignItems: 'center',
               justifyContent: 'center',
               boxShadow: '0 4px 20px #C9848A55',
-              transition: 'box-shadow 0.2s ease',
+              transition: 'background 0.2s ease, box-shadow 0.2s ease',
             }}
           >
             <MoreHorizontal
