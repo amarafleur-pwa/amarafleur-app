@@ -1,5 +1,8 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import { LayoutDashboard, Wallet, ShoppingBag, CalendarDays, CreditCard, TrendingUp } from 'lucide-react'
+import NotificationBanner from './components/NotificationBanner'
+import { checkAndFireReminders } from './lib/notifications'
 import Dashboard from './pages/Dashboard'
 import PersonalExpenses from './pages/PersonalExpenses'
 import BusinessExpenses from './pages/BusinessExpenses'
@@ -17,9 +20,14 @@ const tabs = [
 ]
 
 export default function App() {
+  useEffect(() => {
+    checkAndFireReminders()
+  }, [])
+
   return (
     <BrowserRouter>
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100svh' }}>
+        <NotificationBanner />
         <main style={{ flex: 1, paddingBottom: '72px', overflowY: 'auto' }}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
