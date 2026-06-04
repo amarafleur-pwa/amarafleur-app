@@ -1,5 +1,12 @@
 import { google } from 'googleapis'
 
+const HEADERS: Record<string, string[]> = {
+  'Personal Expenses': ['Name', 'Amount', 'Due Date', 'Category', 'Recurring', 'Notes', 'Logged At'],
+  'Business Expenses': ['Name', 'Due Date', 'Mode of Payment', 'Amount', 'Category', 'Notes', 'Logged At'],
+  'Orders': ['Customer Name', 'Description', 'Quantity', 'Due Date', 'Time', 'Total Amount', 'Deposit Paid', 'Notes', 'Logged At'],
+  'Payments': ['Customer Name', 'Order Description', 'Amount', 'Type', 'Paid At', 'Notes', 'Logged At'],
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -30,11 +37,23 @@ export default async function handler(req: any, res: any) {
 
     const sheets = google.sheets({ version: 'v4', auth })
 
+    // Check if the sheet already has a header row
+    const existing = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheet}!A1`,
+    })
+
+    const values: (string | number)[][] = []
+    if (!existing.data.values?.length && HEADERS[sheet]) {
+      values.push(HEADERS[sheet])
+    }
+    values.push(row)
+
     await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: `${sheet}!A:Z`,
+      range: `${sheet}!A1`,
       valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [row] },
+      requestBody: { values },
     })
 
     return res.status(200).json({ ok: true })
