@@ -26,6 +26,8 @@ export interface Order {
   id?: number
   customerName: string
   description: string
+  quantity?: number
+  time?: string
   orderDate: string
   dueDate: string
   totalAmount: number
