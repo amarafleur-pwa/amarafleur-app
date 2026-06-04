@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { KeyRound, Trash2, Lock, Plus } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Passkey } from '../../db/db'
+import { NetworkPill } from '../../components/OfflineBanner'
 
 function bufferToBase64(buf: ArrayBuffer): string {
   return btoa(String.fromCharCode(...new Uint8Array(buf)))
@@ -95,7 +96,10 @@ export default function Settings() {
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#2D2D2D', margin: 0 }}>Settings</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#2D2D2D', margin: 0 }}>Settings</h1>
+          <NetworkPill />
+        </div>
         <button
           onClick={() => { localStorage.removeItem('af-authed'); window.location.reload() }}
           title="Lock app"

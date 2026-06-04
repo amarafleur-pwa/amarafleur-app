@@ -3,10 +3,10 @@ import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router
 import { LayoutDashboard, Wallet, ShoppingBag, CalendarDays, CreditCard, TrendingUp, MoreHorizontal, Settings as SettingsIcon, Package } from 'lucide-react'
 import NotificationBanner from './components/NotificationBanner'
 import InstallBanner from './components/InstallBanner'
-import NetworkStatus from './components/OfflineBanner'
 import { checkAndFireReminders } from './lib/notifications'
 import { restoreFromSupabase, syncPendingItems } from './lib/sync'
 import { SyncContext } from './lib/SyncContext'
+import { supabase } from './lib/supabase'
 import Auth from './pages/Auth'
 import Dashboard from './pages/Dashboard'
 import PersonalExpenses from './pages/PersonalExpenses'
@@ -303,13 +303,34 @@ export default function App() {
   const sidebarWidth = isWide ? SIDEBAR_WIDE : SIDEBAR_NARROW
 
   useEffect(() => {
-    if (authed) {
-      checkAndFireReminders()
+    if (!authed) return
+    checkAndFireReminders()
+    syncPendingItems().then(() => restoreFromSupabase()).then(() => setSyncVersion(v => v + 1)).catch(console.warn)
+
+    const handleOnline = () =>
       syncPendingItems().then(() => restoreFromSupabase()).then(() => setSyncVersion(v => v + 1)).catch(console.warn)
-      const handleOnline = () =>
-        syncPendingItems().then(() => restoreFromSupabase()).then(() => setSyncVersion(v => v + 1)).catch(console.warn)
-      window.addEventListener('online', handleOnline)
-      return () => window.removeEventListener('online', handleOnline)
+    window.addEventListener('online', handleOnline)
+
+    let restoreTimer: ReturnType<typeof setTimeout>
+    const debouncedRestore = () => {
+      clearTimeout(restoreTimer)
+      restoreTimer = setTimeout(() => {
+        restoreFromSupabase().then(() => setSyncVersion(v => v + 1)).catch(console.warn)
+      }, 1500)
+    }
+
+    const channel = supabase
+      .channel('realtime-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'personal_expenses' }, debouncedRestore)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'business_expenses' }, debouncedRestore)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, debouncedRestore)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, debouncedRestore)
+      .subscribe()
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      clearTimeout(restoreTimer)
+      supabase.removeChannel(channel)
     }
   }, [authed])
 
@@ -323,7 +344,6 @@ export default function App() {
       <div style={{ display: 'flex', minHeight: '100svh' }}>
         <InstallBanner />
         <NotificationBanner />
-        <NetworkStatus />
         {isDesktop && <SideNav />}
         <main style={{
           flex: 1,

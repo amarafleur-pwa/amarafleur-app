@@ -3,6 +3,7 @@ import { Plus, X, Package } from 'lucide-react'
 import { db } from '../../db/db'
 import type { InventoryItem } from '../../db/db'
 import { useSyncVersion } from '../../lib/SyncContext'
+import { NetworkPill } from '../../components/OfflineBanner'
 
 const CATEGORIES = ['Flowers', 'Greenery', 'Supplies', 'Packaging', 'Other']
 const UNITS = ['stems', 'bunches', 'pcs', 'meters', 'rolls', 'bags']
@@ -117,7 +118,10 @@ export default function Inventory() {
       {/* Header */}
       <div style={{ padding: '16px 16px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>Inventory</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>Inventory</h1>
+            <NetworkPill />
+          </div>
           <button
             onClick={() => openForm()}
             style={{

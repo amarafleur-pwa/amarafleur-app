@@ -3,7 +3,7 @@ import { Wifi } from 'lucide-react'
 
 type Phase = 'hidden' | 'offline' | 'back-online' | 'leaving'
 
-export default function NetworkStatus() {
+export function NetworkPill() {
   const [phase, setPhase] = useState<Phase>(() =>
     navigator.onLine ? 'hidden' : 'offline'
   )
@@ -43,32 +43,26 @@ export default function NetworkStatus() {
 
   return (
     <div
-      className={leaving ? 'net-leave' : 'net-enter'}
+      className={leaving ? 'net-leave-inline' : 'net-enter-inline'}
       style={{
-        position: 'fixed',
-        top: 68,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 90,
-        display: 'flex',
+        display: 'inline-flex',
         alignItems: 'center',
-        gap: 7,
-        padding: '6px 14px 6px 10px',
+        gap: 6,
+        padding: '3px 10px 3px 8px',
         borderRadius: 20,
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: 600,
         whiteSpace: 'nowrap',
-        pointerEvents: 'none',
+        flexShrink: 0,
         background: isOffline ? '#FFFBEB' : '#F0FDF4',
         border: `1.5px solid ${isOffline ? '#F59E0B' : '#22C55E'}`,
         color: isOffline ? '#92400E' : '#166534',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.10)',
       }}
     >
       {isOffline ? (
-        <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B', flexShrink: 0, display: 'inline-block' }} />
+        <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#F59E0B', flexShrink: 0, display: 'inline-block' }} />
       ) : (
-        <Wifi size={13} color="#22C55E" strokeWidth={2.5} />
+        <Wifi size={12} color="#22C55E" strokeWidth={2.5} />
       )}
       {isOffline ? "You're offline" : 'Back online'}
     </div>

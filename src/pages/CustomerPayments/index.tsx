@@ -6,6 +6,7 @@ import PaymentForm from './PaymentForm'
 import { supabase } from '../../lib/supabase'
 import { logCustomer, deleteSheetRow } from '../../lib/sheets'
 import { useSyncVersion } from '../../lib/SyncContext'
+import { NetworkPill } from '../../components/OfflineBanner'
 
 type View = 'payments' | 'directory'
 type StatusFilter = 'all' | 'outstanding' | 'paid'
@@ -180,7 +181,10 @@ export default function CustomerPayments() {
       {/* Header */}
       <div style={{ padding: '16px 16px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>Customer Payments</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>Customer Payments</h1>
+            <NetworkPill />
+          </div>
           {view === 'directory' && (
             <button
               onClick={() => openCustomerForm()}

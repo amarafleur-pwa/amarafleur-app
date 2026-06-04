@@ -5,6 +5,7 @@ import type { BusinessExpense } from '../../db/db'
 import ExpenseForm from './ExpenseForm'
 import { supabase } from '../../lib/supabase'
 import { useSyncVersion } from '../../lib/SyncContext'
+import { NetworkPill } from '../../components/OfflineBanner'
 
 const CATEGORIES = ['Supplies', 'Utilities', 'Rent', 'Delivery', 'Other']
 type StatusFilter = 'all' | 'unpaid' | 'paid'
@@ -92,7 +93,10 @@ export default function BusinessExpenses() {
       {/* Header */}
       <div style={{ padding: '16px 16px 0' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>Business Expenses</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>Business Expenses</h1>
+            <NetworkPill />
+          </div>
           <button
             onClick={openAdd}
             style={{

@@ -3,6 +3,7 @@ import { Download, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment, BusinessExpense } from '../../db/db'
 import { useSyncVersion } from '../../lib/SyncContext'
+import { NetworkPill } from '../../components/OfflineBanner'
 
 type Period = 'daily' | 'weekly' | 'monthly'
 
@@ -196,7 +197,10 @@ export default function RevenueSummary() {
 
       {/* Header */}
       <div style={{ padding: '16px 16px 0' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D' }}>Revenue Summary</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D' }}>Revenue Summary</h1>
+          <NetworkPill />
+        </div>
 
         {/* Period tabs */}
         <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
