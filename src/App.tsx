@@ -172,7 +172,7 @@ function BottomNav() {
         </div>
       )}
 
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, height: `calc(${NAV_H}px + env(safe-area-inset-bottom))` }}>
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, height: `calc(${NAV_H}px + env(safe-area-inset-bottom))`, background: '#F9F3EE' }}>
         <svg width={barW} height={NAV_H} viewBox={`0 0 ${barW} ${NAV_H}`}
           style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', filter: 'drop-shadow(0 -4px 20px rgba(0,0,0,0.12))' }}>
           <path ref={pathRef} fill="white" />
