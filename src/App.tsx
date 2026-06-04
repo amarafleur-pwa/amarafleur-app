@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Wallet, ShoppingBag, CalendarDays, CreditCard, TrendingUp, MoreHorizontal, Settings as SettingsIcon, Package } from 'lucide-react'
 import NotificationBanner from './components/NotificationBanner'
@@ -37,10 +37,24 @@ const moreTabs = [
   { to: '/settings', icon: SettingsIcon, label: 'Settings' },
 ]
 
+const NAV_H = 68
+const CR = 28
+
+function buildWave(cx: number, bw: number): string {
+  const sp = CR * 3
+  return `M 0 0 L ${cx - sp * 1.4} 0 C ${cx - sp * 0.8} 0 ${cx - sp * 0.2} ${CR} ${cx} ${CR} C ${cx + sp * 0.2} ${CR} ${cx + sp * 0.8} 0 ${cx + sp * 1.4} 0 L ${bw} 0 L ${bw} ${NAV_H} L 0 ${NAV_H} Z`
+}
+
 function BottomNav() {
   const location = useLocation()
   const [moreOpen, setMoreOpen] = useState(false)
   const [barW, setBarW] = useState(window.innerWidth)
+
+  const animCx = useRef<number | null>(null)
+  const targetCxRef = useRef(0)
+  const rafRef = useRef(0)
+  const pathRef = useRef<SVGPathElement>(null)
+  const fabRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const fn = () => setBarW(window.innerWidth)
@@ -66,13 +80,40 @@ function BottomNav() {
     return i < 0 ? 0 : i
   })()
 
-  const NAV_H = 68
-  const CR = 27
   const slotW = barW / 5
-  const cx = (activeIdx + 0.5) * slotW
-  const sp = CR * 2.2
+  const newCx = (activeIdx + 0.5) * slotW
 
-  const waveD = `M 0 0 L ${cx - sp * 1.5} 0 C ${cx - sp} 0 ${cx - sp * 0.4} ${CR} ${cx} ${CR} C ${cx + sp * 0.4} ${CR} ${cx + sp} 0 ${cx + sp * 1.5} 0 L ${barW} 0 L ${barW} ${NAV_H} L 0 ${NAV_H} Z`
+  // Sync DOM with current animated position before every paint — prevents React
+  // reconciliation from overwriting the ref-controlled attributes mid-animation.
+  useLayoutEffect(() => {
+    const cx = animCx.current ?? newCx
+    if (animCx.current === null) animCx.current = newCx
+    pathRef.current?.setAttribute('d', buildWave(cx, barW))
+    if (fabRef.current) fabRef.current.style.left = `${cx - CR}px`
+  })
+
+  // RAF lerp toward new target whenever active tab or bar width changes
+  useEffect(() => {
+    if (animCx.current === null) return
+    targetCxRef.current = newCx
+    cancelAnimationFrame(rafRef.current)
+    const bw = barW
+    const step = () => {
+      const diff = targetCxRef.current - animCx.current!
+      if (Math.abs(diff) < 0.4) {
+        animCx.current = targetCxRef.current
+        pathRef.current?.setAttribute('d', buildWave(animCx.current, bw))
+        if (fabRef.current) fabRef.current.style.left = `${animCx.current - CR}px`
+        return
+      }
+      animCx.current = animCx.current! + diff * 0.15
+      pathRef.current?.setAttribute('d', buildWave(animCx.current, bw))
+      if (fabRef.current) fabRef.current.style.left = `${animCx.current - CR}px`
+      rafRef.current = requestAnimationFrame(step)
+    }
+    rafRef.current = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [newCx, barW])
 
   const ActiveIcon = tabs[activeIdx].icon
 
@@ -111,34 +152,40 @@ function BottomNav() {
       )}
 
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, height: `calc(${NAV_H}px + env(safe-area-inset-bottom))` }}>
-        {/* SVG wave bar */}
         <svg width={barW} height={NAV_H} viewBox={`0 0 ${barW} ${NAV_H}`}
           style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', filter: 'drop-shadow(0 -3px 12px rgba(0,0,0,0.08))' }}>
-          <path d={waveD} fill="white" style={{ transition: 'd 0.35s cubic-bezier(0.4,0,0.2,1)' }} />
+          <path ref={pathRef} fill="white" />
         </svg>
 
-        {/* Safe area fill */}
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 'env(safe-area-inset-bottom)', background: 'white' }} />
 
-        {/* Floating active circle */}
+        {/* FAB — position driven entirely by refs */}
         <div
+          ref={fabRef}
           onClick={tabs[activeIdx].more ? () => setMoreOpen(o => !o) : undefined}
           style={{
-            position: 'absolute', top: -CR, left: cx - CR,
+            position: 'absolute', top: -CR, left: 0,
             width: CR * 2, height: CR * 2,
             background: '#C9848A', borderRadius: '50%',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 4px 20px rgba(201,132,138,0.4)',
-            transition: 'left 0.35s cubic-bezier(0.4,0,0.2,1)',
             zIndex: 2, cursor: 'pointer',
           }}
         >
-          <ActiveIcon size={21} color="white" strokeWidth={2.2}
-            style={tabs[activeIdx].more ? { transform: moreOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.22s ease' } : undefined}
+          <ActiveIcon
+            key={activeIdx}
+            size={21}
+            color="white"
+            strokeWidth={2.2}
+            style={{
+              animation: 'iconPop 0.32s cubic-bezier(0.34,1.56,0.64,1) both',
+              ...(tabs[activeIdx].more
+                ? { transform: moreOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.22s ease' }
+                : {}),
+            }}
           />
         </div>
 
-        {/* Tab slot icons */}
         {tabs.map((tab, i) => {
           const isActive = i === activeIdx
           if (tab.more) {
