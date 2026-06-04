@@ -4,7 +4,7 @@ import { LayoutDashboard, Wallet, ShoppingBag, CalendarDays, CreditCard, Trendin
 import NotificationBanner from './components/NotificationBanner'
 import InstallBanner from './components/InstallBanner'
 import { checkAndFireReminders } from './lib/notifications'
-import { restoreFromSupabase } from './lib/sync'
+import { restoreFromSupabase, syncPendingItems } from './lib/sync'
 import Auth from './pages/Auth'
 import Dashboard from './pages/Dashboard'
 import PersonalExpenses from './pages/PersonalExpenses'
@@ -302,7 +302,9 @@ export default function App() {
   useEffect(() => {
     if (authed) {
       checkAndFireReminders()
-      restoreFromSupabase().catch(console.warn)
+      syncPendingItems().then(() => restoreFromSupabase()).catch(console.warn)
+      window.addEventListener('online', syncPendingItems)
+      return () => window.removeEventListener('online', syncPendingItems)
     }
   }, [authed])
 

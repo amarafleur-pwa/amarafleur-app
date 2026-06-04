@@ -44,7 +44,6 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
   const [depositPaid, setDepositPaid] = useState(order?.depositPaid?.toString() ?? '0')
   const [notes, setNotes] = useState(order?.notes ?? '')
   const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
   const [closing, setClosing] = useState(false)
   const handleClose = () => setClosing(true)
 
@@ -53,7 +52,6 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
   async function handleSave() {
     if (!canSave) return
     setSaving(true)
-    setSaveError(null)
     const data: Omit<Order, 'id'> = {
       customerName: customerName.trim(),
       description: description.trim(),
@@ -66,38 +64,34 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
       isDone: order?.isDone ?? false,
       notes: notes.trim() || undefined,
     }
-    try {
-      if (isEdit) {
-        if (order!.supabaseId) {
-          const { error } = await supabase.from('orders').update({
-            customer_name: data.customerName, description: data.description,
-            quantity: data.quantity ?? null, time: data.time ?? null,
-            order_date: data.orderDate, due_date: data.dueDate,
-            total_amount: data.totalAmount, deposit_paid: data.depositPaid,
-            is_done: data.isDone, notes: data.notes ?? null,
-          }).eq('id', order!.supabaseId)
-          if (error) throw error
-        }
-        await db.orders.update(order!.id!, data)
-      } else {
-        const { data: row, error } = await supabase.from('orders').insert({
-          customer_name: data.customerName, description: data.description,
-          quantity: data.quantity ?? null, time: data.time ?? null,
-          order_date: data.orderDate, due_date: data.dueDate,
-          total_amount: data.totalAmount, deposit_paid: data.depositPaid,
-          is_done: data.isDone, notes: data.notes ?? null,
-        }).select().single()
-        if (error) throw error
-        await db.orders.add({ ...data, supabaseId: row.id })
-        logOrder(data, row.id)
-      }
+    const supabasePayload = {
+      customer_name: data.customerName, description: data.description,
+      quantity: data.quantity ?? null, time: data.time ?? null,
+      order_date: data.orderDate, due_date: data.dueDate,
+      total_amount: data.totalAmount, deposit_paid: data.depositPaid,
+      is_done: data.isDone, notes: data.notes ?? null,
+    }
+    if (isEdit) {
+      await db.orders.update(order!.id!, { ...data, pendingSync: true })
       onSaved()
       handleClose()
-    } catch (err: any) {
-      setSaveError(err?.message ?? 'Unknown error')
-    } finally {
-      setSaving(false)
+      if (navigator.onLine && order!.supabaseId) {
+        const { error } = await supabase.from('orders').update(supabasePayload).eq('id', order!.supabaseId)
+        if (!error) await db.orders.update(order!.id!, { pendingSync: false })
+      }
+    } else {
+      const localId = await db.orders.add({ ...data, pendingSync: true })
+      onSaved()
+      handleClose()
+      if (navigator.onLine) {
+        const { data: row, error } = await supabase.from('orders').insert(supabasePayload).select().single()
+        if (!error) {
+          await db.orders.update(localId as number, { supabaseId: row.id, pendingSync: false })
+          logOrder(data, row.id)
+        }
+      }
     }
+    setSaving(false)
   }
 
   async function handleDelete() {
@@ -258,11 +252,6 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
 
         {/* Save button */}
         <div style={{ padding: '16px 20px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' }}>
-          {saveError && (
-            <p style={{ fontSize: '13px', color: '#ef4444', marginBottom: '10px', wordBreak: 'break-word' }}>
-              Error: {saveError}
-            </p>
-          )}
           <button
             onClick={handleSave}
             disabled={!canSave || saving}

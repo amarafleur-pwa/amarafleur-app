@@ -43,7 +43,6 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   const [notes, setNotes] = useState(expense?.notes ?? '')
   const [isRecurring, setIsRecurring] = useState(expense?.isRecurring ?? false)
   const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
   const [closing, setClosing] = useState(false)
   const handleClose = () => setClosing(true)
 
@@ -52,7 +51,6 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   async function handleSave() {
     if (!canSave) return
     setSaving(true)
-    setSaveError(null)
     const data: Omit<PersonalExpense, 'id'> = {
       name: name.trim(),
       amount: parseFloat(amount),
@@ -62,34 +60,32 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
       isRecurring,
       isPaid: expense?.isPaid ?? false,
     }
-    try {
-      if (isEdit) {
-        if (expense!.supabaseId) {
-          const { error } = await supabase.from('personal_expenses').update({
-            name: data.name, amount: data.amount, due_date: data.dueDate,
-            category: data.category ?? null, is_paid: data.isPaid,
-            is_recurring: data.isRecurring, notes: data.notes ?? null,
-          }).eq('id', expense!.supabaseId)
-          if (error) throw error
-        }
-        await db.personalExpenses.update(expense!.id!, data)
-      } else {
-        const { data: row, error } = await supabase.from('personal_expenses').insert({
-          name: data.name, amount: data.amount, due_date: data.dueDate,
-          category: data.category ?? null, is_paid: data.isPaid,
-          is_recurring: data.isRecurring, notes: data.notes ?? null,
-        }).select().single()
-        if (error) throw error
-        await db.personalExpenses.add({ ...data, supabaseId: row.id })
-        logPersonalExpense(data, row.id)
-      }
+    const supabasePayload = {
+      name: data.name, amount: data.amount, due_date: data.dueDate,
+      category: data.category ?? null, is_paid: data.isPaid,
+      is_recurring: data.isRecurring, notes: data.notes ?? null,
+    }
+    if (isEdit) {
+      await db.personalExpenses.update(expense!.id!, { ...data, pendingSync: true })
       onSaved()
       handleClose()
-    } catch (err: any) {
-      setSaveError(err?.message ?? 'Unknown error')
-    } finally {
-      setSaving(false)
+      if (navigator.onLine && expense!.supabaseId) {
+        const { error } = await supabase.from('personal_expenses').update(supabasePayload).eq('id', expense!.supabaseId)
+        if (!error) await db.personalExpenses.update(expense!.id!, { pendingSync: false })
+      }
+    } else {
+      const localId = await db.personalExpenses.add({ ...data, pendingSync: true })
+      onSaved()
+      handleClose()
+      if (navigator.onLine) {
+        const { data: row, error } = await supabase.from('personal_expenses').insert(supabasePayload).select().single()
+        if (!error) {
+          await db.personalExpenses.update(localId as number, { supabaseId: row.id, pendingSync: false })
+          logPersonalExpense(data, row.id)
+        }
+      }
     }
+    setSaving(false)
   }
 
   async function handleDelete() {
@@ -262,11 +258,6 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
 
         {/* Save button */}
         <div style={{ padding: '16px 20px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' }}>
-          {saveError && (
-            <p style={{ fontSize: '13px', color: '#ef4444', marginBottom: '10px', wordBreak: 'break-word' }}>
-              Error: {saveError}
-            </p>
-          )}
           <button
             onClick={handleSave}
             disabled={!canSave || saving}

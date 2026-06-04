@@ -3,6 +3,7 @@ import Dexie, { type EntityTable } from 'dexie'
 export interface PersonalExpense {
   id?: number
   supabaseId?: string
+  pendingSync?: boolean
   name: string
   amount: number
   dueDate: string
@@ -15,6 +16,7 @@ export interface PersonalExpense {
 export interface BusinessExpense {
   id?: number
   supabaseId?: string
+  pendingSync?: boolean
   name: string
   amount: number
   dueDate: string
@@ -27,6 +29,7 @@ export interface BusinessExpense {
 export interface Order {
   id?: number
   supabaseId?: string
+  pendingSync?: boolean
   customerName: string
   description: string
   quantity?: number
@@ -42,6 +45,7 @@ export interface Order {
 export interface Payment {
   id?: number
   supabaseId?: string
+  pendingSync?: boolean
   orderId: number
   amount: number
   paidAt: string
@@ -107,6 +111,12 @@ class FlowerShopDB extends Dexie {
     })
     this.version(5).stores({
       inventory: '++id, category, name',
+    })
+    this.version(6).stores({
+      personalExpenses: '++id, dueDate, isPaid, isRecurring, supabaseId, pendingSync',
+      businessExpenses: '++id, dueDate, isPaid, category, supabaseId, pendingSync',
+      orders: '++id, customerName, orderDate, dueDate, isDone, supabaseId, pendingSync',
+      payments: '++id, orderId, paidAt, type, supabaseId, pendingSync',
     })
   }
 }

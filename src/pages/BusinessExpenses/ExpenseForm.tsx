@@ -45,7 +45,6 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   const [isPaid, setIsPaid] = useState(expense?.isPaid ?? false)
   const [notes, setNotes] = useState(expense?.notes ?? '')
   const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
   const [closing, setClosing] = useState(false)
   const handleClose = () => setClosing(true)
 
@@ -54,7 +53,6 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   async function handleSave() {
     if (!canSave) return
     setSaving(true)
-    setSaveError(null)
     const data: Omit<BusinessExpense, 'id'> = {
       name: name.trim(),
       amount: parseFloat(amount),
@@ -64,34 +62,32 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
       isPaid,
       notes: notes.trim() || undefined,
     }
-    try {
-      if (isEdit) {
-        if (expense!.supabaseId) {
-          const { error } = await supabase.from('business_expenses').update({
-            name: data.name, amount: data.amount, due_date: data.dueDate,
-            mode_of_payment: data.modeOfPayment ?? null, is_paid: data.isPaid,
-            category: data.category, notes: data.notes ?? null,
-          }).eq('id', expense!.supabaseId)
-          if (error) throw error
-        }
-        await db.businessExpenses.update(expense!.id!, data)
-      } else {
-        const { data: row, error } = await supabase.from('business_expenses').insert({
-          name: data.name, amount: data.amount, due_date: data.dueDate,
-          mode_of_payment: data.modeOfPayment ?? null, is_paid: data.isPaid,
-          category: data.category, notes: data.notes ?? null,
-        }).select().single()
-        if (error) throw error
-        await db.businessExpenses.add({ ...data, supabaseId: row.id })
-        logBusinessExpense(data, row.id)
-      }
+    const supabasePayload = {
+      name: data.name, amount: data.amount, due_date: data.dueDate,
+      mode_of_payment: data.modeOfPayment ?? null, is_paid: data.isPaid,
+      category: data.category, notes: data.notes ?? null,
+    }
+    if (isEdit) {
+      await db.businessExpenses.update(expense!.id!, { ...data, pendingSync: true })
       onSaved()
       handleClose()
-    } catch (err: any) {
-      setSaveError(err?.message ?? 'Unknown error')
-    } finally {
-      setSaving(false)
+      if (navigator.onLine && expense!.supabaseId) {
+        const { error } = await supabase.from('business_expenses').update(supabasePayload).eq('id', expense!.supabaseId)
+        if (!error) await db.businessExpenses.update(expense!.id!, { pendingSync: false })
+      }
+    } else {
+      const localId = await db.businessExpenses.add({ ...data, pendingSync: true })
+      onSaved()
+      handleClose()
+      if (navigator.onLine) {
+        const { data: row, error } = await supabase.from('business_expenses').insert(supabasePayload).select().single()
+        if (!error) {
+          await db.businessExpenses.update(localId as number, { supabaseId: row.id, pendingSync: false })
+          logBusinessExpense(data, row.id)
+        }
+      }
     }
+    setSaving(false)
   }
 
   async function handleDelete() {
@@ -261,11 +257,6 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
 
         {/* Save button */}
         <div style={{ padding: '16px 20px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' }}>
-          {saveError && (
-            <p style={{ fontSize: '13px', color: '#ef4444', marginBottom: '10px', wordBreak: 'break-word' }}>
-              Error: {saveError}
-            </p>
-          )}
           <button
             onClick={handleSave}
             disabled={!canSave || saving}

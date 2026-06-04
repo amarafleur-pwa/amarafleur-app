@@ -68,29 +68,30 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
     const amt = parseFloat(amount)
     if (!amt || amt <= 0) return
     setSaving(true)
-    try {
+    const localId = await db.payments.add({
+      orderId: order.id!, amount: amt, type, paidAt,
+      notes: notes.trim() || undefined, pendingSync: true,
+    })
+    setAmount('')
+    setNotes('')
+    setShowForm(false)
+    loadPayments()
+    onSaved()
+    if (navigator.onLine && order.supabaseId) {
       const { data: row, error } = await supabase.from('payments').insert({
         order_id: order.supabaseId,
         amount: amt, type, paid_at: paidAt,
         notes: notes.trim() || null,
       }).select().single()
-      if (error) throw error
-      await db.payments.add({
-        orderId: order.id!, amount: amt, type, paidAt,
-        notes: notes.trim() || undefined, supabaseId: row.id,
-      })
-      logPayment({
-        customerName: order.customerName, orderDesc: order.description,
-        amount: amt, type, paidAt, notes: notes.trim() || undefined,
-      }, row.id)
-      setAmount('')
-      setNotes('')
-      setShowForm(false)
-      loadPayments()
-      onSaved()
-    } finally {
-      setSaving(false)
+      if (!error) {
+        await db.payments.update(localId as number, { supabaseId: row.id, pendingSync: false })
+        logPayment({
+          customerName: order.customerName, orderDesc: order.description,
+          amount: amt, type, paidAt, notes: notes.trim() || undefined,
+        }, row.id)
+      }
     }
+    setSaving(false)
   }
 
   async function deletePayment(id: number) {

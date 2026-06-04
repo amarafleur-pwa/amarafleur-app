@@ -1,6 +1,81 @@
 import { supabase } from './supabase'
 import { db } from '../db/db'
 
+export async function syncPendingItems(): Promise<void> {
+  if (!navigator.onLine) return
+
+  // Personal expenses
+  const pendingPE = await db.personalExpenses.filter(e => !!e.pendingSync).toArray()
+  for (const e of pendingPE) {
+    const payload = {
+      name: e.name, amount: e.amount, due_date: e.dueDate,
+      category: e.category ?? null, is_paid: e.isPaid,
+      is_recurring: e.isRecurring, notes: e.notes ?? null,
+    }
+    if (!e.supabaseId) {
+      const { data: row, error } = await supabase.from('personal_expenses').insert(payload).select().single()
+      if (!error) await db.personalExpenses.update(e.id!, { supabaseId: row.id, pendingSync: false })
+    } else {
+      const { error } = await supabase.from('personal_expenses').update(payload).eq('id', e.supabaseId)
+      if (!error) await db.personalExpenses.update(e.id!, { pendingSync: false })
+    }
+  }
+
+  // Business expenses
+  const pendingBE = await db.businessExpenses.filter(e => !!e.pendingSync).toArray()
+  for (const e of pendingBE) {
+    const payload = {
+      name: e.name, amount: e.amount, due_date: e.dueDate,
+      mode_of_payment: e.modeOfPayment ?? null, is_paid: e.isPaid,
+      category: e.category, notes: e.notes ?? null,
+    }
+    if (!e.supabaseId) {
+      const { data: row, error } = await supabase.from('business_expenses').insert(payload).select().single()
+      if (!error) await db.businessExpenses.update(e.id!, { supabaseId: row.id, pendingSync: false })
+    } else {
+      const { error } = await supabase.from('business_expenses').update(payload).eq('id', e.supabaseId)
+      if (!error) await db.businessExpenses.update(e.id!, { pendingSync: false })
+    }
+  }
+
+  // Orders — must sync before payments (payments need order's supabaseId)
+  const pendingOrders = await db.orders.filter(o => !!o.pendingSync).toArray()
+  for (const o of pendingOrders) {
+    const payload = {
+      customer_name: o.customerName, description: o.description,
+      quantity: o.quantity ?? null, time: o.time ?? null,
+      order_date: o.orderDate, due_date: o.dueDate,
+      total_amount: o.totalAmount, deposit_paid: o.depositPaid,
+      is_done: o.isDone, notes: o.notes ?? null,
+    }
+    if (!o.supabaseId) {
+      const { data: row, error } = await supabase.from('orders').insert(payload).select().single()
+      if (!error) await db.orders.update(o.id!, { supabaseId: row.id, pendingSync: false })
+    } else {
+      const { error } = await supabase.from('orders').update(payload).eq('id', o.supabaseId)
+      if (!error) await db.orders.update(o.id!, { pendingSync: false })
+    }
+  }
+
+  // Payments — after orders so supabaseId is available
+  const pendingPayments = await db.payments.filter(p => !!p.pendingSync).toArray()
+  for (const p of pendingPayments) {
+    const order = await db.orders.get(p.orderId)
+    if (!order?.supabaseId) continue
+    const payload = {
+      order_id: order.supabaseId, amount: p.amount,
+      type: p.type, paid_at: p.paidAt, notes: p.notes ?? null,
+    }
+    if (!p.supabaseId) {
+      const { data: row, error } = await supabase.from('payments').insert(payload).select().single()
+      if (!error) await db.payments.update(p.id!, { supabaseId: row.id, pendingSync: false })
+    } else {
+      const { error } = await supabase.from('payments').update(payload).eq('id', p.supabaseId)
+      if (!error) await db.payments.update(p.id!, { pendingSync: false })
+    }
+  }
+}
+
 export async function restoreFromSupabase(): Promise<void> {
   const [pe, be, ord, pay, cust] = await Promise.all([
     supabase.from('personal_expenses').select('*'),
