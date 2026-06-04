@@ -180,24 +180,25 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
               />
             </div>
 
-            <div>
-              <span style={lbl}>Pickup Date *</span>
-              <input
-                style={input}
-                type="date"
-                value={dueDate}
-                onChange={e => setDueDate(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <span style={lbl}>Time</span>
-              <input
-                style={input}
-                type="time"
-                value={time}
-                onChange={e => setTime(e.target.value)}
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <span style={lbl}>Pickup Date *</span>
+                <input
+                  style={input}
+                  type="date"
+                  value={dueDate}
+                  onChange={e => setDueDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <span style={lbl}>Time</span>
+                <input
+                  style={input}
+                  type="time"
+                  value={time}
+                  onChange={e => setTime(e.target.value)}
+                />
+              </div>
             </div>
 
             <div>

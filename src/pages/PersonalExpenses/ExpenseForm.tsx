@@ -42,11 +42,13 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   const [category, setCategory] = useState(expense?.category ?? 'Bills')
   const [notes, setNotes] = useState(expense?.notes ?? '')
   const [isRecurring, setIsRecurring] = useState(expense?.isRecurring ?? false)
+  const [expenseType, setExpenseType] = useState<'bill' | 'purchase'>('bill')
   const [saving, setSaving] = useState(false)
   const [closing, setClosing] = useState(false)
   const handleClose = () => setClosing(true)
 
-  const canSave = name.trim() && amount && parseFloat(amount) > 0 && dueDate
+  const canSave = name.trim() && amount && parseFloat(amount) > 0
+    && (expenseType === 'purchase' || dueDate)
 
   async function handleSave() {
     if (!canSave) return
@@ -54,11 +56,11 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     const data: Omit<PersonalExpense, 'id'> = {
       name: name.trim(),
       amount: parseFloat(amount),
-      dueDate,
+      dueDate: expenseType === 'purchase' ? new Date().toISOString().split('T')[0] : dueDate,
       category,
       notes: notes.trim() || undefined,
-      isRecurring,
-      isPaid: expense?.isPaid ?? false,
+      isRecurring: expenseType === 'purchase' ? false : isRecurring,
+      isPaid: expenseType === 'purchase' ? true : (expense?.isPaid ?? false),
     }
     const supabasePayload = {
       name: data.name, amount: data.amount, due_date: data.dueDate,
@@ -162,6 +164,28 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
         <div style={{ overflowY: 'auto', padding: '8px 20px 0', flex: 1 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
+            {/* Type toggle */}
+            {!isEdit && (
+              <div style={{ display: 'flex', background: '#e5e0db', borderRadius: '10px', padding: '3px', gap: '3px' }}>
+                {(['bill', 'purchase'] as const).map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setExpenseType(t)}
+                    style={{
+                      flex: 1, padding: '8px', border: 'none', borderRadius: '8px', cursor: 'pointer',
+                      fontSize: '13px', fontWeight: 600,
+                      background: expenseType === t ? '#fff' : 'transparent',
+                      color: expenseType === t ? '#2D2D2D' : '#9ca3af',
+                      boxShadow: expenseType === t ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {t === 'bill' ? '📅 Bill / Due' : '🛒 Instant Purchase'}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div>
               <span style={label}>Name *</span>
               <input
@@ -184,15 +208,17 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
               />
             </div>
 
-            <div>
-              <span style={label}>Due Date *</span>
-              <input
-                style={input}
-                type="date"
-                value={dueDate}
-                onChange={e => setDueDate(e.target.value)}
-              />
-            </div>
+            {expenseType === 'bill' && (
+              <div>
+                <span style={label}>Due Date *</span>
+                <input
+                  style={input}
+                  type="date"
+                  value={dueDate}
+                  onChange={e => setDueDate(e.target.value)}
+                />
+              </div>
+            )}
 
             <div>
               <span style={label}>Category</span>
@@ -215,8 +241,8 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
               />
             </div>
 
-            {/* Recurring toggle */}
-            <button
+            {/* Recurring toggle — bill only */}
+            {expenseType === 'bill' && <button
               onClick={() => setIsRecurring(r => !r)}
               style={{
                 display: 'flex', alignItems: 'center', gap: '12px',
@@ -251,7 +277,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
                   }} />
                 </div>
               </div>
-            </button>
+            </button>}
 
           </div>
         </div>
