@@ -39,7 +39,7 @@ export default function App() {
         <InstallBanner />
         <OfflineBanner />
         <NotificationBanner />
-        <main style={{ flex: 1, paddingBottom: '72px', overflowY: 'auto' }}>
+        <main style={{ flex: 1, paddingBottom: 'calc(72px + env(safe-area-inset-bottom))', overflowY: 'auto' }}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/personal" element={<PersonalExpenses />} />
@@ -55,7 +55,7 @@ export default function App() {
           bottom: 0,
           left: 0,
           right: 0,
-          height: '72px',
+          height: 'calc(72px + env(safe-area-inset-bottom))',
           background: '#fff',
           borderTop: '1px solid #e5e0db',
           display: 'flex',

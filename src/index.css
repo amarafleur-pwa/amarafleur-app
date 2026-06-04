@@ -14,6 +14,11 @@
   padding: 0;
 }
 
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
 body {
   background-color: #F9F3EE;
   color: #2D2D2D;

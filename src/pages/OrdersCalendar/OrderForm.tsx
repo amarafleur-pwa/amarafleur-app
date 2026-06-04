@@ -93,9 +93,10 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          width: '100%',
+          width: 'calc(100% - 32px)',
+          margin: '0 16px',
           background: '#F9F3EE',
-          borderRadius: '20px 20px 0 0',
+          borderRadius: '20px',
           maxHeight: '92svh',
           display: 'flex',
           flexDirection: 'column',
