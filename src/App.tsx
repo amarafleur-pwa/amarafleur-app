@@ -51,7 +51,7 @@ function buildBar(cx: number, bw: number): string {
   return [
     `M ${iL} 0`,
     `L ${ncx - CR} 0`,
-    `A ${CR} ${CR} 0 0 1 ${ncx + CR} 0`,
+    `A ${CR} ${CR} 0 0 0 ${ncx + CR} 0`,
     `L ${iR} 0`,
     `Q ${bR} 0 ${bR} ${NAV_PILL_R}`,
     `L ${bR} ${NAV_H - NAV_PILL_R}`,
