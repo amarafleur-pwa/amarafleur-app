@@ -16,6 +16,20 @@ import RevenueSummary from './pages/RevenueSummary'
 import Settings from './pages/Settings'
 import Inventory from './pages/Inventory'
 
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(() => window.matchMedia(query).matches)
+  useEffect(() => {
+    const mq = window.matchMedia(query)
+    const fn = (e: MediaQueryListEvent) => setMatches(e.matches)
+    mq.addEventListener('change', fn)
+    return () => mq.removeEventListener('change', fn)
+  }, [query])
+  return matches
+}
+
+const SIDEBAR_NARROW = 72
+const SIDEBAR_WIDE = 245
+
 const mainTabs = [
   { to: '/', icon: LayoutDashboard, label: 'Home' },
   { to: '/personal', icon: Wallet, label: 'Personal' },
@@ -138,8 +152,106 @@ function BottomNav() {
   )
 }
 
+function SideNav() {
+  const isWide = useMediaQuery('(min-width: 1264px)')
+  const w = isWide ? SIDEBAR_WIDE : SIDEBAR_NARROW
+
+  const tabs = [
+    { to: '/', icon: LayoutDashboard, label: 'Home' },
+    { to: '/personal', icon: Wallet, label: 'Personal' },
+    { to: '/business', icon: ShoppingBag, label: 'Business' },
+    { to: '/calendar', icon: CalendarDays, label: 'Orders' },
+    { to: '/revenue', icon: TrendingUp, label: 'Revenue' },
+    { to: '/payments', icon: CreditCard, label: 'Payments' },
+    { to: '/inventory', icon: Package, label: 'Inventory' },
+  ]
+
+  return (
+    <nav style={{
+      position: 'fixed',
+      left: 0, top: 0, bottom: 0,
+      width: w,
+      background: '#fff',
+      borderRight: '1px solid #e5e0db',
+      display: 'flex',
+      flexDirection: 'column',
+      padding: '8px',
+      zIndex: 100,
+      overflowY: 'auto',
+    }}>
+      <div style={{
+        padding: '16px 8px 20px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: isWide ? 'flex-start' : 'center',
+        gap: 10,
+        flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>🌸</span>
+        {isWide && (
+          <span style={{ fontWeight: 800, fontSize: 17, color: '#2D2D2D', letterSpacing: '-0.3px' }}>
+            Amara Fleur
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+        {tabs.map(({ to, icon: Icon, label }) => (
+          <NavLink key={to} to={to} end={to === '/'} style={{ textDecoration: 'none' }}>
+            {({ isActive }) => (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: isWide ? 'flex-start' : 'center',
+                gap: isWide ? 16 : 0,
+                padding: isWide ? '12px 16px' : '14px 0',
+                background: isActive ? '#C9848A14' : 'transparent',
+                color: isActive ? '#C9848A' : '#374151',
+                fontWeight: isActive ? 700 : 400,
+                fontSize: 15,
+                borderRadius: 12,
+                cursor: 'pointer',
+                width: '100%',
+              }}>
+                <Icon size={24} strokeWidth={isActive ? 2.3 : 1.7} />
+                {isWide && <span>{label}</span>}
+              </div>
+            )}
+          </NavLink>
+        ))}
+      </div>
+
+      <NavLink to="/settings" style={{ textDecoration: 'none', flexShrink: 0 }}>
+        {({ isActive }) => (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: isWide ? 'flex-start' : 'center',
+            gap: isWide ? 16 : 0,
+            padding: isWide ? '12px 16px' : '14px 0',
+            background: isActive ? '#C9848A14' : 'transparent',
+            color: isActive ? '#C9848A' : '#374151',
+            fontWeight: isActive ? 700 : 400,
+            fontSize: 15,
+            borderRadius: 12,
+            cursor: 'pointer',
+            width: '100%',
+            marginBottom: 8,
+          }}>
+            <SettingsIcon size={24} strokeWidth={isActive ? 2.3 : 1.7} />
+            {isWide && <span>Settings</span>}
+          </div>
+        )}
+      </NavLink>
+    </nav>
+  )
+}
+
 export default function App() {
   const [authed, setAuthed] = useState(() => !!localStorage.getItem('af-authed'))
+  const isDesktop = useMediaQuery('(min-width: 768px)')
+  const isWide = useMediaQuery('(min-width: 1264px)')
+  const sidebarWidth = isWide ? SIDEBAR_WIDE : SIDEBAR_NARROW
 
   useEffect(() => {
     if (authed) {
@@ -154,11 +266,17 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100svh' }}>
+      <div style={{ display: 'flex', minHeight: '100svh' }}>
         <InstallBanner />
         <OfflineBanner />
         <NotificationBanner />
-        <main style={{ flex: 1, paddingBottom: 'calc(72px + env(safe-area-inset-bottom) + 16px)', overflowY: 'auto' }}>
+        {isDesktop && <SideNav />}
+        <main style={{
+          flex: 1,
+          marginLeft: isDesktop ? sidebarWidth : 0,
+          paddingBottom: isDesktop ? '24px' : 'calc(72px + env(safe-area-inset-bottom) + 16px)',
+          overflowY: 'auto',
+        }}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/personal" element={<PersonalExpenses />} />
@@ -170,7 +288,7 @@ export default function App() {
             <Route path="/inventory" element={<Inventory />} />
           </Routes>
         </main>
-        <BottomNav />
+        {!isDesktop && <BottomNav />}
       </div>
     </BrowserRouter>
   )
