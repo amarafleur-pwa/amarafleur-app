@@ -30,15 +30,8 @@ function useMediaQuery(query: string) {
 const SIDEBAR_NARROW = 72
 const SIDEBAR_WIDE = 245
 
-const mainTabs = [
-  { to: '/', icon: LayoutDashboard, label: 'Home' },
-  { to: '/personal', icon: Wallet, label: 'Personal' },
-  { to: '/business', icon: ShoppingBag, label: 'Business' },
-  { to: '/calendar', icon: CalendarDays, label: 'Orders' },
-  { to: '/revenue', icon: TrendingUp, label: 'Revenue' },
-]
-
 const moreTabs = [
+  { to: '/revenue', icon: TrendingUp, label: 'Revenue' },
   { to: '/payments', icon: CreditCard, label: 'Payments' },
   { to: '/inventory', icon: Package, label: 'Inventory' },
   { to: '/settings', icon: SettingsIcon, label: 'Settings' },
@@ -50,6 +43,15 @@ function BottomNav() {
   const isMoreActive = moreTabs.some(t => t.to === location.pathname)
 
   useEffect(() => { setMoreOpen(false) }, [location.pathname])
+
+  const leftTabs = [
+    { to: '/', icon: LayoutDashboard, label: 'Home' },
+    { to: '/personal', icon: Wallet, label: 'Personal' },
+  ]
+  const rightTabs = [
+    { to: '/business', icon: ShoppingBag, label: 'Business' },
+    { to: '/calendar', icon: CalendarDays, label: 'Orders' },
+  ]
 
   return (
     <>
@@ -63,12 +65,12 @@ function BottomNav() {
       {moreOpen && (
         <div style={{
           position: 'fixed',
-          bottom: 'calc(72px + env(safe-area-inset-bottom))',
+          bottom: 'calc(68px + env(safe-area-inset-bottom))',
           right: 0,
           left: 0,
           background: '#fff',
           borderTop: '1px solid #e5e0db',
-          borderRadius: '12px 12px 0 0',
+          borderRadius: '16px 16px 0 0',
           zIndex: 51,
           paddingBottom: '4px',
         }}>
@@ -93,61 +95,115 @@ function BottomNav() {
         </div>
       )}
 
-      <nav style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 'calc(72px + env(safe-area-inset-bottom))',
-        background: '#fff',
-        borderTop: '1px solid #e5e0db',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-around',
-        paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)',
-        zIndex: 50,
-      }}>
-        {mainTabs.map(({ to, icon: Icon, label }) => (
-          <NavLink key={to} to={to} end={to === '/'} style={{ textDecoration: 'none' }}>
-            {({ isActive }) => (
-              <span style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '3px',
-                color: isActive ? '#C9848A' : '#9ca3af',
-                fontSize: '10px',
-                fontWeight: isActive ? 600 : 400,
-                minWidth: '48px',
-              }}>
-                <Icon size={22} strokeWidth={isActive ? 2.2 : 1.8} />
-                {label}
-              </span>
-            )}
-          </NavLink>
-        ))}
+      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50 }}>
+        <nav style={{
+          position: 'relative',
+          height: 'calc(68px + env(safe-area-inset-bottom))',
+          background: '#fff',
+          borderRadius: '20px 20px 0 0',
+          boxShadow: '0 -4px 24px rgba(0,0,0,0.07)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-around',
+          paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)',
+          overflow: 'visible',
+        }}>
+          {/* Floating center button */}
+          <button
+            onClick={() => setMoreOpen(o => !o)}
+            style={{
+              position: 'absolute',
+              top: '-24px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: '52px',
+              height: '52px',
+              background: '#C9848A',
+              borderRadius: '50%',
+              border: 'none',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 20px #C9848A55',
+              transition: 'box-shadow 0.2s ease',
+            }}
+          >
+            <MoreHorizontal
+              size={24}
+              color="#fff"
+              strokeWidth={2}
+              style={{
+                transform: moreOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+                transition: 'transform 0.22s ease',
+              }}
+            />
+          </button>
 
-        <button
-          onClick={() => setMoreOpen(o => !o)}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '3px',
-            color: isMoreActive || moreOpen ? '#C9848A' : '#9ca3af',
-            fontSize: '10px',
-            fontWeight: isMoreActive || moreOpen ? 600 : 400,
-            minWidth: '48px',
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            cursor: 'pointer',
-          }}
-        >
-          <MoreHorizontal size={22} strokeWidth={isMoreActive || moreOpen ? 2.2 : 1.8} />
-          More
-        </button>
-      </nav>
+          {leftTabs.map(({ to, icon: Icon, label }) => (
+            <NavLink key={to} to={to} end={to === '/'} style={{ textDecoration: 'none' }}>
+              {({ isActive }) => (
+                <span style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '3px',
+                  color: isActive ? '#C9848A' : '#9ca3af',
+                  fontSize: '10px',
+                  fontWeight: isActive ? 600 : 400,
+                  minWidth: '60px',
+                  transform: isActive ? 'translateY(-3px)' : 'translateY(0)',
+                  transition: 'transform 0.22s ease, color 0.22s ease',
+                }}>
+                  <Icon size={22} strokeWidth={isActive ? 2.2 : 1.8} />
+                  {label}
+                  <span style={{
+                    width: '4px',
+                    height: '4px',
+                    borderRadius: '50%',
+                    background: isActive ? '#C9848A' : 'transparent',
+                    transition: 'background 0.22s ease',
+                    marginTop: '-1px',
+                  }} />
+                </span>
+              )}
+            </NavLink>
+          ))}
+
+          {/* Spacer for floating center button */}
+          <span style={{ minWidth: '60px', flexShrink: 0 }} />
+
+          {rightTabs.map(({ to, icon: Icon, label }) => (
+            <NavLink key={to} to={to} style={{ textDecoration: 'none' }}>
+              {({ isActive }) => (
+                <span style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '3px',
+                  color: isActive ? '#C9848A' : '#9ca3af',
+                  fontSize: '10px',
+                  fontWeight: isActive ? 600 : 400,
+                  minWidth: '60px',
+                  transform: isActive ? 'translateY(-3px)' : 'translateY(0)',
+                  transition: 'transform 0.22s ease, color 0.22s ease',
+                }}>
+                  <Icon size={22} strokeWidth={isActive ? 2.2 : 1.8} />
+                  {label}
+                  <span style={{
+                    width: '4px',
+                    height: '4px',
+                    borderRadius: '50%',
+                    background: isActive ? '#C9848A' : 'transparent',
+                    transition: 'background 0.22s ease',
+                    marginTop: '-1px',
+                  }} />
+                </span>
+              )}
+            </NavLink>
+          ))}
+        </nav>
+      </div>
     </>
   )
 }
@@ -274,7 +330,7 @@ export default function App() {
         <main style={{
           flex: 1,
           marginLeft: isDesktop ? sidebarWidth : 0,
-          paddingBottom: isDesktop ? '24px' : 'calc(72px + env(safe-area-inset-bottom) + 16px)',
+          paddingBottom: isDesktop ? '24px' : 'calc(68px + env(safe-area-inset-bottom) + 24px)',
           overflowY: 'auto',
         }}>
           <Routes>

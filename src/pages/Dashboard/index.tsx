@@ -42,9 +42,9 @@ const fmt = (n: number) =>
 
 const card: CSSProperties = {
   background: '#fff',
-  borderRadius: '14px',
+  borderRadius: '18px',
   padding: '16px',
-  boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+  boxShadow: '0 4px 20px rgba(0,0,0,0.07)',
 }
 
 const cardHeader: CSSProperties = {
@@ -125,31 +125,49 @@ export default function Dashboard() {
   return (
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '24px' }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <p style={{ fontSize: '13px', color: '#9ca3af' }}>
-            {new Date().toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </p>
-          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D', marginTop: '2px' }}>
-            Amara Fleur
+      {/* Hero Header */}
+      <div style={{
+        background: 'linear-gradient(135deg, #C9848A1A 0%, #F9F3EE 60%, #7A9E7E14 100%)',
+        borderRadius: '0 0 28px 28px',
+        padding: '20px 16px 28px',
+        margin: '-16px -16px 0',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        <div style={{
+          position: 'absolute', top: -48, right: -48,
+          width: 160, height: 160, borderRadius: '50%',
+          background: '#C9848A0F', pointerEvents: 'none',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: -24, right: 56,
+          width: 90, height: 90, borderRadius: '50%',
+          background: '#7A9E7E0D', pointerEvents: 'none',
+        }} />
+        <p style={{ fontSize: '13px', color: '#9ca3af', position: 'relative' }}>
+          {new Date().toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric' })}
+        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', marginTop: '4px' }}>
+          <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#2D2D2D', letterSpacing: '-0.4px' }}>
+            Hello, Amara Fleur 🌸
           </h1>
+          <button
+            onClick={() => { localStorage.removeItem('af-authed'); window.location.reload() }}
+            title="Lock app"
+            style={{
+              background: '#fff', border: 'none', cursor: 'pointer',
+              padding: '8px', display: 'flex', flexShrink: 0,
+              borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              marginTop: '2px',
+            }}
+          >
+            <Lock size={18} color="#C9848A" />
+          </button>
         </div>
-        <button
-          onClick={() => { localStorage.removeItem('af-authed'); window.location.reload() }}
-          title="Lock app"
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            padding: '6px', marginTop: '2px', display: 'flex',
-            borderRadius: '8px', color: '#d1ccc8',
-          }}
-        >
-          <Lock size={20} color="#d1ccc8" />
-        </button>
       </div>
 
       {/* Today's Orders */}
-      <div style={card}>
+      <div style={{ ...card, borderLeft: '4px solid #C9848A' }}>
         <div style={cardHeader}>
           <CalendarCheck2 size={18} color="#C9848A" />
           <span style={cardTitle}>Today's Orders</span>
@@ -186,7 +204,7 @@ export default function Dashboard() {
       </div>
 
       {/* Upcoming Bills */}
-      <div style={card}>
+      <div style={{ ...card, borderLeft: '4px solid #E8A838' }}>
         <div style={cardHeader}>
           <Clock size={18} color="#E8A838" />
           <span style={cardTitle}>Upcoming Bills</span>
@@ -230,7 +248,7 @@ export default function Dashboard() {
       </div>
 
       {/* Unpaid Balances */}
-      <div style={card}>
+      <div style={{ ...card, borderLeft: '4px solid #7A9E7E' }}>
         <div style={cardHeader}>
           <DollarSign size={18} color="#7A9E7E" />
           <span style={cardTitle}>Unpaid Balances</span>
@@ -255,7 +273,7 @@ export default function Dashboard() {
         <p style={{ fontSize: '12px', fontWeight: 600, color: '#9ca3af', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           Quick Add
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none' }}>
           {quickAdd.map(({ label, icon: Icon, path, color }) => (
             <button
               key={path}
@@ -263,27 +281,28 @@ export default function Dashboard() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px',
-                padding: '14px 14px',
+                gap: '8px',
+                padding: '12px 18px',
                 background: '#fff',
                 border: `1.5px solid ${color}28`,
-                borderRadius: '12px',
+                borderRadius: '50px',
                 cursor: 'pointer',
                 fontWeight: 600,
                 fontSize: '13px',
                 color: '#2D2D2D',
                 boxShadow: `0 2px 8px ${color}18`,
-                textAlign: 'left',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
               }}
             >
               <span style={{
                 background: color + '18',
-                borderRadius: '8px',
-                padding: '7px',
+                borderRadius: '50%',
+                padding: '5px',
                 display: 'flex',
                 flexShrink: 0,
               }}>
-                <Icon size={17} color={color} />
+                <Icon size={14} color={color} />
               </span>
               + {label}
             </button>
