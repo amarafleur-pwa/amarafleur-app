@@ -113,7 +113,20 @@ export default function Inventory() {
 
       {/* Header */}
       <div style={{ padding: '16px 16px 0' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D' }}>Inventory</h1>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>Inventory</h1>
+          <button
+            onClick={() => openForm()}
+            style={{
+              width: '36px', height: '36px', borderRadius: '50%',
+              background: '#C9848A', border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 16px #C9848A55',
+            }}
+          >
+            <Plus size={20} color="#fff" strokeWidth={2.5} />
+          </button>
+        </div>
 
         {/* Category filter */}
         <div style={{ display: 'flex', gap: '8px', marginTop: '14px', overflowX: 'auto', paddingBottom: '4px' }}>
@@ -238,19 +251,6 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* FAB */}
-      <button
-        onClick={() => openForm()}
-        style={{
-          position: 'fixed', bottom: 'calc(72px + 16px)', right: '16px',
-          width: '52px', height: '52px', borderRadius: '50%',
-          background: '#C9848A', border: 'none', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 16px #C9848A55', zIndex: 40,
-        }}
-      >
-        <Plus size={24} color="#fff" strokeWidth={2.5} />
-      </button>
 
       {/* Add / Edit form */}
       {showForm && (

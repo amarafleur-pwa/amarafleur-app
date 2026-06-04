@@ -89,7 +89,20 @@ export default function BusinessExpenses() {
 
       {/* Header */}
       <div style={{ padding: '16px 16px 0' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D' }}>Business Expenses</h1>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>Business Expenses</h1>
+          <button
+            onClick={openAdd}
+            style={{
+              width: '36px', height: '36px', borderRadius: '50%',
+              background: '#7A9E7E', border: 'none', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 16px #7A9E7E55',
+            }}
+          >
+            <Plus size={20} color="#fff" strokeWidth={2.5} />
+          </button>
+        </div>
 
         {/* Search */}
         <div style={{ position: 'relative', marginTop: '12px' }}>
@@ -312,24 +325,6 @@ export default function BusinessExpenses() {
         )}
       </div>
 
-      {/* FAB */}
-      <button
-        onClick={openAdd}
-        style={{
-          position: 'fixed',
-          bottom: 'calc(72px + 16px)',
-          right: '16px',
-          width: '52px', height: '52px',
-          borderRadius: '50%',
-          background: '#7A9E7E',
-          border: 'none', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 16px #7A9E7E55',
-          zIndex: 40,
-        }}
-      >
-        <Plus size={24} color="#fff" strokeWidth={2.5} />
-      </button>
 
       {showForm && (
         <ExpenseForm
