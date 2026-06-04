@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarCheck2, Clock, DollarSign, Wallet, ShoppingBag, Receipt } from 'lucide-react'
+import { CalendarCheck2, Clock, DollarSign, Wallet, ShoppingBag, Receipt, Lock } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order } from '../../db/db'
 
@@ -126,13 +126,26 @@ export default function Dashboard() {
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '24px' }}>
 
       {/* Header */}
-      <div>
-        <p style={{ fontSize: '13px', color: '#9ca3af' }}>
-          {new Date().toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric' })}
-        </p>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D', marginTop: '2px' }}>
-          Amar Fleur
-        </h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <p style={{ fontSize: '13px', color: '#9ca3af' }}>
+            {new Date().toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </p>
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D', marginTop: '2px' }}>
+            Amar Fleur
+          </h1>
+        </div>
+        <button
+          onClick={() => { localStorage.removeItem('af-authed'); window.location.reload() }}
+          title="Lock app"
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            padding: '6px', marginTop: '2px', display: 'flex',
+            borderRadius: '8px', color: '#d1ccc8',
+          }}
+        >
+          <Lock size={20} color="#d1ccc8" />
+        </button>
       </div>
 
       {/* Today's Orders */}

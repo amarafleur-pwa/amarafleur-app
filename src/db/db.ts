@@ -52,12 +52,20 @@ export interface Customer {
   notes?: string
 }
 
+export interface Passkey {
+  id?: number
+  credentialId: string
+  userName: string
+  registeredAt: string
+}
+
 class FlowerShopDB extends Dexie {
   personalExpenses!: EntityTable<PersonalExpense, 'id'>
   businessExpenses!: EntityTable<BusinessExpense, 'id'>
   orders!: EntityTable<Order, 'id'>
   payments!: EntityTable<Payment, 'id'>
   customers!: EntityTable<Customer, 'id'>
+  passkeys!: EntityTable<Passkey, 'id'>
 
   constructor() {
     super('FlowerShopDB')
@@ -69,6 +77,9 @@ class FlowerShopDB extends Dexie {
     })
     this.version(2).stores({
       customers: '++id, name',
+    })
+    this.version(3).stores({
+      passkeys: '++id, credentialId',
     })
   }
 }

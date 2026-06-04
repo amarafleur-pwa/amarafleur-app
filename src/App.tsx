@@ -1,8 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import { LayoutDashboard, Wallet, ShoppingBag, CalendarDays, CreditCard, TrendingUp } from 'lucide-react'
 import NotificationBanner from './components/NotificationBanner'
 import { checkAndFireReminders } from './lib/notifications'
+import Auth from './pages/Auth'
 import Dashboard from './pages/Dashboard'
 import PersonalExpenses from './pages/PersonalExpenses'
 import BusinessExpenses from './pages/BusinessExpenses'
@@ -20,9 +21,15 @@ const tabs = [
 ]
 
 export default function App() {
+  const [authed, setAuthed] = useState(() => !!localStorage.getItem('af-authed'))
+
   useEffect(() => {
-    checkAndFireReminders()
-  }, [])
+    if (authed) checkAndFireReminders()
+  }, [authed])
+
+  if (!authed) {
+    return <Auth onAuth={() => setAuthed(true)} />
+  }
 
   return (
     <BrowserRouter>
