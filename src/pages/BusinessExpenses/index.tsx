@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, ChevronDown, ChevronUp, CheckCircle2, Circle } from 'lucide-react'
+import { Plus, ChevronDown, ChevronUp, CheckCircle2, Circle, Search } from 'lucide-react'
 import { db } from '../../db/db'
 import type { BusinessExpense } from '../../db/db'
 import ExpenseForm from './ExpenseForm'
@@ -20,6 +20,7 @@ export default function BusinessExpenses() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [catFilter, setCatFilter] = useState<string | null>(null)
   const [showBreakdown, setShowBreakdown] = useState(false)
+  const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<BusinessExpense | undefined>()
 
@@ -53,10 +54,12 @@ export default function BusinessExpenses() {
     setShowForm(true)
   }
 
+  const q = search.toLowerCase()
   const filtered = expenses.filter(e => {
     if (statusFilter === 'paid' && !e.isPaid) return false
     if (statusFilter === 'unpaid' && e.isPaid) return false
     if (catFilter && e.category !== catFilter) return false
+    if (q && !e.name.toLowerCase().includes(q) && !e.category.toLowerCase().includes(q)) return false
     return true
   })
 
@@ -83,6 +86,17 @@ export default function BusinessExpenses() {
       {/* Header */}
       <div style={{ padding: '16px 16px 0' }}>
         <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D' }}>Business Expenses</h1>
+
+        {/* Search */}
+        <div style={{ position: 'relative', marginTop: '12px' }}>
+          <Search size={15} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+          <input
+            placeholder="Search expenses..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ width: '100%', padding: '10px 12px 10px 36px', border: '1.5px solid #e5e0db', borderRadius: '10px', fontSize: '14px', color: '#2D2D2D', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+          />
+        </div>
 
         {/* Unpaid summary */}
         {unpaidCount > 0 && (

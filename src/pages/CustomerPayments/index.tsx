@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, X, Phone, FileText } from 'lucide-react'
+import { Plus, X, Phone, FileText, Search } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment, Customer } from '../../db/db'
 import PaymentForm from './PaymentForm'
@@ -50,6 +50,7 @@ export default function CustomerPayments() {
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<View>('payments')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [search, setSearch] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
 
   // Customer form state
@@ -128,10 +129,12 @@ export default function CustomerPayments() {
     { key: 'paid', label: 'Fully Paid' },
   ]
 
+  const q = search.toLowerCase()
   const filteredOrders = orders.filter(o => {
     const s = getStatus(o, paymentMap.get(o.id!) ?? [])
-    if (statusFilter === 'outstanding') return s.balance > 0
-    if (statusFilter === 'paid') return s.balance <= 0
+    if (statusFilter === 'outstanding' && s.balance <= 0) return false
+    if (statusFilter === 'paid' && s.balance > 0) return false
+    if (q && !o.customerName.toLowerCase().includes(q) && !o.description.toLowerCase().includes(q)) return false
     return true
   })
 
@@ -202,6 +205,17 @@ export default function CustomerPayments() {
               </span>
             </div>
           )}
+
+          {/* Search */}
+          <div style={{ position: 'relative', marginBottom: '10px' }}>
+            <Search size={15} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+            <input
+              placeholder="Search by customer or order..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ width: '100%', padding: '10px 12px 10px 36px', border: '1.5px solid #e5e0db', borderRadius: '10px', fontSize: '14px', color: '#2D2D2D', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+            />
+          </div>
 
           {/* Status filter tabs */}
           <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>

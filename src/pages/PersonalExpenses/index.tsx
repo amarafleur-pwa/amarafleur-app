@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, RefreshCw, CheckCircle2, Circle } from 'lucide-react'
+import { Plus, RefreshCw, CheckCircle2, Circle, Search } from 'lucide-react'
 import { db } from '../../db/db'
 import type { PersonalExpense } from '../../db/db'
 import ExpenseForm from './ExpenseForm'
@@ -36,6 +36,7 @@ export default function PersonalExpenses() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
+  const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<PersonalExpense | undefined>()
 
@@ -86,9 +87,11 @@ export default function PersonalExpenses() {
   }
 
   const today = todayStr()
+  const q = search.toLowerCase()
   const filtered = expenses.filter(e => {
-    if (filter === 'overdue') return !e.isPaid && e.dueDate < today
-    if (filter === 'upcoming') return !e.isPaid && e.dueDate >= today
+    if (filter === 'overdue' && (e.isPaid || e.dueDate >= today)) return false
+    if (filter === 'upcoming' && (e.isPaid || e.dueDate < today)) return false
+    if (q && !e.name.toLowerCase().includes(q) && !(e.category ?? '').toLowerCase().includes(q)) return false
     return true
   })
 
@@ -106,6 +109,17 @@ export default function PersonalExpenses() {
       {/* Header */}
       <div style={{ padding: '16px 16px 0' }}>
         <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D' }}>Personal Expenses</h1>
+
+        {/* Search */}
+        <div style={{ position: 'relative', marginTop: '12px' }}>
+          <Search size={15} color="#9ca3af" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+          <input
+            placeholder="Search expenses..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ width: '100%', padding: '10px 12px 10px 36px', border: '1.5px solid #e5e0db', borderRadius: '10px', fontSize: '14px', color: '#2D2D2D', background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+          />
+        </div>
 
         {/* Filter tabs */}
         <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>

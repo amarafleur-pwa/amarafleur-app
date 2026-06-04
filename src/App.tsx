@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom'
 import { LayoutDashboard, Wallet, ShoppingBag, CalendarDays, CreditCard, TrendingUp } from 'lucide-react'
 import NotificationBanner from './components/NotificationBanner'
+import OfflineBanner from './components/OfflineBanner'
+import InstallBanner from './components/InstallBanner'
 import { checkAndFireReminders } from './lib/notifications'
 import Auth from './pages/Auth'
 import Dashboard from './pages/Dashboard'
@@ -34,6 +36,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100svh' }}>
+        <InstallBanner />
+        <OfflineBanner />
         <NotificationBanner />
         <main style={{ flex: 1, paddingBottom: '72px', overflowY: 'auto' }}>
           <Routes>
