@@ -311,6 +311,13 @@ export default function App() {
       syncPendingItems().then(() => restoreFromSupabase()).then(() => setSyncVersion(v => v + 1)).catch(console.warn)
     window.addEventListener('online', handleOnline)
 
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        restoreFromSupabase().then(() => setSyncVersion(v => v + 1)).catch(console.warn)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
     let restoreTimer: ReturnType<typeof setTimeout>
     const debouncedRestore = () => {
       clearTimeout(restoreTimer)
@@ -329,6 +336,7 @@ export default function App() {
 
     return () => {
       window.removeEventListener('online', handleOnline)
+      document.removeEventListener('visibilitychange', handleVisibility)
       clearTimeout(restoreTimer)
       supabase.removeChannel(channel)
     }
