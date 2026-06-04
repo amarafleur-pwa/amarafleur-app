@@ -132,7 +132,7 @@ export default function Dashboard() {
             {new Date().toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
           <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D', marginTop: '2px' }}>
-            Amar Fleur
+            Amara Fleur
           </h1>
         </div>
         <button

@@ -87,7 +87,7 @@ export default function Auth({ onAuth }: Props) {
       const credential = (await navigator.credentials.create({
         publicKey: {
           challenge,
-          rp: { name: 'Amar Fleur', id: window.location.hostname },
+          rp: { name: 'Amara Fleur', id: window.location.hostname },
           user: {
             id: userId,
             name: userName.trim(),
@@ -152,7 +152,7 @@ export default function Auth({ onAuth }: Props) {
       </div>
 
       <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#2D2D2D', marginBottom: '6px' }}>
-        Amar Fleur
+        Amara Fleur
       </h1>
       <p style={{ fontSize: '14px', color: '#9ca3af', marginBottom: '40px' }}>
         Flower Shop Manager

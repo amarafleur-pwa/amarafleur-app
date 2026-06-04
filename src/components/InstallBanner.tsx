@@ -66,7 +66,7 @@ export default function InstallBanner() {
         <Download size={17} color="#C9848A" />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>Install Amar Fleur</p>
+        <p style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>Install Amara Fleur</p>
         <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '1px' }}>
           {showIos ? 'Tap Share ↑ → Add to Home Screen' : 'Add to home screen for quick access'}
         </p>
