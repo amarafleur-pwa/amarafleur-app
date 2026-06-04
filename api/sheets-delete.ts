@@ -1,4 +1,12 @@
-import { google } from 'googleapis'
+import { JWT } from 'google-auth-library'
+
+const BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
+
+async function getToken(email: string, key: string): Promise<string> {
+  const auth = new JWT({ email, key, scopes: ['https://www.googleapis.com/auth/spreadsheets'] })
+  const result = await auth.getAccessToken()
+  return result.token!
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any) {
@@ -16,19 +24,21 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const auth = new google.auth.JWT({
-      email: clientEmail, key: privateKey,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    })
-    const sheets = google.sheets({ version: 'v4', auth })
+    const token = await getToken(clientEmail, privateKey)
+    const hdrs = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 
-    const meta = await sheets.spreadsheets.get({ spreadsheetId })
-    const sheetMeta = meta.data.sheets?.find(s => s.properties?.title === sheet)
+    const metaRes = await fetch(`${BASE}/${spreadsheetId}?fields=sheets.properties`, { headers: hdrs })
+    const meta = await metaRes.json() as { sheets?: { properties?: { title?: string; sheetId?: number } }[] }
+    const sheetMeta = meta.sheets?.find(s => s.properties?.title === sheet)
     if (!sheetMeta) return res.status(200).json({ ok: true, skipped: 'sheet not found' })
     const sheetId = sheetMeta.properties!.sheetId!
 
-    const range = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${sheet}!A:Z` })
-    const rows = range.data.values ?? []
+    const rangeRes = await fetch(
+      `${BASE}/${spreadsheetId}/values/${encodeURIComponent(sheet + '!A:Z')}`,
+      { headers: hdrs }
+    )
+    const rangeData = await rangeRes.json() as { values?: string[][] }
+    const rows = rangeData.values ?? []
 
     let rowIndex = -1
     for (let i = 1; i < rows.length; i++) {
@@ -37,11 +47,12 @@ export default async function handler(req: any, res: any) {
 
     if (rowIndex === -1) return res.status(200).json({ ok: true, skipped: 'row not found' })
 
-    await sheets.spreadsheets.batchUpdate({
-      spreadsheetId,
-      requestBody: {
+    await fetch(`${BASE}/${spreadsheetId}:batchUpdate`, {
+      method: 'POST',
+      headers: hdrs,
+      body: JSON.stringify({
         requests: [{ deleteDimension: { range: { sheetId, dimension: 'ROWS', startIndex: rowIndex, endIndex: rowIndex + 1 } } }]
-      }
+      })
     })
 
     return res.status(200).json({ ok: true })

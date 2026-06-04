@@ -1,4 +1,6 @@
-import { google } from 'googleapis'
+import { JWT } from 'google-auth-library'
+
+const BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
 
 const HEADERS: Record<string, string[]> = {
   'Personal Expenses': ['Name', 'Amount', 'Due Date', 'Category', 'Recurring', 'Notes', 'Logged At', 'App ID'],
@@ -8,54 +10,45 @@ const HEADERS: Record<string, string[]> = {
   'Customers': ['Name', 'Phone', 'Notes', 'Logged At', 'App ID'],
 }
 
+async function getToken(email: string, key: string): Promise<string> {
+  const auth = new JWT({ email, key, scopes: ['https://www.googleapis.com/auth/spreadsheets'] })
+  const result = await auth.getAccessToken()
+  return result.token!
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   const { sheet, row } = req.body ?? {}
-
-  if (!sheet || !Array.isArray(row)) {
-    return res.status(400).json({ error: 'Missing sheet or row' })
-  }
+  if (!sheet || !Array.isArray(row)) return res.status(400).json({ error: 'Missing sheet or row' })
 
   const clientEmail = process.env.GOOGLE_CLIENT_EMAIL
   const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n')
   const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID
 
-  // Silently succeed if credentials aren't configured yet
   if (!clientEmail || !privateKey || !spreadsheetId) {
     return res.status(200).json({ ok: true, skipped: 'not configured' })
   }
 
   try {
-    const auth = new google.auth.JWT({
-      email: clientEmail,
-      key: privateKey,
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-    })
+    const token = await getToken(clientEmail, privateKey)
+    const hdrs = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 
-    const sheets = google.sheets({ version: 'v4', auth })
-
-    // Check if the sheet already has a header row
-    const existing = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `${sheet}!A1`,
-    })
+    const checkRes = await fetch(
+      `${BASE}/${spreadsheetId}/values/${encodeURIComponent(sheet + '!A1')}`,
+      { headers: hdrs }
+    )
+    const checkData = await checkRes.json() as { values?: string[][] }
 
     const values: (string | number)[][] = []
-    if (!existing.data.values?.length && HEADERS[sheet]) {
-      values.push(HEADERS[sheet])
-    }
+    if (!checkData.values?.length && HEADERS[sheet]) values.push(HEADERS[sheet])
     values.push(row)
 
-    await sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: `${sheet}!A1`,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values },
-    })
+    await fetch(
+      `${BASE}/${spreadsheetId}/values/${encodeURIComponent(sheet + '!A1')}:append?valueInputOption=USER_ENTERED`,
+      { method: 'POST', headers: hdrs, body: JSON.stringify({ values }) }
+    )
 
     return res.status(200).json({ ok: true })
   } catch (err: unknown) {
