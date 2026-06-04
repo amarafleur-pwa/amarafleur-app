@@ -5,6 +5,7 @@ import type { PersonalExpense } from '../../db/db'
 import ExpenseForm from './ExpenseForm'
 import { supabase } from '../../lib/supabase'
 import { logPersonalExpense } from '../../lib/sheets'
+import { useSyncVersion } from '../../lib/SyncContext'
 
 type Filter = 'all' | 'overdue' | 'upcoming'
 
@@ -34,6 +35,7 @@ function formatDate(d: string) {
 const fmt = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2 })
 
 export default function PersonalExpenses() {
+  const syncVersion = useSyncVersion()
   const [expenses, setExpenses] = useState<PersonalExpense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -54,7 +56,7 @@ export default function PersonalExpenses() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [syncVersion])
 
   async function togglePaid(expense: PersonalExpense) {
     const nowPaid = !expense.isPaid

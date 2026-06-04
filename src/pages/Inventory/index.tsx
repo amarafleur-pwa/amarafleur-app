@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, X, Package } from 'lucide-react'
 import { db } from '../../db/db'
 import type { InventoryItem } from '../../db/db'
+import { useSyncVersion } from '../../lib/SyncContext'
 
 const CATEGORIES = ['Flowers', 'Greenery', 'Supplies', 'Packaging', 'Other']
 const UNITS = ['stems', 'bunches', 'pcs', 'meters', 'rolls', 'bags']
@@ -27,6 +28,7 @@ const lbl: React.CSSProperties = {
 }
 
 export default function Inventory() {
+  const syncVersion = useSyncVersion()
   const [items, setItems] = useState<InventoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [categoryFilter, setCategoryFilter] = useState('All')
@@ -47,7 +49,7 @@ export default function Inventory() {
     db.inventory.orderBy('name').toArray().then(setItems).finally(() => setLoading(false))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [syncVersion])
 
   function openForm(item?: InventoryItem) {
     setEditingItem(item)

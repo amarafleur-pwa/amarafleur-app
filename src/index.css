@@ -44,6 +44,11 @@ html, body {
 .sheet-enter { animation: sheet-up   0.3s  cubic-bezier(0.32, 0.72, 0, 1) both; }
 .sheet-exit  { animation: sheet-down 0.25s cubic-bezier(0.32, 0.72, 0, 1) both; }
 
+@keyframes net-fade-in  { from { opacity: 0; transform: translateX(-50%) translateY(-6px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+@keyframes net-fade-out { from { opacity: 1; } to { opacity: 0; } }
+.net-enter { animation: net-fade-in  0.5s ease both; }
+.net-leave  { animation: net-fade-out 0.7s ease both; }
+
 body {
   background-color: #F9F3EE;
   color: #2D2D2D;

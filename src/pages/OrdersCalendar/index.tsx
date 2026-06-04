@@ -4,6 +4,7 @@ import { db } from '../../db/db'
 import type { Order } from '../../db/db'
 import OrderForm from './OrderForm'
 import { supabase } from '../../lib/supabase'
+import { useSyncVersion } from '../../lib/SyncContext'
 
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
@@ -33,6 +34,7 @@ function formatTime(t: string) {
 const fmt = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2 })
 
 export default function OrdersCalendar() {
+  const syncVersion = useSyncVersion()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -60,7 +62,7 @@ export default function OrdersCalendar() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [syncVersion])
 
   function prevMonth() {
     setViewDate(d => {

@@ -4,6 +4,7 @@ import { db } from '../../db/db'
 import type { BusinessExpense } from '../../db/db'
 import ExpenseForm from './ExpenseForm'
 import { supabase } from '../../lib/supabase'
+import { useSyncVersion } from '../../lib/SyncContext'
 
 const CATEGORIES = ['Supplies', 'Utilities', 'Rent', 'Delivery', 'Other']
 type StatusFilter = 'all' | 'unpaid' | 'paid'
@@ -15,6 +16,7 @@ function formatDate(d: string) {
 const fmt = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2 })
 
 export default function BusinessExpenses() {
+  const syncVersion = useSyncVersion()
   const [expenses, setExpenses] = useState<BusinessExpense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -38,7 +40,7 @@ export default function BusinessExpenses() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [syncVersion])
 
   async function togglePaid(expense: BusinessExpense) {
     if (expense.supabaseId) {

@@ -5,6 +5,7 @@ import type { Order, Payment, Customer } from '../../db/db'
 import PaymentForm from './PaymentForm'
 import { supabase } from '../../lib/supabase'
 import { logCustomer, deleteSheetRow } from '../../lib/sheets'
+import { useSyncVersion } from '../../lib/SyncContext'
 
 type View = 'payments' | 'directory'
 type StatusFilter = 'all' | 'outstanding' | 'paid'
@@ -45,6 +46,7 @@ const lbl: React.CSSProperties = {
 }
 
 export default function CustomerPayments() {
+  const syncVersion = useSyncVersion()
   const [orders, setOrders] = useState<Order[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -84,7 +86,7 @@ export default function CustomerPayments() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [syncVersion])
 
   function openCustomerForm(customer?: Customer) {
     setEditingCustomer(customer)

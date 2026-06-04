@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { CalendarCheck2, Clock, DollarSign, Wallet, ShoppingBag, Receipt, Lock, WifiOff } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order } from '../../db/db'
+import { useSyncVersion } from '../../lib/SyncContext'
 
 function todayStr() {
   return new Date().toISOString().split('T')[0]
@@ -69,6 +70,7 @@ const emptyText: CSSProperties = {
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const syncVersion = useSyncVersion()
   const [todayOrders, setTodayOrders] = useState<Order[]>([])
   const [dueItems, setDueItems] = useState<DueItem[]>([])
   const [unpaidTotal, setUnpaidTotal] = useState(0)
@@ -125,7 +127,7 @@ export default function Dashboard() {
       setUnpaidTotal(total)
       setUnpaidCount(active.filter(o => o.totalAmount - o.depositPaid > 0).length)
     })
-  }, [])
+  }, [syncVersion])
 
   const quickAdd = [
     { label: 'Order', icon: CalendarCheck2, path: '/calendar', color: '#C9848A' },

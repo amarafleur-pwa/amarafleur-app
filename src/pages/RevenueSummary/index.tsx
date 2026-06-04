@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Download, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment, BusinessExpense } from '../../db/db'
+import { useSyncVersion } from '../../lib/SyncContext'
 
 type Period = 'daily' | 'weekly' | 'monthly'
 
@@ -119,6 +120,7 @@ async function exportCSV() {
 }
 
 export default function RevenueSummary() {
+  const syncVersion = useSyncVersion()
   const [orders, setOrders] = useState<Order[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
   const [businessExpenses, setBusinessExpenses] = useState<BusinessExpense[]>([])
@@ -141,7 +143,7 @@ export default function RevenueSummary() {
       })
       .catch(err => setError(err.message ?? 'Failed to load'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [syncVersion])
 
   const range = getPeriodRange(period)
 

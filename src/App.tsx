@@ -3,8 +3,10 @@ import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router
 import { LayoutDashboard, Wallet, ShoppingBag, CalendarDays, CreditCard, TrendingUp, MoreHorizontal, Settings as SettingsIcon, Package } from 'lucide-react'
 import NotificationBanner from './components/NotificationBanner'
 import InstallBanner from './components/InstallBanner'
+import NetworkStatus from './components/OfflineBanner'
 import { checkAndFireReminders } from './lib/notifications'
 import { restoreFromSupabase, syncPendingItems } from './lib/sync'
+import { SyncContext } from './lib/SyncContext'
 import Auth from './pages/Auth'
 import Dashboard from './pages/Dashboard'
 import PersonalExpenses from './pages/PersonalExpenses'
@@ -295,6 +297,7 @@ function SideNav() {
 
 export default function App() {
   const [authed, setAuthed] = useState(() => !!localStorage.getItem('af-authed'))
+  const [syncVersion, setSyncVersion] = useState(0)
   const isDesktop = useMediaQuery('(min-width: 768px)')
   const isWide = useMediaQuery('(min-width: 1264px)')
   const sidebarWidth = isWide ? SIDEBAR_WIDE : SIDEBAR_NARROW
@@ -302,9 +305,11 @@ export default function App() {
   useEffect(() => {
     if (authed) {
       checkAndFireReminders()
-      syncPendingItems().then(() => restoreFromSupabase()).catch(console.warn)
-      window.addEventListener('online', syncPendingItems)
-      return () => window.removeEventListener('online', syncPendingItems)
+      syncPendingItems().then(() => restoreFromSupabase()).then(() => setSyncVersion(v => v + 1)).catch(console.warn)
+      const handleOnline = () =>
+        syncPendingItems().then(() => restoreFromSupabase()).then(() => setSyncVersion(v => v + 1)).catch(console.warn)
+      window.addEventListener('online', handleOnline)
+      return () => window.removeEventListener('online', handleOnline)
     }
   }, [authed])
 
@@ -313,10 +318,12 @@ export default function App() {
   }
 
   return (
+    <SyncContext.Provider value={syncVersion}>
     <BrowserRouter>
       <div style={{ display: 'flex', minHeight: '100svh' }}>
         <InstallBanner />
         <NotificationBanner />
+        <NetworkStatus />
         {isDesktop && <SideNav />}
         <main style={{
           flex: 1,
@@ -338,5 +345,6 @@ export default function App() {
         {!isDesktop && <BottomNav />}
       </div>
     </BrowserRouter>
+    </SyncContext.Provider>
   )
 }
