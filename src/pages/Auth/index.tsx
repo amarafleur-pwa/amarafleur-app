@@ -7,6 +7,17 @@ interface Props {
   onAuth: () => void
 }
 
+const PETAL_COLORS = ['#F4A7B1','#E8829A','#FADADD','#FFB6C1','#FF8FA3','#FFC8D4','#C9848A','#E8B4B8','#FFF0F5','#FFAEC9']
+const PETALS = Array.from({ length: 28 }, (_, i) => ({
+  id: i,
+  left: `${(Math.random() * 100).toFixed(1)}%`,
+  delay: `${(Math.random() * 10).toFixed(2)}s`,
+  duration: `${(4 + Math.random() * 4).toFixed(2)}s`,
+  width: `${5 + Math.floor(Math.random() * 5)}px`,
+  height: `${8 + Math.floor(Math.random() * 7)}px`,
+  color: PETAL_COLORS[Math.floor(Math.random() * PETAL_COLORS.length)],
+}))
+
 function bufferToBase64(buf: ArrayBuffer): string {
   return btoa(String.fromCharCode(...new Uint8Array(buf)))
 }
@@ -131,6 +142,21 @@ export default function Auth({ onAuth }: Props) {
   const canAddMore = passkeys.length < 2
 
   return (
+    <>
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+      {PETALS.map(p => (
+        <div key={p.id} style={{
+          position: 'absolute',
+          left: p.left,
+          top: '-15px',
+          width: p.width,
+          height: p.height,
+          borderRadius: '50% 30% 50% 70% / 60% 40% 60% 40%',
+          background: p.color,
+          animation: `petal-fall ${p.duration} ${p.delay} infinite linear`,
+        }} />
+      ))}
+    </div>
     <div style={{
       minHeight: '100svh',
       background: '#F9F3EE',
@@ -139,10 +165,12 @@ export default function Auth({ onAuth }: Props) {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '32px 24px',
+      position: 'relative',
+      zIndex: 1,
     }}>
 
       {/* Logo */}
-      <div className="spin-slow" style={{
+      <div style={{
         width: '80px', height: '80px', borderRadius: '24px',
         background: '#C9848A18', border: '2px solid #C9848A33',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -288,5 +316,6 @@ export default function Auth({ onAuth }: Props) {
         Protected by device passkey · no password needed
       </p>
     </div>
+    </>
   )
 }
