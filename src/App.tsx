@@ -38,7 +38,8 @@ const moreTabs = [
 ]
 
 const NAV_H = 68
-const CR = 28
+const CR = 28       // FAB circle radius
+const NR = CR + 10  // notch arc radius — wider than FAB so cream shows in the gap
 const NAV_MARGIN = 10
 const NAV_PILL_R = 20
 
@@ -47,11 +48,11 @@ function buildBar(cx: number, bw: number): string {
   const iR = bw - NAV_MARGIN - NAV_PILL_R
   const bL = NAV_MARGIN
   const bR = bw - NAV_MARGIN
-  const ncx = Math.max(iL + CR, Math.min(iR - CR, cx))
+  const ncx = Math.max(iL + NR, Math.min(iR - NR, cx))
   return [
     `M ${iL} 0`,
-    `L ${ncx - CR} 0`,
-    `A ${CR} ${CR} 0 0 0 ${ncx + CR} 0`,
+    `L ${ncx - NR} 0`,
+    `A ${NR} ${NR} 0 0 0 ${ncx + NR} 0`,
     `L ${iR} 0`,
     `Q ${bR} 0 ${bR} ${NAV_PILL_R}`,
     `L ${bR} ${NAV_H - NAV_PILL_R}`,
