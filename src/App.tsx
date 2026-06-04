@@ -39,7 +39,8 @@ const moreTabs = [
 
 const NAV_H = 68
 const CR = 28       // FAB circle radius
-const NR = CR + 10  // notch arc radius — wider than FAB so cream shows in the gap
+const NR = CR + 10  // notch half-width — 10 px wider than FAB so cream shows around bubble
+const k = 0.5523    // cubic-bezier kappa for circular quarter-circle approximation
 const NAV_MARGIN = 10
 const NAV_PILL_R = 20
 
@@ -49,10 +50,15 @@ function buildBar(cx: number, bw: number): string {
   const bL = NAV_MARGIN
   const bR = bw - NAV_MARGIN
   const ncx = Math.max(iL + NR, Math.min(iR - NR, cx))
+  // Two cubic beziers replace the arc:
+  // horizontal tangent at both bar-edge junctions → no sharp corners
+  // kappa control points give a near-circular notch shape at the bottom
+  const cp = NR * (1 - k)  // ~16.9 px
   return [
     `M ${iL} 0`,
     `L ${ncx - NR} 0`,
-    `A ${NR} ${NR} 0 0 0 ${ncx + NR} 0`,
+    `C ${ncx - cp} 0 ${ncx} ${cp} ${ncx} ${NR}`,
+    `C ${ncx} ${cp} ${ncx + cp} 0 ${ncx + NR} 0`,
     `L ${iR} 0`,
     `Q ${bR} 0 ${bR} ${NAV_PILL_R}`,
     `L ${bR} ${NAV_H - NAV_PILL_R}`,
