@@ -117,6 +117,27 @@ function BottomNav() {
           overflow: 'visible',
           boxShadow: '0 4px 28px rgba(0,0,0,0.11)',
         }}>
+          {(() => { const ActiveIcon = tabs[activeIdx].icon; return (
+            <div style={{
+              position: 'absolute',
+              top: -27.5,
+              width: 55,
+              height: 55,
+              borderRadius: '50%',
+              background: '#fff',
+              border: '5px solid #F9F3EE',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              left: `calc(${activeIdx} * (100% / 5) + 100% / 10)`,
+              transform: 'translateX(-50%)',
+              transition: 'left 0.38s cubic-bezier(0.34, 1.56, 0.64, 1)',
+              zIndex: 2,
+              pointerEvents: 'none',
+            }}>
+              <ActiveIcon size={22} color="#C9848A" strokeWidth={2.2} />
+            </div>
+          ); })()}
           {tabs.map((tab, i) => {
             const isActive = i === activeIdx
             const Icon = tab.icon
@@ -139,25 +160,9 @@ function BottomNav() {
               zIndex: 1,
             }
 
-            const iconNode = isActive ? (
-              <div style={{
-                position: 'absolute',
-                top: -24,
-                width: 48,
-                height: 48,
-                borderRadius: '50%',
-                background: '#fff',
-                boxShadow: '0 0 0 5px #F9F3EE, 0 4px 14px rgba(0,0,0,0.13)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                animation: 'iconPop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) both',
-              }}>
-                <Icon size={22} color="#C9848A" strokeWidth={2.2} />
-              </div>
-            ) : (
-              <Icon size={20} color="#b8b0b0" strokeWidth={1.8} />
-            )
+            const iconNode = isActive
+              ? null
+              : <Icon size={20} color="#b8b0b0" strokeWidth={1.8} />
 
             const labelNode = (
               <span style={{
