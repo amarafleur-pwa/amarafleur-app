@@ -67,7 +67,7 @@ function BottomNav() {
       {moreOpen && (
         <div style={{
           position: 'fixed',
-          bottom: 'calc(88px + env(safe-area-inset-bottom))',
+          bottom: 'calc(108px + env(safe-area-inset-bottom))',
           left: 12, right: 12,
           zIndex: 51,
           background: '#fff',
@@ -95,12 +95,12 @@ function BottomNav() {
         </div>
       )}
 
-      {/* Outer wrapper fills safe area with app background color */}
+      {/* Outer wrapper — extra paddingTop makes room for the elevated circle */}
       <div style={{
         position: 'fixed',
         bottom: 0, left: 0, right: 0,
         zIndex: 50,
-        paddingTop: 8,
+        paddingTop: 28,
         paddingLeft: 12,
         paddingRight: 12,
         paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
@@ -114,31 +114,50 @@ function BottomNav() {
           display: 'flex',
           alignItems: 'stretch',
           position: 'relative',
+          overflow: 'visible',
           boxShadow: '0 4px 28px rgba(0,0,0,0.11)',
         }}>
-          {/* Sliding active indicator */}
-          <div style={{
-            position: 'absolute',
-            top: 6, bottom: 6,
-            left: `${activeIdx * 20}%`,
-            width: '20%',
-            background: '#C9848A14',
-            borderRadius: 16,
-            transition: 'left 0.32s cubic-bezier(0.34,1.4,0.64,1)',
-            pointerEvents: 'none',
-          }} />
-
           {tabs.map((tab, i) => {
             const isActive = i === activeIdx
             const Icon = tab.icon
-            const iconNode = (
-              <Icon
-                size={isActive ? 22 : 20}
-                color={isActive ? '#C9848A' : '#b8b0b0'}
-                strokeWidth={isActive ? 2.2 : 1.8}
-                style={{ flexShrink: 0, transition: 'color 0.2s ease' }}
-              />
+
+            const tabStyle = {
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column' as const,
+              alignItems: 'center' as const,
+              ...(isActive
+                ? { justifyContent: 'flex-end' as const, paddingBottom: 10 }
+                : { justifyContent: 'center' as const, gap: 4 }
+              ),
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              position: 'relative' as const,
+              overflow: 'visible' as const,
+              textDecoration: 'none',
+              zIndex: 1,
+            }
+
+            const iconNode = isActive ? (
+              <div style={{
+                position: 'absolute',
+                top: -24,
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                background: '#fff',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.13)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <Icon size={22} color="#C9848A" strokeWidth={2.2} />
+              </div>
+            ) : (
+              <Icon size={20} color="#b8b0b0" strokeWidth={1.8} />
             )
+
             const labelNode = (
               <span style={{
                 fontSize: 10,
@@ -146,29 +165,22 @@ function BottomNav() {
                 color: isActive ? '#2D2D2D' : '#b8b0b0',
                 letterSpacing: '0.02em',
                 lineHeight: 1,
-                transition: 'color 0.2s ease',
                 fontFamily: "'Poppins', sans-serif",
               }}>
                 {tab.label}
               </span>
             )
-            const sharedStyle = {
-              flex: 1, display: 'flex', flexDirection: 'column' as const,
-              alignItems: 'center', justifyContent: 'center', gap: 4,
-              background: 'none', border: 'none', cursor: 'pointer',
-              position: 'relative' as const, zIndex: 1,
-              textDecoration: 'none', padding: '6px 0',
-            }
+
             if (tab.more) {
               return (
-                <button key={i} onClick={() => setMoreOpen(o => !o)} style={sharedStyle}>
+                <button key={i} onClick={() => setMoreOpen(o => !o)} style={tabStyle}>
                   {iconNode}
                   {labelNode}
                 </button>
               )
             }
             return (
-              <NavLink key={tab.to} to={tab.to!} end={tab.exact} style={sharedStyle}>
+              <NavLink key={tab.to} to={tab.to!} end={tab.exact} style={tabStyle}>
                 {iconNode}
                 {labelNode}
               </NavLink>
@@ -301,7 +313,7 @@ export default function App() {
         <main style={{
           flex: 1,
           marginLeft: isDesktop ? sidebarWidth : 0,
-          paddingBottom: isDesktop ? '24px' : 'calc(100px + env(safe-area-inset-bottom))',
+          paddingBottom: isDesktop ? '24px' : 'calc(112px + env(safe-area-inset-bottom))',
           overflowY: 'auto',
         }}>
           <Routes>
