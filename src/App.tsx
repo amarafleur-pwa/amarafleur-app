@@ -1,8 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Wallet, ShoppingBag, CalendarDays, CreditCard, TrendingUp, MoreHorizontal, Settings as SettingsIcon, Package } from 'lucide-react'
 import NotificationBanner from './components/NotificationBanner'
-import OfflineBanner from './components/OfflineBanner'
 import InstallBanner from './components/InstallBanner'
 import { checkAndFireReminders } from './lib/notifications'
 import { restoreFromSupabase } from './lib/sync'
@@ -37,65 +36,16 @@ const moreTabs = [
   { to: '/settings', icon: SettingsIcon, label: 'Settings' },
 ]
 
-const NAV_H = 68
-const CR = 28       // FAB circle radius
-const NR = CR + 10  // notch half-width — 10 px wider than FAB so cream shows around bubble
-const k = 0.5523    // cubic-bezier kappa for circular quarter-circle approximation
-const NAV_MARGIN = 10
-const NAV_PILL_R = 20
-
-function buildBar(cx: number, bw: number): string {
-  const iL = NAV_MARGIN + NAV_PILL_R
-  const iR = bw - NAV_MARGIN - NAV_PILL_R
-  const bL = NAV_MARGIN
-  const bR = bw - NAV_MARGIN
-  const ncx = Math.max(iL + NR, Math.min(iR - NR, cx))
-  // Two cubic beziers replace the arc:
-  // horizontal tangent at both bar-edge junctions → no sharp corners
-  // kappa control points give a near-circular notch shape at the bottom
-  const cp = NR * (1 - k)  // ~16.9 px
-  return [
-    `M ${iL} 0`,
-    `L ${ncx - NR} 0`,
-    `C ${ncx - cp} 0 ${ncx} ${cp} ${ncx} ${NR}`,
-    `C ${ncx} ${cp} ${ncx + cp} 0 ${ncx + NR} 0`,
-    `L ${iR} 0`,
-    `Q ${bR} 0 ${bR} ${NAV_PILL_R}`,
-    `L ${bR} ${NAV_H - NAV_PILL_R}`,
-    `Q ${bR} ${NAV_H} ${iR} ${NAV_H}`,
-    `L ${iL} ${NAV_H}`,
-    `Q ${bL} ${NAV_H} ${bL} ${NAV_H - NAV_PILL_R}`,
-    `L ${bL} ${NAV_PILL_R}`,
-    `Q ${bL} 0 ${iL} 0`,
-    `Z`,
-  ].join(' ')
-}
-
 function BottomNav() {
   const location = useLocation()
   const [moreOpen, setMoreOpen] = useState(false)
-  const [barW, setBarW] = useState(window.innerWidth)
-
-  const animCx = useRef<number | null>(null)
-  const targetCxRef = useRef(0)
-  const rafRef = useRef(0)
-  const pathRef = useRef<SVGPathElement>(null)
-  const fabRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const fn = () => setBarW(window.innerWidth)
-    window.addEventListener('resize', fn)
-    return () => window.removeEventListener('resize', fn)
-  }, [])
-
-  useEffect(() => { setMoreOpen(false) }, [location.pathname])
 
   const tabs = [
-    { to: '/' as string | null, icon: LayoutDashboard, exact: true, more: false },
-    { to: '/personal' as string | null, icon: Wallet, exact: false, more: false },
-    { to: null as string | null, icon: MoreHorizontal, exact: false, more: true },
-    { to: '/business' as string | null, icon: ShoppingBag, exact: false, more: false },
-    { to: '/calendar' as string | null, icon: CalendarDays, exact: false, more: false },
+    { to: '/' as string | null, icon: LayoutDashboard, label: 'Home', exact: true, more: false },
+    { to: '/personal' as string | null, icon: Wallet, label: 'Personal', exact: false, more: false },
+    { to: null as string | null, icon: MoreHorizontal, label: 'More', exact: false, more: true },
+    { to: '/business' as string | null, icon: ShoppingBag, label: 'Business', exact: false, more: false },
+    { to: '/calendar' as string | null, icon: CalendarDays, label: 'Orders', exact: false, more: false },
   ]
 
   const moreRouteActive = moreTabs.some(t => t.to === location.pathname)
@@ -106,44 +56,7 @@ function BottomNav() {
     return i < 0 ? 0 : i
   })()
 
-  const innerLeft = NAV_MARGIN + NAV_PILL_R
-  const innerW = barW - 2 * (NAV_MARGIN + NAV_PILL_R)
-  const slotW = innerW / 5
-  const newCx = innerLeft + (activeIdx + 0.5) * slotW
-
-  // Sync DOM with current animated position before every paint — prevents React
-  // reconciliation from overwriting the ref-controlled attributes mid-animation.
-  useLayoutEffect(() => {
-    const cx = animCx.current ?? newCx
-    if (animCx.current === null) animCx.current = newCx
-    pathRef.current?.setAttribute('d', buildBar(cx, barW))
-    if (fabRef.current) fabRef.current.style.left = `${cx - CR}px`
-  })
-
-  // RAF lerp toward new target whenever active tab or bar width changes
-  useEffect(() => {
-    if (animCx.current === null) return
-    targetCxRef.current = newCx
-    cancelAnimationFrame(rafRef.current)
-    const bw = barW
-    const step = () => {
-      const diff = targetCxRef.current - animCx.current!
-      if (Math.abs(diff) < 0.4) {
-        animCx.current = targetCxRef.current
-        pathRef.current?.setAttribute('d', buildBar(animCx.current, bw))
-        if (fabRef.current) fabRef.current.style.left = `${animCx.current - CR}px`
-        return
-      }
-      animCx.current = animCx.current! + diff * 0.15
-      pathRef.current?.setAttribute('d', buildBar(animCx.current, bw))
-      if (fabRef.current) fabRef.current.style.left = `${animCx.current - CR}px`
-      rafRef.current = requestAnimationFrame(step)
-    }
-    rafRef.current = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [newCx, barW])
-
-  const ActiveIcon = tabs[activeIdx].icon
+  useEffect(() => { setMoreOpen(false) }, [location.pathname])
 
   return (
     <>
@@ -154,21 +67,24 @@ function BottomNav() {
       {moreOpen && (
         <div style={{
           position: 'fixed',
-          bottom: `calc(${NAV_H}px + env(safe-area-inset-bottom))`,
-          left: 0, right: 0, zIndex: 51,
+          bottom: 'calc(88px + env(safe-area-inset-bottom))',
+          left: 12, right: 12,
+          zIndex: 51,
           background: '#fff',
-          borderTop: '1px solid #e5e0db',
-          borderRadius: '16px 16px 0 0',
-          paddingBottom: 4,
+          borderRadius: 20,
+          boxShadow: '0 8px 40px rgba(0,0,0,0.15)',
+          overflow: 'hidden',
         }}>
-          {moreTabs.map(({ to, icon: Icon, label }) => (
+          {moreTabs.map(({ to, icon: Icon, label }, idx) => (
             <NavLink key={to} to={to} style={{ textDecoration: 'none' }}>
               {({ isActive }) => (
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 14,
-                  padding: '14px 24px',
+                  padding: '14px 20px',
                   color: isActive ? '#C9848A' : '#374151',
-                  fontWeight: isActive ? 600 : 400, fontSize: 15,
+                  fontWeight: isActive ? 600 : 400,
+                  fontSize: 15,
+                  borderBottom: idx < moreTabs.length - 1 ? '1px solid #f5f0eb' : 'none',
                 }}>
                   <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
                   {label}
@@ -179,68 +95,86 @@ function BottomNav() {
         </div>
       )}
 
-      <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, height: `calc(${NAV_H}px + env(safe-area-inset-bottom))`, background: '#F9F3EE' }}>
-        <svg width={barW} height={NAV_H} viewBox={`0 0 ${barW} ${NAV_H}`}
-          style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', filter: 'drop-shadow(0 -4px 20px rgba(0,0,0,0.12))' }}>
-          <path ref={pathRef} fill="white" />
-        </svg>
+      {/* Outer wrapper fills safe area with app background color */}
+      <div style={{
+        position: 'fixed',
+        bottom: 0, left: 0, right: 0,
+        zIndex: 50,
+        paddingTop: 8,
+        paddingLeft: 12,
+        paddingRight: 12,
+        paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
+        background: '#F9F3EE',
+      }}>
+        {/* Floating pill bar */}
+        <div style={{
+          background: '#fff',
+          borderRadius: 24,
+          height: 64,
+          display: 'flex',
+          alignItems: 'stretch',
+          position: 'relative',
+          boxShadow: '0 4px 28px rgba(0,0,0,0.11)',
+        }}>
+          {/* Sliding active indicator */}
+          <div style={{
+            position: 'absolute',
+            top: 6, bottom: 6,
+            left: `${activeIdx * 20}%`,
+            width: '20%',
+            background: '#C9848A14',
+            borderRadius: 16,
+            transition: 'left 0.32s cubic-bezier(0.34,1.4,0.64,1)',
+            pointerEvents: 'none',
+          }} />
 
-        {/* FAB — position driven entirely by refs */}
-        <div
-          ref={fabRef}
-          onClick={tabs[activeIdx].more ? () => setMoreOpen(o => !o) : undefined}
-          style={{
-            position: 'absolute', top: -CR, left: 0,
-            width: CR * 2, height: CR * 2,
-            background: '#C9848A', borderRadius: '50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 20px rgba(201,132,138,0.4)',
-            zIndex: 2, cursor: 'pointer',
-          }}
-        >
-          <ActiveIcon
-            key={activeIdx}
-            size={21}
-            color="white"
-            strokeWidth={2.2}
-            style={{
-              animation: 'iconPop 0.32s cubic-bezier(0.34,1.56,0.64,1) both',
-              ...(tabs[activeIdx].more
-                ? { transform: moreOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.22s ease' }
-                : {}),
-            }}
-          />
-        </div>
-
-        {tabs.map((tab, i) => {
-          const isActive = i === activeIdx
-          if (tab.more) {
-            return (
-              <button key={i} onClick={() => setMoreOpen(o => !o)}
-                style={{
-                  position: 'absolute', top: 0, left: innerLeft + i * slotW, width: slotW, height: NAV_H,
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 8,
-                  zIndex: 1, opacity: isActive ? 0 : 1, pointerEvents: isActive ? 'none' : 'auto',
-                  transition: 'opacity 0.25s ease',
-                }}>
-                <tab.icon size={22} color="#c4b5b5" strokeWidth={1.8} />
-              </button>
+          {tabs.map((tab, i) => {
+            const isActive = i === activeIdx
+            const Icon = tab.icon
+            const iconNode = (
+              <Icon
+                size={isActive ? 22 : 20}
+                color={isActive ? '#C9848A' : '#b8b0b0'}
+                strokeWidth={isActive ? 2.2 : 1.8}
+                style={{ flexShrink: 0, transition: 'color 0.2s ease' }}
+              />
             )
-          }
-          return (
-            <NavLink key={tab.to} to={tab.to!} end={tab.exact}
-              style={{
-                position: 'absolute', top: 0, left: innerLeft + i * slotW, width: slotW, height: NAV_H,
-                textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 8,
-                zIndex: 1, opacity: isActive ? 0 : 1, pointerEvents: isActive ? 'none' : 'auto',
-                transition: 'opacity 0.25s ease',
-              }}
-            >
-              <tab.icon size={22} color="#c4b5b5" strokeWidth={1.8} />
-            </NavLink>
-          )
-        })}
+            const labelNode = (
+              <span style={{
+                fontSize: 10,
+                fontWeight: isActive ? 600 : 500,
+                color: isActive ? '#2D2D2D' : '#b8b0b0',
+                letterSpacing: '0.02em',
+                lineHeight: 1,
+                transition: 'color 0.2s ease',
+                fontFamily: "'Poppins', sans-serif",
+              }}>
+                {tab.label}
+              </span>
+            )
+            const sharedStyle = {
+              flex: 1, display: 'flex', flexDirection: 'column' as const,
+              alignItems: 'center', justifyContent: 'center', gap: 4,
+              background: 'none', border: 'none', cursor: 'pointer',
+              position: 'relative' as const, zIndex: 1,
+              textDecoration: 'none', padding: '6px 0',
+            }
+            if (tab.more) {
+              return (
+                <button key={i} onClick={() => setMoreOpen(o => !o)} style={sharedStyle}>
+                  {iconNode}
+                  {labelNode}
+                </button>
+              )
+            }
+            return (
+              <NavLink key={tab.to} to={tab.to!} end={tab.exact} style={sharedStyle}>
+                {iconNode}
+                {labelNode}
+              </NavLink>
+            )
+          })}
+        </div>
       </div>
     </>
   )
@@ -362,13 +296,12 @@ export default function App() {
     <BrowserRouter>
       <div style={{ display: 'flex', minHeight: '100svh' }}>
         <InstallBanner />
-        <OfflineBanner />
         <NotificationBanner />
         {isDesktop && <SideNav />}
         <main style={{
           flex: 1,
           marginLeft: isDesktop ? sidebarWidth : 0,
-          paddingBottom: isDesktop ? '24px' : 'calc(68px + env(safe-area-inset-bottom) + 24px)',
+          paddingBottom: isDesktop ? '24px' : 'calc(100px + env(safe-area-inset-bottom))',
           overflowY: 'auto',
         }}>
           <Routes>

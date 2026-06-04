@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarCheck2, Clock, DollarSign, Wallet, ShoppingBag, Receipt, Lock } from 'lucide-react'
+import { CalendarCheck2, Clock, DollarSign, Wallet, ShoppingBag, Receipt, Lock, WifiOff } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order } from '../../db/db'
 
@@ -73,6 +73,18 @@ export default function Dashboard() {
   const [dueItems, setDueItems] = useState<DueItem[]>([])
   const [unpaidTotal, setUnpaidTotal] = useState(0)
   const [unpaidCount, setUnpaidCount] = useState(0)
+  const [offline, setOffline] = useState(!navigator.onLine)
+
+  useEffect(() => {
+    const goOnline = () => setOffline(false)
+    const goOffline = () => setOffline(true)
+    window.addEventListener('online', goOnline)
+    window.addEventListener('offline', goOffline)
+    return () => {
+      window.removeEventListener('online', goOnline)
+      window.removeEventListener('offline', goOffline)
+    }
+  }, [])
 
   useEffect(() => {
     const t = todayStr()
@@ -144,11 +156,19 @@ export default function Dashboard() {
           width: 90, height: 90, borderRadius: '50%',
           background: '#7A9E7E0D', pointerEvents: 'none',
         }} />
-        <p style={{ fontSize: '13px', color: '#9ca3af', position: 'relative' }}>
-          {new Date().toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric' })}
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, position: 'relative' }}>
+          <p style={{ fontSize: '13px', color: '#9ca3af' }}>
+            {new Date().toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </p>
+          {offline && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '12px', fontWeight: 600, color: '#E8A838' }}>
+              <WifiOff size={12} />
+              You're Offline
+            </span>
+          )}
+        </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', marginTop: '4px' }}>
-          <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#2D2D2D', letterSpacing: '-0.4px' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#2D2D2D', letterSpacing: '-0.2px', fontStyle: 'italic', lineHeight: 1.2 }}>
             Hello, Amara Fleur 🌸
           </h1>
           <button

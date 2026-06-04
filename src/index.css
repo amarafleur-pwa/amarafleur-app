@@ -36,8 +36,12 @@ html, body {
 body {
   background-color: #F9F3EE;
   color: #2D2D2D;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: 'Poppins', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+h1, h2 {
+  font-family: 'Playfair Display', Georgia, serif;
 }
 
 #root {
