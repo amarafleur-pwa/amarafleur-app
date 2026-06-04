@@ -142,7 +142,7 @@ export default function Auth({ onAuth }: Props) {
     }}>
 
       {/* Logo */}
-      <div style={{
+      <div className="spin-slow" style={{
         width: '80px', height: '80px', borderRadius: '24px',
         background: '#C9848A18', border: '2px solid #C9848A33',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
