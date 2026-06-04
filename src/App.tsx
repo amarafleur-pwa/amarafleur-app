@@ -104,7 +104,7 @@ function BottomNav() {
         paddingLeft: 12,
         paddingRight: 12,
         paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
-        background: '#F9F3EE',
+        background: 'transparent',
       }}>
         {/* Floating pill bar */}
         <div style={{
@@ -147,10 +147,11 @@ function BottomNav() {
                 height: 48,
                 borderRadius: '50%',
                 background: '#fff',
-                boxShadow: '0 4px 14px rgba(0,0,0,0.13)',
+                boxShadow: '0 0 0 5px #F9F3EE, 0 4px 14px rgba(0,0,0,0.13)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                animation: 'iconPop 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) both',
               }}>
                 <Icon size={22} color="#C9848A" strokeWidth={2.2} />
               </div>
