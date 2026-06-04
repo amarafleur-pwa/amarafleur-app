@@ -45,11 +45,19 @@ export interface Payment {
   notes?: string
 }
 
+export interface Customer {
+  id?: number
+  name: string
+  phone?: string
+  notes?: string
+}
+
 class FlowerShopDB extends Dexie {
   personalExpenses!: EntityTable<PersonalExpense, 'id'>
   businessExpenses!: EntityTable<BusinessExpense, 'id'>
   orders!: EntityTable<Order, 'id'>
   payments!: EntityTable<Payment, 'id'>
+  customers!: EntityTable<Customer, 'id'>
 
   constructor() {
     super('FlowerShopDB')
@@ -58,6 +66,9 @@ class FlowerShopDB extends Dexie {
       businessExpenses: '++id, dueDate, isPaid, category',
       orders: '++id, customerName, orderDate, dueDate, isDone',
       payments: '++id, orderId, paidAt, type',
+    })
+    this.version(2).stores({
+      customers: '++id, name',
     })
   }
 }

@@ -1,7 +1,429 @@
+import { useEffect, useState } from 'react'
+import { Plus, X, Phone, FileText } from 'lucide-react'
+import { db } from '../../db/db'
+import type { Order, Payment, Customer } from '../../db/db'
+import PaymentForm from './PaymentForm'
+
+type View = 'payments' | 'directory'
+type StatusFilter = 'all' | 'outstanding' | 'paid'
+
+const fmt = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2 })
+
+function formatDate(d: string) {
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
+}
+
+function getStatus(order: Order, orderPayments: Payment[]) {
+  const totalPaid = order.depositPaid + orderPayments.reduce((s, p) => s + p.amount, 0)
+  const balance = order.totalAmount - totalPaid
+  if (balance <= 0) return { label: 'Fully Paid', color: '#7A9E7E', bg: '#7A9E7E18', balance: 0, totalPaid }
+  if (totalPaid <= 0) return { label: 'Unpaid', color: '#C9848A', bg: '#C9848A18', balance, totalPaid }
+  if (orderPayments.length === 0) return { label: 'Deposit', color: '#E8A838', bg: '#E8A83818', balance, totalPaid }
+  return { label: 'Partial', color: '#E8A838', bg: '#E8A83818', balance, totalPaid }
+}
+
+const input: React.CSSProperties = {
+  width: '100%',
+  padding: '12px 14px',
+  border: '1.5px solid #e5e0db',
+  borderRadius: '10px',
+  fontSize: '15px',
+  color: '#2D2D2D',
+  background: '#fff',
+  outline: 'none',
+  boxSizing: 'border-box',
+}
+
+const lbl: React.CSSProperties = {
+  fontSize: '13px',
+  fontWeight: 600,
+  color: '#6b7280',
+  marginBottom: '6px',
+  display: 'block',
+}
+
 export default function CustomerPayments() {
+  const [orders, setOrders] = useState<Order[]>([])
+  const [payments, setPayments] = useState<Payment[]>([])
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [view, setView] = useState<View>('payments')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+
+  // Customer form state
+  const [showCustomerForm, setShowCustomerForm] = useState(false)
+  const [editingCustomer, setEditingCustomer] = useState<Customer | undefined>()
+  const [cName, setCName] = useState('')
+  const [cPhone, setCPhone] = useState('')
+  const [cNotes, setCNotes] = useState('')
+  const [savingCustomer, setSavingCustomer] = useState(false)
+
+  function load() {
+    Promise.all([
+      db.orders.orderBy('dueDate').reverse().toArray(),
+      db.payments.toArray(),
+      db.customers.orderBy('name').toArray(),
+    ])
+      .then(([o, p, c]) => {
+        setOrders(o)
+        setPayments(p)
+        setCustomers(c)
+        setError(null)
+      })
+      .catch(err => setError(err.message ?? 'Failed to load'))
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  function openCustomerForm(customer?: Customer) {
+    setEditingCustomer(customer)
+    setCName(customer?.name ?? '')
+    setCPhone(customer?.phone ?? '')
+    setCNotes(customer?.notes ?? '')
+    setShowCustomerForm(true)
+  }
+
+  async function saveCustomer() {
+    if (!cName.trim()) return
+    setSavingCustomer(true)
+    try {
+      const data: Omit<Customer, 'id'> = {
+        name: cName.trim(),
+        phone: cPhone.trim() || undefined,
+        notes: cNotes.trim() || undefined,
+      }
+      if (editingCustomer?.id) {
+        await db.customers.update(editingCustomer.id, data)
+      } else {
+        await db.customers.add(data)
+      }
+      setShowCustomerForm(false)
+      load()
+    } finally {
+      setSavingCustomer(false)
+    }
+  }
+
+  async function deleteCustomer() {
+    if (!editingCustomer?.id) return
+    await db.customers.delete(editingCustomer.id)
+    setShowCustomerForm(false)
+    load()
+  }
+
+  // Build per-order payment map
+  const paymentMap = new Map<number, Payment[]>()
+  for (const p of payments) {
+    const list = paymentMap.get(p.orderId) ?? []
+    list.push(p)
+    paymentMap.set(p.orderId, list)
+  }
+
+  const statusFilters: { key: StatusFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'outstanding', label: 'Outstanding' },
+    { key: 'paid', label: 'Fully Paid' },
+  ]
+
+  const filteredOrders = orders.filter(o => {
+    const s = getStatus(o, paymentMap.get(o.id!) ?? [])
+    if (statusFilter === 'outstanding') return s.balance > 0
+    if (statusFilter === 'paid') return s.balance <= 0
+    return true
+  })
+
+  // Outstanding total
+  const outstandingTotal = orders.reduce((sum, o) => {
+    const s = getStatus(o, paymentMap.get(o.id!) ?? [])
+    return sum + s.balance
+  }, 0)
+
   return (
-    <div className="p-4">
-      <h1 className="text-xl font-semibold text-coal">Customer Payments</h1>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', paddingBottom: '24px' }}>
+
+      {/* Header */}
+      <div style={{ padding: '16px 16px 0' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#2D2D2D' }}>Customer Payments</h1>
+
+        {/* View toggle */}
+        <div style={{ display: 'flex', gap: '8px', marginTop: '14px' }}>
+          {(['payments', 'directory'] as View[]).map(v => {
+            const active = view === v
+            return (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                style={{
+                  padding: '7px 20px', borderRadius: '20px', border: 'none',
+                  fontSize: '13px', fontWeight: active ? 700 : 500,
+                  cursor: 'pointer',
+                  background: active ? '#C9848A' : '#fff',
+                  color: active ? '#fff' : '#6b7280',
+                  boxShadow: active ? '0 2px 8px #C9848A33' : 'none',
+                  textTransform: 'capitalize',
+                }}
+              >
+                {v}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Loading / error */}
+      {loading && <p style={{ textAlign: 'center', color: '#9ca3af', padding: '40px 0', fontSize: '14px' }}>Loading...</p>}
+      {error && (
+        <div style={{ margin: '12px 16px', background: '#fee2e2', color: '#991b1b', borderRadius: '12px', padding: '14px 16px', fontSize: '14px' }}>
+          {error}
+        </div>
+      )}
+
+      {/* ─── PAYMENTS VIEW ─── */}
+      {!loading && view === 'payments' && (
+        <div style={{ padding: '12px 16px 0' }}>
+
+          {/* Outstanding banner */}
+          {outstandingTotal > 0 && (
+            <div style={{
+              background: '#C9848A12', border: '1.5px solid #C9848A33',
+              borderRadius: '12px', padding: '12px 14px',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              marginBottom: '12px',
+            }}>
+              <div>
+                <p style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 500 }}>Total Outstanding</p>
+                <p style={{ fontSize: '20px', fontWeight: 700, color: '#2D2D2D' }}>{fmt(outstandingTotal)}</p>
+              </div>
+              <span style={{ background: '#C9848A', color: '#fff', borderRadius: '12px', padding: '3px 12px', fontSize: '13px', fontWeight: 700 }}>
+                {orders.filter(o => getStatus(o, paymentMap.get(o.id!) ?? []).balance > 0).length} orders
+              </span>
+            </div>
+          )}
+
+          {/* Status filter tabs */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            {statusFilters.map(f => {
+              const active = statusFilter === f.key
+              return (
+                <button
+                  key={f.key}
+                  onClick={() => setStatusFilter(f.key)}
+                  style={{
+                    padding: '6px 14px', borderRadius: '16px', border: 'none',
+                    fontSize: '12px', fontWeight: active ? 700 : 500, cursor: 'pointer',
+                    background: active ? '#2D2D2D' : '#fff',
+                    color: active ? '#fff' : '#6b7280',
+                  }}
+                >
+                  {f.label}
+                </button>
+              )
+            })}
+          </div>
+
+          {filteredOrders.length === 0 && (
+            <p style={{ textAlign: 'center', color: '#9ca3af', padding: '40px 0', fontSize: '14px' }}>
+              {orders.length === 0 ? 'No orders yet. Add orders in the Calendar tab.' : 'No orders match this filter.'}
+            </p>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {filteredOrders.map(o => {
+              const s = getStatus(o, paymentMap.get(o.id!) ?? [])
+              return (
+                <div
+                  key={o.id}
+                  onClick={() => setSelectedOrder(o)}
+                  style={{
+                    background: '#fff', borderRadius: '12px', padding: '14px',
+                    boxShadow: '0 1px 6px rgba(0,0,0,0.06)', cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D' }}>{o.customerName}</p>
+                      <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {o.description}
+                      </p>
+                      <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>{formatDate(o.dueDate)}</p>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '12px' }}>
+                      <span style={{
+                        display: 'inline-block', fontSize: '11px', fontWeight: 700,
+                        color: s.color, background: s.bg,
+                        borderRadius: '5px', padding: '3px 8px', marginBottom: '6px',
+                      }}>
+                        {s.label}
+                      </span>
+                      <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D' }}>{fmt(o.totalAmount)}</p>
+                    </div>
+                  </div>
+                  {s.balance > 0 && (
+                    <div style={{
+                      marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6',
+                      display: 'flex', justifyContent: 'space-between',
+                    }}>
+                      <span style={{ fontSize: '12px', color: '#9ca3af' }}>Paid: {fmt(s.totalPaid)}</span>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#C9848A' }}>Balance: {fmt(s.balance)}</span>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ─── DIRECTORY VIEW ─── */}
+      {!loading && view === 'directory' && (
+        <div style={{ padding: '12px 16px 0' }}>
+          {customers.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '60px 0' }}>
+              <p style={{ fontSize: '15px', color: '#9ca3af' }}>No customers yet. Tap + to add one.</p>
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {customers.map(c => {
+              const orderCount = orders.filter(o => o.customerName.toLowerCase() === c.name.toLowerCase()).length
+              return (
+                <div
+                  key={c.id}
+                  onClick={() => openCustomerForm(c)}
+                  style={{
+                    background: '#fff', borderRadius: '12px', padding: '14px',
+                    boxShadow: '0 1px 6px rgba(0,0,0,0.06)', cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D' }}>{c.name}</p>
+                    {orderCount > 0 && (
+                      <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+                        {orderCount} order{orderCount !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
+                  {c.phone && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '5px' }}>
+                      <Phone size={12} color="#9ca3af" />
+                      <p style={{ fontSize: '13px', color: '#6b7280' }}>{c.phone}</p>
+                    </div>
+                  )}
+                  {c.notes && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+                      <FileText size={12} color="#9ca3af" />
+                      <p style={{ fontSize: '13px', color: '#6b7280' }}>{c.notes}</p>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* FAB — only in directory view */}
+      {view === 'directory' && (
+        <button
+          onClick={() => openCustomerForm()}
+          style={{
+            position: 'fixed', bottom: 'calc(72px + 16px)', right: '16px',
+            width: '52px', height: '52px', borderRadius: '50%',
+            background: '#C9848A', border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 16px #C9848A55', zIndex: 40,
+          }}
+        >
+          <Plus size={24} color="#fff" strokeWidth={2.5} />
+        </button>
+      )}
+
+      {/* Payment form modal */}
+      {selectedOrder && (
+        <PaymentForm
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+          onSaved={load}
+        />
+      )}
+
+      {/* Customer form modal */}
+      {showCustomerForm && (
+        <div
+          onClick={() => setShowCustomerForm(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: '100%', background: '#F9F3EE', borderRadius: '20px 20px 0 0', maxHeight: '85svh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
+              <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#d1ccc8' }} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 8px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#2D2D2D' }}>
+                {editingCustomer ? 'Edit Customer' : 'New Customer'}
+              </h2>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {editingCustomer && (
+                  <button
+                    onClick={deleteCustomer}
+                    style={{ background: '#fee2e2', border: 'none', borderRadius: '8px', padding: '8px 12px', cursor: 'pointer', fontSize: '12px', fontWeight: 700, color: '#ef4444' }}
+                  >
+                    Delete
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowCustomerForm(false)}
+                  style={{ background: '#e5e0db', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex' }}
+                >
+                  <X size={17} color="#6b7280" />
+                </button>
+              </div>
+            </div>
+            <div style={{ overflowY: 'auto', padding: '8px 20px 0', flex: 1 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <span style={lbl}>Name *</span>
+                  <input style={input} placeholder="e.g. Maria Santos" value={cName} onChange={e => setCName(e.target.value)} />
+                </div>
+                <div>
+                  <span style={lbl}>Phone</span>
+                  <input style={input} type="tel" placeholder="e.g. 09171234567" value={cPhone} onChange={e => setCPhone(e.target.value)} />
+                </div>
+                <div>
+                  <span style={lbl}>Notes</span>
+                  <textarea
+                    style={{ ...input, minHeight: '72px', resize: 'vertical', fontFamily: 'inherit' }}
+                    placeholder="Preferences, allergies, etc."
+                    value={cNotes}
+                    onChange={e => setCNotes(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            <div style={{ padding: '16px 20px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' }}>
+              <button
+                onClick={saveCustomer}
+                disabled={!cName.trim() || savingCustomer}
+                style={{
+                  width: '100%', padding: '15px',
+                  background: cName.trim() ? '#C9848A' : '#e5e0db',
+                  color: cName.trim() ? '#fff' : '#9ca3af',
+                  border: 'none', borderRadius: '12px',
+                  fontSize: '15px', fontWeight: 700,
+                  cursor: cName.trim() ? 'pointer' : 'default',
+                  boxShadow: cName.trim() ? '0 4px 14px #C9848A44' : 'none',
+                }}
+              >
+                {savingCustomer ? 'Saving...' : editingCustomer ? 'Save Changes' : 'Add Customer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
