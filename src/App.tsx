@@ -39,7 +39,7 @@ export default function App() {
         <InstallBanner />
         <OfflineBanner />
         <NotificationBanner />
-        <main style={{ flex: 1, paddingBottom: 'calc(72px + env(safe-area-inset-bottom))', overflowY: 'auto' }}>
+        <main style={{ flex: 1, paddingBottom: 'calc(72px + env(safe-area-inset-bottom) + 8px)', overflowY: 'auto' }}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/personal" element={<PersonalExpenses />} />
@@ -61,7 +61,7 @@ export default function App() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-around',
-          paddingBottom: 'env(safe-area-inset-bottom)',
+          paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)',
           zIndex: 50,
         }}>
           {tabs.map(({ to, icon: Icon, label }) => (
