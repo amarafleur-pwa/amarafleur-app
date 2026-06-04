@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order } from '../../db/db'
+import { logOrder } from '../../lib/sheets'
 
 interface Props {
   order?: Order
@@ -65,6 +66,7 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
         await db.orders.update(order!.id!, data)
       } else {
         await db.orders.add(data)
+        logOrder(data)
       }
       onSaved()
       onClose()

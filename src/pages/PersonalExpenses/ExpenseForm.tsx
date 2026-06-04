@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X, Trash2, RefreshCw } from 'lucide-react'
 import { db } from '../../db/db'
 import type { PersonalExpense } from '../../db/db'
+import { logPersonalExpense } from '../../lib/sheets'
 
 const CATEGORIES = ['Bills', 'Rent', 'Food & Groceries', 'Transportation', 'Health', 'Savings', 'Other']
 
@@ -61,6 +62,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
         await db.personalExpenses.update(expense!.id!, data)
       } else {
         await db.personalExpenses.add(data)
+        logPersonalExpense(data)
       }
       onSaved()
       onClose()

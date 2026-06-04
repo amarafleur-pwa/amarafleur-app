@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { db } from '../../db/db'
 import type { BusinessExpense } from '../../db/db'
+import { logBusinessExpense } from '../../lib/sheets'
 
 const CATEGORIES = ['Supplies', 'Utilities', 'Rent', 'Delivery', 'Other']
 const MODES = ['Cash', 'GCash', 'Bank Transfer', 'Credit Card', 'Cheque']
@@ -63,6 +64,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
         await db.businessExpenses.update(expense!.id!, data)
       } else {
         await db.businessExpenses.add(data)
+        logBusinessExpense(data)
       }
       onSaved()
       onClose()

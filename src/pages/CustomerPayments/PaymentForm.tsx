@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { X, Plus } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment } from '../../db/db'
+import { logPayment } from '../../lib/sheets'
 
 interface Props {
   order: Order
@@ -67,6 +68,14 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
     try {
       await db.payments.add({
         orderId: order.id!,
+        amount: amt,
+        type,
+        paidAt,
+        notes: notes.trim() || undefined,
+      })
+      logPayment({
+        customerName: order.customerName,
+        orderDesc: order.description,
         amount: amt,
         type,
         paidAt,

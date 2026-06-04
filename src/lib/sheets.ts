@@ -1,0 +1,57 @@
+// Fire-and-forget: never awaited, never throws, never blocks the UI.
+// Sheet tab names must match exactly in the Google Spreadsheet.
+
+const now = () => new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' })
+
+async function appendRow(sheet: string, row: (string | number)[]) {
+  try {
+    await fetch('/api/sheets-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sheet, row }),
+    })
+  } catch {
+    // Silently ignore — sheets logging is best-effort
+  }
+}
+
+export function logPersonalExpense(e: {
+  name: string; amount: number; dueDate: string; category?: string;
+  isRecurring: boolean; notes?: string
+}) {
+  void appendRow('Personal Expenses', [
+    e.name, e.amount, e.dueDate, e.category ?? '',
+    e.isRecurring ? 'Yes' : 'No', e.notes ?? '', now(),
+  ])
+}
+
+export function logBusinessExpense(e: {
+  name: string; amount: number; dueDate: string; modeOfPayment?: string;
+  category: string; notes?: string
+}) {
+  void appendRow('Business Expenses', [
+    e.name, e.dueDate, e.modeOfPayment ?? '', e.amount,
+    e.category, e.notes ?? '', now(),
+  ])
+}
+
+export function logOrder(o: {
+  customerName: string; description: string; quantity?: number;
+  dueDate: string; time?: string; totalAmount: number; depositPaid: number; notes?: string
+}) {
+  void appendRow('Orders', [
+    o.customerName, o.description, o.quantity ?? 1,
+    o.dueDate, o.time ?? '', o.totalAmount, o.depositPaid,
+    o.notes ?? '', now(),
+  ])
+}
+
+export function logPayment(p: {
+  customerName: string; orderDesc: string; amount: number;
+  type: string; paidAt: string; notes?: string
+}) {
+  void appendRow('Payments', [
+    p.customerName, p.orderDesc, p.amount,
+    p.type, p.paidAt, p.notes ?? '', now(),
+  ])
+}
