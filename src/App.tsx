@@ -39,10 +39,29 @@ const moreTabs = [
 
 const NAV_H = 68
 const CR = 28
+const NAV_MARGIN = 10
+const NAV_PILL_R = 20
 
-function buildWave(cx: number, bw: number): string {
-  const sp = CR * 3
-  return `M 0 0 L ${cx - sp * 1.4} 0 C ${cx - sp * 0.8} 0 ${cx - sp * 0.2} ${CR} ${cx} ${CR} C ${cx + sp * 0.2} ${CR} ${cx + sp * 0.8} 0 ${cx + sp * 1.4} 0 L ${bw} 0 L ${bw} ${NAV_H} L 0 ${NAV_H} Z`
+function buildBar(cx: number, bw: number): string {
+  const iL = NAV_MARGIN + NAV_PILL_R
+  const iR = bw - NAV_MARGIN - NAV_PILL_R
+  const bL = NAV_MARGIN
+  const bR = bw - NAV_MARGIN
+  const ncx = Math.max(iL + CR, Math.min(iR - CR, cx))
+  return [
+    `M ${iL} 0`,
+    `L ${ncx - CR} 0`,
+    `A ${CR} ${CR} 0 0 1 ${ncx + CR} 0`,
+    `L ${iR} 0`,
+    `Q ${bR} 0 ${bR} ${NAV_PILL_R}`,
+    `L ${bR} ${NAV_H - NAV_PILL_R}`,
+    `Q ${bR} ${NAV_H} ${iR} ${NAV_H}`,
+    `L ${iL} ${NAV_H}`,
+    `Q ${bL} ${NAV_H} ${bL} ${NAV_H - NAV_PILL_R}`,
+    `L ${bL} ${NAV_PILL_R}`,
+    `Q ${bL} 0 ${iL} 0`,
+    `Z`,
+  ].join(' ')
 }
 
 function BottomNav() {
@@ -80,15 +99,17 @@ function BottomNav() {
     return i < 0 ? 0 : i
   })()
 
-  const slotW = barW / 5
-  const newCx = (activeIdx + 0.5) * slotW
+  const innerLeft = NAV_MARGIN + NAV_PILL_R
+  const innerW = barW - 2 * (NAV_MARGIN + NAV_PILL_R)
+  const slotW = innerW / 5
+  const newCx = innerLeft + (activeIdx + 0.5) * slotW
 
   // Sync DOM with current animated position before every paint — prevents React
   // reconciliation from overwriting the ref-controlled attributes mid-animation.
   useLayoutEffect(() => {
     const cx = animCx.current ?? newCx
     if (animCx.current === null) animCx.current = newCx
-    pathRef.current?.setAttribute('d', buildWave(cx, barW))
+    pathRef.current?.setAttribute('d', buildBar(cx, barW))
     if (fabRef.current) fabRef.current.style.left = `${cx - CR}px`
   })
 
@@ -102,12 +123,12 @@ function BottomNav() {
       const diff = targetCxRef.current - animCx.current!
       if (Math.abs(diff) < 0.4) {
         animCx.current = targetCxRef.current
-        pathRef.current?.setAttribute('d', buildWave(animCx.current, bw))
+        pathRef.current?.setAttribute('d', buildBar(animCx.current, bw))
         if (fabRef.current) fabRef.current.style.left = `${animCx.current - CR}px`
         return
       }
       animCx.current = animCx.current! + diff * 0.15
-      pathRef.current?.setAttribute('d', buildWave(animCx.current, bw))
+      pathRef.current?.setAttribute('d', buildBar(animCx.current, bw))
       if (fabRef.current) fabRef.current.style.left = `${animCx.current - CR}px`
       rafRef.current = requestAnimationFrame(step)
     }
@@ -153,11 +174,9 @@ function BottomNav() {
 
       <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, height: `calc(${NAV_H}px + env(safe-area-inset-bottom))` }}>
         <svg width={barW} height={NAV_H} viewBox={`0 0 ${barW} ${NAV_H}`}
-          style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', filter: 'drop-shadow(0 -3px 12px rgba(0,0,0,0.08))' }}>
+          style={{ position: 'absolute', top: 0, left: 0, overflow: 'visible', filter: 'drop-shadow(0 -4px 20px rgba(0,0,0,0.12))' }}>
           <path ref={pathRef} fill="white" />
         </svg>
-
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 'env(safe-area-inset-bottom)', background: 'white' }} />
 
         {/* FAB — position driven entirely by refs */}
         <div
@@ -192,7 +211,7 @@ function BottomNav() {
             return (
               <button key={i} onClick={() => setMoreOpen(o => !o)}
                 style={{
-                  position: 'absolute', top: 0, left: i * slotW, width: slotW, height: NAV_H,
+                  position: 'absolute', top: 0, left: innerLeft + i * slotW, width: slotW, height: NAV_H,
                   background: 'none', border: 'none', cursor: 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 8,
                   zIndex: 1, opacity: isActive ? 0 : 1, pointerEvents: isActive ? 'none' : 'auto',
@@ -205,7 +224,7 @@ function BottomNav() {
           return (
             <NavLink key={tab.to} to={tab.to!} end={tab.exact}
               style={{
-                position: 'absolute', top: 0, left: i * slotW, width: slotW, height: NAV_H,
+                position: 'absolute', top: 0, left: innerLeft + i * slotW, width: slotW, height: NAV_H,
                 textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 8,
                 zIndex: 1, opacity: isActive ? 0 : 1, pointerEvents: isActive ? 'none' : 'auto',
                 transition: 'opacity 0.25s ease',
