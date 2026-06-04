@@ -44,6 +44,8 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   const [isRecurring, setIsRecurring] = useState(expense?.isRecurring ?? false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [closing, setClosing] = useState(false)
+  const handleClose = () => setClosing(true)
 
   const canSave = name.trim() && amount && parseFloat(amount) > 0 && dueDate
 
@@ -82,7 +84,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
         logPersonalExpense(data, row.id)
       }
       onSaved()
-      onClose()
+      handleClose()
     } catch (err: any) {
       setSaveError(err?.message ?? 'Unknown error')
     } finally {
@@ -98,12 +100,12 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     }
     await db.personalExpenses.delete(expense.id)
     onSaved()
-    onClose()
+    handleClose()
   }
 
   return (
     <div
-      onClick={onClose}
+      onClick={handleClose}
       style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
         zIndex: 100, display: 'flex', alignItems: 'flex-end',
@@ -111,6 +113,8 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     >
       <div
         onClick={e => e.stopPropagation()}
+        className={closing ? 'sheet-exit' : 'sheet-enter'}
+        onAnimationEnd={(e) => { if (closing && e.animationName === 'sheet-down') onClose() }}
         style={{
           width: '100%',
           background: '#F9F3EE',
@@ -147,7 +151,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
               </button>
             )}
             <button
-              onClick={onClose}
+              onClick={handleClose}
               style={{
                 background: '#e5e0db', border: 'none', borderRadius: '8px',
                 padding: '8px', cursor: 'pointer', display: 'flex',

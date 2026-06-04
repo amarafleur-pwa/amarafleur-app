@@ -63,6 +63,10 @@ export default function CustomerPayments() {
   const [cPhone, setCPhone] = useState('')
   const [cNotes, setCNotes] = useState('')
   const [savingCustomer, setSavingCustomer] = useState(false)
+  const [closingDetail, setClosingDetail] = useState(false)
+  const handleCloseDetail = () => setClosingDetail(true)
+  const [closingCustomerForm, setClosingCustomerForm] = useState(false)
+  const handleCloseCustomerForm = () => setClosingCustomerForm(true)
 
   function load() {
     Promise.all([
@@ -115,7 +119,7 @@ export default function CustomerPayments() {
         await db.customers.add({ ...data, supabaseId: row.id })
         logCustomer(data, row.id)
       }
-      setShowCustomerForm(false)
+      handleCloseCustomerForm()
       load()
     } finally {
       setSavingCustomer(false)
@@ -129,7 +133,7 @@ export default function CustomerPayments() {
       await supabase.from('customers').delete().eq('id', editingCustomer.supabaseId)
     }
     await db.customers.delete(editingCustomer.id)
-    setShowCustomerForm(false)
+    handleCloseCustomerForm()
     load()
   }
 
@@ -390,11 +394,13 @@ export default function CustomerPayments() {
       {/* Customer detail drawer */}
       {detailCustomer && (
         <div
-          onClick={() => setDetailCustomer(null)}
+          onClick={handleCloseDetail}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}
         >
           <div
             onClick={e => e.stopPropagation()}
+            className={closingDetail ? 'sheet-exit' : 'sheet-enter'}
+            onAnimationEnd={(e) => { if (closingDetail && e.animationName === 'sheet-down') { setDetailCustomer(null); setClosingDetail(false) } }}
             style={{ width: '100%', background: '#F9F3EE', borderRadius: '20px 20px 0 0', maxHeight: '85svh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
           >
             <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
@@ -414,7 +420,7 @@ export default function CustomerPayments() {
                   Edit
                 </button>
                 <button
-                  onClick={() => setDetailCustomer(null)}
+                  onClick={handleCloseDetail}
                   style={{ background: '#e5e0db', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex' }}
                 >
                   <X size={17} color="#6b7280" />
@@ -474,11 +480,13 @@ export default function CustomerPayments() {
       {/* Customer form modal */}
       {showCustomerForm && (
         <div
-          onClick={() => setShowCustomerForm(false)}
+          onClick={handleCloseCustomerForm}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}
         >
           <div
             onClick={e => e.stopPropagation()}
+            className={closingCustomerForm ? 'sheet-exit' : 'sheet-enter'}
+            onAnimationEnd={(e) => { if (closingCustomerForm && e.animationName === 'sheet-down') { setShowCustomerForm(false); setClosingCustomerForm(false) } }}
             style={{ width: '100%', background: '#F9F3EE', borderRadius: '20px 20px 0 0', maxHeight: '85svh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
           >
             <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
@@ -498,7 +506,7 @@ export default function CustomerPayments() {
                   </button>
                 )}
                 <button
-                  onClick={() => setShowCustomerForm(false)}
+                  onClick={handleCloseCustomerForm}
                   style={{ background: '#e5e0db', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex' }}
                 >
                   <X size={17} color="#6b7280" />

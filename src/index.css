@@ -33,6 +33,17 @@ html, body {
   100% { transform: translateY(108vh) translateX(4px)  rotate(720deg); opacity: 0;   }
 }
 
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes sheet-down {
+  from { transform: translateY(0); }
+  to   { transform: translateY(100%); }
+}
+.sheet-enter { animation: sheet-up   0.3s  cubic-bezier(0.32, 0.72, 0, 1) both; }
+.sheet-exit  { animation: sheet-down 0.25s cubic-bezier(0.32, 0.72, 0, 1) both; }
+
 body {
   background-color: #F9F3EE;
   color: #2D2D2D;

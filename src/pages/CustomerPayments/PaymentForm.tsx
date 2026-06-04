@@ -52,6 +52,8 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
   const [paidAt, setPaidAt] = useState(new Date().toISOString().split('T')[0])
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const handleClose = () => setClosing(true)
 
   function loadPayments() {
     db.payments.where('orderId').equals(order.id!).sortBy('paidAt').then(setPayments)
@@ -104,7 +106,7 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
 
   return (
     <div
-      onClick={onClose}
+      onClick={handleClose}
       style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
         zIndex: 100, display: 'flex', alignItems: 'flex-end',
@@ -112,6 +114,8 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
     >
       <div
         onClick={e => e.stopPropagation()}
+        className={closing ? 'sheet-exit' : 'sheet-enter'}
+        onAnimationEnd={(e) => { if (closing && e.animationName === 'sheet-down') onClose() }}
         style={{
           width: 'calc(100% - 32px)',
           margin: '0 16px',
@@ -132,7 +136,7 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 0' }}>
           <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#2D2D2D' }}>Payments</h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             style={{ background: '#e5e0db', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex' }}
           >
             <X size={17} color="#6b7280" />

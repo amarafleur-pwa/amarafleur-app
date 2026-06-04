@@ -45,6 +45,8 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
   const [notes, setNotes] = useState(order?.notes ?? '')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [closing, setClosing] = useState(false)
+  const handleClose = () => setClosing(true)
 
   const canSave = customerName.trim() && description.trim() && dueDate
 
@@ -90,7 +92,7 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
         logOrder(data, row.id)
       }
       onSaved()
-      onClose()
+      handleClose()
     } catch (err: any) {
       setSaveError(err?.message ?? 'Unknown error')
     } finally {
@@ -107,12 +109,12 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
     await db.payments.where('orderId').equals(order.id).delete()
     await db.orders.delete(order.id)
     onSaved()
-    onClose()
+    handleClose()
   }
 
   return (
     <div
-      onClick={onClose}
+      onClick={handleClose}
       style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
         zIndex: 100, display: 'flex', alignItems: 'flex-end',
@@ -120,6 +122,8 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
     >
       <div
         onClick={e => e.stopPropagation()}
+        className={closing ? 'sheet-exit' : 'sheet-enter'}
+        onAnimationEnd={(e) => { if (closing && e.animationName === 'sheet-down') onClose() }}
         style={{
           width: '100%',
           background: '#F9F3EE',
@@ -150,7 +154,7 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
               </button>
             )}
             <button
-              onClick={onClose}
+              onClick={handleClose}
               style={{ background: '#e5e0db', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex' }}
             >
               <X size={17} color="#6b7280" />

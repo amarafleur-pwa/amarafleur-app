@@ -40,6 +40,8 @@ export default function Inventory() {
   const [iNotes, setINotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
+  const [closingForm, setClosingForm] = useState(false)
+  const handleCloseForm = () => setClosingForm(true)
 
   function load() {
     db.inventory.orderBy('name').toArray().then(setItems).finally(() => setLoading(false))
@@ -77,7 +79,7 @@ export default function Inventory() {
       } else {
         await db.inventory.add(data)
       }
-      setShowForm(false)
+      handleCloseForm()
       load()
     } finally {
       setSaving(false)
@@ -91,8 +93,7 @@ export default function Inventory() {
       return
     }
     await db.inventory.delete(editingItem.id)
-    setShowForm(false)
-    setConfirmDelete(null)
+    handleCloseForm()
     load()
   }
 
@@ -255,11 +256,13 @@ export default function Inventory() {
       {/* Add / Edit form */}
       {showForm && (
         <div
-          onClick={() => { setShowForm(false); setConfirmDelete(null) }}
+          onClick={handleCloseForm}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}
         >
           <div
             onClick={e => e.stopPropagation()}
+            className={closingForm ? 'sheet-exit' : 'sheet-enter'}
+            onAnimationEnd={(e) => { if (closingForm && e.animationName === 'sheet-down') { setShowForm(false); setConfirmDelete(null); setClosingForm(false) } }}
             style={{ width: '100%', background: '#F9F3EE', borderRadius: '20px 20px 0 0', maxHeight: '90svh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
           >
             <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
@@ -284,7 +287,7 @@ export default function Inventory() {
                   </button>
                 )}
                 <button
-                  onClick={() => { setShowForm(false); setConfirmDelete(null) }}
+                  onClick={handleCloseForm}
                   style={{ background: '#e5e0db', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex' }}
                 >
                   <X size={17} color="#6b7280" />
