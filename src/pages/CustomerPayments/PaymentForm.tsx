@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { X, Plus } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment } from '../../db/db'
-import { logPayment } from '../../lib/sheets'
+import { logPayment, deleteSheetRow } from '../../lib/sheets'
+import { supabase } from '../../lib/supabase'
 
 interface Props {
   order: Order
@@ -66,21 +67,20 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
     if (!amt || amt <= 0) return
     setSaving(true)
     try {
+      const { data: row, error } = await supabase.from('payments').insert({
+        order_id: order.supabaseId,
+        amount: amt, type, paid_at: paidAt,
+        notes: notes.trim() || null,
+      }).select().single()
+      if (error) throw error
       await db.payments.add({
-        orderId: order.id!,
-        amount: amt,
-        type,
-        paidAt,
-        notes: notes.trim() || undefined,
+        orderId: order.id!, amount: amt, type, paidAt,
+        notes: notes.trim() || undefined, supabaseId: row.id,
       })
       logPayment({
-        customerName: order.customerName,
-        orderDesc: order.description,
-        amount: amt,
-        type,
-        paidAt,
-        notes: notes.trim() || undefined,
-      })
+        customerName: order.customerName, orderDesc: order.description,
+        amount: amt, type, paidAt, notes: notes.trim() || undefined,
+      }, row.id)
       setAmount('')
       setNotes('')
       setShowForm(false)
@@ -92,6 +92,11 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
   }
 
   async function deletePayment(id: number) {
+    const p = await db.payments.get(id)
+    if (p?.supabaseId) {
+      deleteSheetRow('Payments', p.supabaseId)
+      await supabase.from('payments').delete().eq('id', p.supabaseId)
+    }
     await db.payments.delete(id)
     loadPayments()
     onSaved()

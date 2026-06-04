@@ -3,6 +3,7 @@ import { Plus, ChevronDown, ChevronUp, CheckCircle2, Circle, Search } from 'luci
 import { db } from '../../db/db'
 import type { BusinessExpense } from '../../db/db'
 import ExpenseForm from './ExpenseForm'
+import { supabase } from '../../lib/supabase'
 
 const CATEGORIES = ['Supplies', 'Utilities', 'Rent', 'Delivery', 'Other']
 type StatusFilter = 'all' | 'unpaid' | 'paid'
@@ -40,6 +41,9 @@ export default function BusinessExpenses() {
   useEffect(() => { load() }, [])
 
   async function togglePaid(expense: BusinessExpense) {
+    if (expense.supabaseId) {
+      await supabase.from('business_expenses').update({ is_paid: !expense.isPaid }).eq('id', expense.supabaseId)
+    }
     await db.businessExpenses.update(expense.id!, { isPaid: !expense.isPaid })
     load()
   }

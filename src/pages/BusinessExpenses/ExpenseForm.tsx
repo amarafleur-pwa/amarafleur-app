@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { db } from '../../db/db'
 import type { BusinessExpense } from '../../db/db'
-import { logBusinessExpense } from '../../lib/sheets'
+import { logBusinessExpense, deleteSheetRow } from '../../lib/sheets'
+import { supabase } from '../../lib/supabase'
 
 const CATEGORIES = ['Supplies', 'Utilities', 'Rent', 'Delivery', 'Other']
 const MODES = ['Cash', 'GCash', 'Bank Transfer', 'Credit Card', 'Cheque']
@@ -61,10 +62,24 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     }
     try {
       if (isEdit) {
+        if (expense!.supabaseId) {
+          const { error } = await supabase.from('business_expenses').update({
+            name: data.name, amount: data.amount, due_date: data.dueDate,
+            mode_of_payment: data.modeOfPayment ?? null, is_paid: data.isPaid,
+            category: data.category, notes: data.notes ?? null,
+          }).eq('id', expense!.supabaseId)
+          if (error) throw error
+        }
         await db.businessExpenses.update(expense!.id!, data)
       } else {
-        await db.businessExpenses.add(data)
-        logBusinessExpense(data)
+        const { data: row, error } = await supabase.from('business_expenses').insert({
+          name: data.name, amount: data.amount, due_date: data.dueDate,
+          mode_of_payment: data.modeOfPayment ?? null, is_paid: data.isPaid,
+          category: data.category, notes: data.notes ?? null,
+        }).select().single()
+        if (error) throw error
+        await db.businessExpenses.add({ ...data, supabaseId: row.id })
+        logBusinessExpense(data, row.id)
       }
       onSaved()
       onClose()
@@ -75,6 +90,10 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
 
   async function handleDelete() {
     if (!expense?.id) return
+    if (expense.supabaseId) {
+      deleteSheetRow('Business Expenses', expense.supabaseId)
+      await supabase.from('business_expenses').delete().eq('id', expense.supabaseId)
+    }
     await db.businessExpenses.delete(expense.id)
     onSaved()
     onClose()

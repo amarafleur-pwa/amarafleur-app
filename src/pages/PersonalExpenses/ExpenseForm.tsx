@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { X, Trash2, RefreshCw } from 'lucide-react'
 import { db } from '../../db/db'
 import type { PersonalExpense } from '../../db/db'
-import { logPersonalExpense } from '../../lib/sheets'
+import { logPersonalExpense, deleteSheetRow } from '../../lib/sheets'
+import { supabase } from '../../lib/supabase'
 
 const CATEGORIES = ['Bills', 'Rent', 'Food & Groceries', 'Transportation', 'Health', 'Savings', 'Other']
 
@@ -59,10 +60,24 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     }
     try {
       if (isEdit) {
+        if (expense!.supabaseId) {
+          const { error } = await supabase.from('personal_expenses').update({
+            name: data.name, amount: data.amount, due_date: data.dueDate,
+            category: data.category ?? null, is_paid: data.isPaid,
+            is_recurring: data.isRecurring, notes: data.notes ?? null,
+          }).eq('id', expense!.supabaseId)
+          if (error) throw error
+        }
         await db.personalExpenses.update(expense!.id!, data)
       } else {
-        await db.personalExpenses.add(data)
-        logPersonalExpense(data)
+        const { data: row, error } = await supabase.from('personal_expenses').insert({
+          name: data.name, amount: data.amount, due_date: data.dueDate,
+          category: data.category ?? null, is_paid: data.isPaid,
+          is_recurring: data.isRecurring, notes: data.notes ?? null,
+        }).select().single()
+        if (error) throw error
+        await db.personalExpenses.add({ ...data, supabaseId: row.id })
+        logPersonalExpense(data, row.id)
       }
       onSaved()
       onClose()
@@ -73,6 +88,10 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
 
   async function handleDelete() {
     if (!expense?.id) return
+    if (expense.supabaseId) {
+      deleteSheetRow('Personal Expenses', expense.supabaseId)
+      await supabase.from('personal_expenses').delete().eq('id', expense.supabaseId)
+    }
     await db.personalExpenses.delete(expense.id)
     onSaved()
     onClose()

@@ -15,43 +15,59 @@ async function appendRow(sheet: string, row: (string | number)[]) {
   }
 }
 
+export function deleteSheetRow(sheet: string, appId: string) {
+  void fetch('/api/sheets-delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sheet, appId }),
+  }).catch(() => {})
+}
+
 export function logPersonalExpense(e: {
   name: string; amount: number; dueDate: string; category?: string;
   isRecurring: boolean; notes?: string
-}) {
+}, appId: string) {
   void appendRow('Personal Expenses', [
     e.name, e.amount, e.dueDate, e.category ?? '',
-    e.isRecurring ? 'Yes' : 'No', e.notes ?? '', now(),
+    e.isRecurring ? 'Yes' : 'No', e.notes ?? '', now(), appId,
   ])
 }
 
 export function logBusinessExpense(e: {
   name: string; amount: number; dueDate: string; modeOfPayment?: string;
   category: string; notes?: string
-}) {
+}, appId: string) {
   void appendRow('Business Expenses', [
     e.name, e.dueDate, e.modeOfPayment ?? '', e.amount,
-    e.category, e.notes ?? '', now(),
+    e.category, e.notes ?? '', now(), appId,
   ])
 }
 
 export function logOrder(o: {
   customerName: string; description: string; quantity?: number;
   dueDate: string; time?: string; totalAmount: number; depositPaid: number; notes?: string
-}) {
+}, appId: string) {
   void appendRow('Orders', [
     o.customerName, o.description, o.quantity ?? 1,
     o.dueDate, o.time ?? '', o.totalAmount, o.depositPaid,
-    o.notes ?? '', now(),
+    o.notes ?? '', now(), appId,
   ])
 }
 
 export function logPayment(p: {
   customerName: string; orderDesc: string; amount: number;
   type: string; paidAt: string; notes?: string
-}) {
+}, appId: string) {
   void appendRow('Payments', [
     p.customerName, p.orderDesc, p.amount,
-    p.type, p.paidAt, p.notes ?? '', now(),
+    p.type, p.paidAt, p.notes ?? '', now(), appId,
+  ])
+}
+
+export function logCustomer(c: {
+  name: string; phone?: string; notes?: string
+}, appId: string) {
+  void appendRow('Customers', [
+    c.name, c.phone ?? '', c.notes ?? '', now(), appId,
   ])
 }

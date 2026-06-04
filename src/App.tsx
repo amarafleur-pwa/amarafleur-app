@@ -5,6 +5,7 @@ import NotificationBanner from './components/NotificationBanner'
 import OfflineBanner from './components/OfflineBanner'
 import InstallBanner from './components/InstallBanner'
 import { checkAndFireReminders } from './lib/notifications'
+import { restoreFromSupabase } from './lib/sync'
 import Auth from './pages/Auth'
 import Dashboard from './pages/Dashboard'
 import PersonalExpenses from './pages/PersonalExpenses'
@@ -26,7 +27,10 @@ export default function App() {
   const [authed, setAuthed] = useState(() => !!localStorage.getItem('af-authed'))
 
   useEffect(() => {
-    if (authed) checkAndFireReminders()
+    if (authed) {
+      checkAndFireReminders()
+      restoreFromSupabase().catch(console.warn)
+    }
   }, [authed])
 
   if (!authed) {

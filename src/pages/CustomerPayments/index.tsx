@@ -3,6 +3,8 @@ import { Plus, X, Phone, FileText, Search } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment, Customer } from '../../db/db'
 import PaymentForm from './PaymentForm'
+import { supabase } from '../../lib/supabase'
+import { logCustomer, deleteSheetRow } from '../../lib/sheets'
 
 type View = 'payments' | 'directory'
 type StatusFilter = 'all' | 'outstanding' | 'paid'
@@ -97,9 +99,20 @@ export default function CustomerPayments() {
         notes: cNotes.trim() || undefined,
       }
       if (editingCustomer?.id) {
+        if (editingCustomer.supabaseId) {
+          const { error } = await supabase.from('customers').update({
+            name: data.name, phone: data.phone ?? null, notes: data.notes ?? null,
+          }).eq('id', editingCustomer.supabaseId)
+          if (error) throw error
+        }
         await db.customers.update(editingCustomer.id, data)
       } else {
-        await db.customers.add(data)
+        const { data: row, error } = await supabase.from('customers').insert({
+          name: data.name, phone: data.phone ?? null, notes: data.notes ?? null,
+        }).select().single()
+        if (error) throw error
+        await db.customers.add({ ...data, supabaseId: row.id })
+        logCustomer(data, row.id)
       }
       setShowCustomerForm(false)
       load()
@@ -110,6 +123,10 @@ export default function CustomerPayments() {
 
   async function deleteCustomer() {
     if (!editingCustomer?.id) return
+    if (editingCustomer.supabaseId) {
+      deleteSheetRow('Customers', editingCustomer.supabaseId)
+      await supabase.from('customers').delete().eq('id', editingCustomer.supabaseId)
+    }
     await db.customers.delete(editingCustomer.id)
     setShowCustomerForm(false)
     load()

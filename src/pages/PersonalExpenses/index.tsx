@@ -3,6 +3,8 @@ import { Plus, RefreshCw, CheckCircle2, Circle, Search } from 'lucide-react'
 import { db } from '../../db/db'
 import type { PersonalExpense } from '../../db/db'
 import ExpenseForm from './ExpenseForm'
+import { supabase } from '../../lib/supabase'
+import { logPersonalExpense } from '../../lib/sheets'
 
 type Filter = 'all' | 'overdue' | 'upcoming'
 
@@ -56,21 +58,28 @@ export default function PersonalExpenses() {
 
   async function togglePaid(expense: PersonalExpense) {
     const nowPaid = !expense.isPaid
+    if (expense.supabaseId) {
+      await supabase.from('personal_expenses').update({ is_paid: nowPaid }).eq('id', expense.supabaseId)
+    }
     await db.personalExpenses.update(expense.id!, { isPaid: nowPaid })
 
     // Recurring: create next month's copy when marking paid
     if (nowPaid && expense.isRecurring) {
       const next = new Date(expense.dueDate + 'T00:00:00')
       next.setMonth(next.getMonth() + 1)
-      await db.personalExpenses.add({
-        name: expense.name,
-        amount: expense.amount,
+      const newData = {
+        name: expense.name, amount: expense.amount,
         dueDate: next.toISOString().split('T')[0],
-        category: expense.category,
-        notes: expense.notes,
-        isRecurring: true,
-        isPaid: false,
-      })
+        category: expense.category, notes: expense.notes,
+        isRecurring: true, isPaid: false,
+      }
+      const { data: row } = await supabase.from('personal_expenses').insert({
+        name: newData.name, amount: newData.amount, due_date: newData.dueDate,
+        category: newData.category ?? null, notes: newData.notes ?? null,
+        is_paid: false, is_recurring: true,
+      }).select().single()
+      await db.personalExpenses.add({ ...newData, supabaseId: row?.id })
+      if (row?.id) logPersonalExpense(newData, row.id)
     }
 
     load()

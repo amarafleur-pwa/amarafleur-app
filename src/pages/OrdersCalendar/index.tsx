@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Plus, CheckCircle2, Circle, Pencil } from 'l
 import { db } from '../../db/db'
 import type { Order } from '../../db/db'
 import OrderForm from './OrderForm'
+import { supabase } from '../../lib/supabase'
 
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
@@ -80,6 +81,9 @@ export default function OrdersCalendar() {
   }
 
   async function toggleDone(order: Order) {
+    if (order.supabaseId) {
+      await supabase.from('orders').update({ is_done: !order.isDone }).eq('id', order.supabaseId)
+    }
     await db.orders.update(order.id!, { isDone: !order.isDone })
     load()
   }

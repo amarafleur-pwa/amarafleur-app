@@ -1,10 +1,11 @@
 import { google } from 'googleapis'
 
 const HEADERS: Record<string, string[]> = {
-  'Personal Expenses': ['Name', 'Amount', 'Due Date', 'Category', 'Recurring', 'Notes', 'Logged At'],
-  'Business Expenses': ['Name', 'Due Date', 'Mode of Payment', 'Amount', 'Category', 'Notes', 'Logged At'],
-  'Orders': ['Customer Name', 'Description', 'Quantity', 'Due Date', 'Time', 'Total Amount', 'Deposit Paid', 'Notes', 'Logged At'],
-  'Payments': ['Customer Name', 'Order Description', 'Amount', 'Type', 'Paid At', 'Notes', 'Logged At'],
+  'Personal Expenses': ['Name', 'Amount', 'Due Date', 'Category', 'Recurring', 'Notes', 'Logged At', 'App ID'],
+  'Business Expenses': ['Name', 'Due Date', 'Mode of Payment', 'Amount', 'Category', 'Notes', 'Logged At', 'App ID'],
+  'Orders': ['Customer Name', 'Description', 'Quantity', 'Due Date', 'Time', 'Total Amount', 'Deposit Paid', 'Notes', 'Logged At', 'App ID'],
+  'Payments': ['Customer Name', 'Order Description', 'Amount', 'Type', 'Paid At', 'Notes', 'Logged At', 'App ID'],
+  'Customers': ['Name', 'Phone', 'Notes', 'Logged At', 'App ID'],
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order } from '../../db/db'
-import { logOrder } from '../../lib/sheets'
+import { logOrder, deleteSheetRow } from '../../lib/sheets'
+import { supabase } from '../../lib/supabase'
 
 interface Props {
   order?: Order
@@ -63,10 +64,28 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
     }
     try {
       if (isEdit) {
+        if (order!.supabaseId) {
+          const { error } = await supabase.from('orders').update({
+            customer_name: data.customerName, description: data.description,
+            quantity: data.quantity ?? null, time: data.time ?? null,
+            order_date: data.orderDate, due_date: data.dueDate,
+            total_amount: data.totalAmount, deposit_paid: data.depositPaid,
+            is_done: data.isDone, notes: data.notes ?? null,
+          }).eq('id', order!.supabaseId)
+          if (error) throw error
+        }
         await db.orders.update(order!.id!, data)
       } else {
-        await db.orders.add(data)
-        logOrder(data)
+        const { data: row, error } = await supabase.from('orders').insert({
+          customer_name: data.customerName, description: data.description,
+          quantity: data.quantity ?? null, time: data.time ?? null,
+          order_date: data.orderDate, due_date: data.dueDate,
+          total_amount: data.totalAmount, deposit_paid: data.depositPaid,
+          is_done: data.isDone, notes: data.notes ?? null,
+        }).select().single()
+        if (error) throw error
+        await db.orders.add({ ...data, supabaseId: row.id })
+        logOrder(data, row.id)
       }
       onSaved()
       onClose()
@@ -77,6 +96,11 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
 
   async function handleDelete() {
     if (!order?.id) return
+    if (order.supabaseId) {
+      deleteSheetRow('Orders', order.supabaseId)
+      await supabase.from('orders').delete().eq('id', order.supabaseId)
+    }
+    await db.payments.where('orderId').equals(order.id).delete()
     await db.orders.delete(order.id)
     onSaved()
     onClose()
