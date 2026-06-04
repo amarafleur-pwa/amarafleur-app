@@ -143,7 +143,7 @@ export default function Auth({ onAuth }: Props) {
 
   return (
     <>
-    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 9999 }}>
       {PETALS.map(p => (
         <div key={p.id} style={{
           position: 'absolute',
