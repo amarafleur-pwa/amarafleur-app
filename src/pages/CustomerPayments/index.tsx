@@ -54,6 +54,7 @@ export default function CustomerPayments() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [search, setSearch] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null)
 
   // Customer form state
   const [showCustomerForm, setShowCustomerForm] = useState(false)
@@ -160,6 +161,12 @@ export default function CustomerPayments() {
     const s = getStatus(o, paymentMap.get(o.id!) ?? [])
     return sum + s.balance
   }, 0)
+
+  const detailOrders = detailCustomer
+    ? orders.filter(o => o.customerName.toLowerCase() === detailCustomer.name.toLowerCase()).sort((a, b) => b.dueDate.localeCompare(a.dueDate))
+    : []
+  const detailTotalAmount = detailOrders.reduce((s, o) => s + o.totalAmount, 0)
+  const detailOutstanding = detailOrders.reduce((s, o) => s + getStatus(o, paymentMap.get(o.id!) ?? []).balance, 0)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', paddingBottom: '24px' }}>
@@ -322,7 +329,7 @@ export default function CustomerPayments() {
               return (
                 <div
                   key={c.id}
-                  onClick={() => openCustomerForm(c)}
+                  onClick={() => setDetailCustomer(c)}
                   style={{
                     background: '#fff', borderRadius: '12px', padding: '14px',
                     boxShadow: '0 1px 6px rgba(0,0,0,0.06)', cursor: 'pointer',
@@ -378,6 +385,90 @@ export default function CustomerPayments() {
           onClose={() => setSelectedOrder(null)}
           onSaved={load}
         />
+      )}
+
+      {/* Customer detail drawer */}
+      {detailCustomer && (
+        <div
+          onClick={() => setDetailCustomer(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: '100%', background: '#F9F3EE', borderRadius: '20px 20px 0 0', maxHeight: '85svh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
+              <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#d1ccc8' }} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '12px 20px 8px' }}>
+              <div>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{detailCustomer.name}</h2>
+                {detailCustomer.phone && <p style={{ fontSize: '13px', color: '#6b7280', margin: '4px 0 0' }}>📞 {detailCustomer.phone}</p>}
+                {detailCustomer.notes && <p style={{ fontSize: '13px', color: '#6b7280', margin: '2px 0 0' }}>📝 {detailCustomer.notes}</p>}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => { setDetailCustomer(null); openCustomerForm(detailCustomer) }}
+                  style={{ background: '#e5e0db', border: 'none', borderRadius: '8px', padding: '8px 14px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: '#6b7280' }}
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => setDetailCustomer(null)}
+                  style={{ background: '#e5e0db', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex' }}
+                >
+                  <X size={17} color="#6b7280" />
+                </button>
+              </div>
+            </div>
+
+            {/* Stats strip */}
+            <div style={{ display: 'flex', borderTop: '1px solid #e5e0db', borderBottom: '1px solid #e5e0db', background: '#fff' }}>
+              {[
+                { label: 'Orders', value: String(detailOrders.length), color: '#2D2D2D' },
+                { label: 'Total', value: fmt(detailTotalAmount), color: '#2D2D2D' },
+                { label: 'Outstanding', value: fmt(detailOutstanding), color: detailOutstanding > 0 ? '#C9848A' : '#7A9E7E' },
+              ].map((stat, i) => (
+                <div key={stat.label} style={{ flex: 1, padding: '12px 8px', textAlign: 'center', borderRight: i < 2 ? '1px solid #e5e0db' : 'none' }}>
+                  <p style={{ fontSize: '15px', fontWeight: 800, color: stat.color, margin: 0 }}>{stat.value}</p>
+                  <p style={{ fontSize: '11px', color: '#9ca3af', margin: '2px 0 0' }}>{stat.label}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Order history */}
+            <div style={{ overflowY: 'auto', flex: 1, padding: '12px 20px' }}>
+              {detailOrders.length === 0 ? (
+                <p style={{ fontSize: '14px', color: '#9ca3af', textAlign: 'center', padding: '24px 0' }}>No orders yet.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {detailOrders.map(o => {
+                    const s = getStatus(o, paymentMap.get(o.id!) ?? [])
+                    return (
+                      <div key={o.id} style={{ background: '#fff', borderRadius: '12px', padding: '12px 14px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontWeight: 600, fontSize: '14px', color: '#2D2D2D', margin: 0 }}>
+                              {o.description}{o.quantity && o.quantity > 1 ? ` ×${o.quantity}` : ''}
+                            </p>
+                            <p style={{ fontSize: '11px', color: '#9ca3af', margin: '3px 0 0' }}>{formatDate(o.dueDate)}</p>
+                          </div>
+                          <div style={{ textAlign: 'right', marginLeft: '12px', flexShrink: 0 }}>
+                            <span style={{ display: 'inline-block', fontSize: '11px', fontWeight: 700, color: s.color, background: s.bg, borderRadius: '5px', padding: '2px 7px' }}>
+                              {s.label}
+                            </span>
+                            <p style={{ fontSize: '13px', fontWeight: 700, color: '#2D2D2D', margin: '4px 0 0' }}>{fmt(o.totalAmount)}</p>
+                            {s.balance > 0 && <p style={{ fontSize: '11px', color: '#C9848A', margin: '2px 0 0' }}>Balance: {fmt(s.balance)}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Customer form modal */}

@@ -57,6 +57,17 @@ export interface Customer {
   notes?: string
 }
 
+export interface InventoryItem {
+  id?: number
+  name: string
+  category: string
+  quantity: number
+  unit: string
+  minStock?: number
+  notes?: string
+  updatedAt: string
+}
+
 export interface Passkey {
   id?: number
   credentialId: string
@@ -71,6 +82,7 @@ class FlowerShopDB extends Dexie {
   payments!: EntityTable<Payment, 'id'>
   customers!: EntityTable<Customer, 'id'>
   passkeys!: EntityTable<Passkey, 'id'>
+  inventory!: EntityTable<InventoryItem, 'id'>
 
   constructor() {
     super('FlowerShopDB')
@@ -92,6 +104,9 @@ class FlowerShopDB extends Dexie {
       orders: '++id, customerName, orderDate, dueDate, isDone, supabaseId',
       payments: '++id, orderId, paidAt, type, supabaseId',
       customers: '++id, name, supabaseId',
+    })
+    this.version(5).stores({
+      inventory: '++id, category, name',
     })
   }
 }

@@ -47,6 +47,16 @@ function inRange(date: string, start: string, end: string) {
 
 const fmt = (n: number) => '₱' + Math.abs(n).toLocaleString('en-PH', { minimumFractionDigits: 2 })
 
+function getLast6Months() {
+  const now = new Date()
+  return Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1)
+    const start = d.toISOString().split('T')[0]
+    const end = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0]
+    return { label: d.toLocaleDateString('en-PH', { month: 'short' }), start, end }
+  })
+}
+
 async function exportCSV() {
   const [orders, payments, businessExpenses, personalExpenses] = await Promise.all([
     db.orders.orderBy('dueDate').toArray(),
@@ -153,6 +163,14 @@ export default function RevenueSummary() {
 
   const net = revenue - expenseTotal
   const maxBar = Math.max(revenue, expenseTotal, 1)
+
+  const trendMonths = getLast6Months().map(m => {
+    const rev = orders.filter(o => inRange(o.orderDate, m.start, m.end) && o.depositPaid > 0).reduce((s, o) => s + o.depositPaid, 0)
+      + payments.filter(p => inRange(p.paidAt, m.start, m.end)).reduce((s, p) => s + p.amount, 0)
+    const exp = businessExpenses.filter(e => inRange(e.dueDate, m.start, m.end)).reduce((s, e) => s + e.amount, 0)
+    return { label: m.label, rev, exp }
+  })
+  const trendMax = Math.max(...trendMonths.map(m => Math.max(m.rev, m.exp)), 1)
 
   const periodLabel = getPeriodLabel(period, range)
 
@@ -302,6 +320,40 @@ export default function RevenueSummary() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* 6-month trend chart */}
+          <div style={{ background: '#fff', borderRadius: '14px', padding: '16px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+            <p style={{ fontSize: '14px', fontWeight: 700, color: '#6b7280', margin: '0 0 14px' }}>6-Month Trend</p>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', height: '80px' }}>
+              {trendMonths.map(m => (
+                <div key={m.label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%' }}>
+                  <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end', gap: '2px' }}>
+                    <div style={{
+                      flex: 1, background: '#7A9E7E', borderRadius: '3px 3px 0 0',
+                      height: `${Math.round((m.rev / trendMax) * 100)}%`,
+                      minHeight: m.rev > 0 ? '2px' : '0',
+                    }} />
+                    <div style={{
+                      flex: 1, background: '#E8A838', borderRadius: '3px 3px 0 0',
+                      height: `${Math.round((m.exp / trendMax) * 100)}%`,
+                      minHeight: m.exp > 0 ? '2px' : '0',
+                    }} />
+                  </div>
+                  <span style={{ fontSize: '9px', color: '#9ca3af', marginTop: '4px' }}>{m.label}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '16px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#7A9E7E' }} />
+                <span style={{ fontSize: '11px', color: '#6b7280' }}>Income</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#E8A838' }} />
+                <span style={{ fontSize: '11px', color: '#6b7280' }}>Expenses</span>
+              </div>
+            </div>
           </div>
 
           {/* Export button */}
