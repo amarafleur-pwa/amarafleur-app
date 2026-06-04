@@ -45,12 +45,14 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   const [isPaid, setIsPaid] = useState(expense?.isPaid ?? false)
   const [notes, setNotes] = useState(expense?.notes ?? '')
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const canSave = name.trim() && amount && parseFloat(amount) > 0 && dueDate
 
   async function handleSave() {
     if (!canSave) return
     setSaving(true)
+    setSaveError(null)
     const data: Omit<BusinessExpense, 'id'> = {
       name: name.trim(),
       amount: parseFloat(amount),
@@ -83,6 +85,8 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
       }
       onSaved()
       onClose()
+    } catch (err: any) {
+      setSaveError(err?.message ?? 'Unknown error')
     } finally {
       setSaving(false)
     }
@@ -255,6 +259,11 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
 
         {/* Save button */}
         <div style={{ padding: '16px 20px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' }}>
+          {saveError && (
+            <p style={{ fontSize: '13px', color: '#ef4444', marginBottom: '10px', wordBreak: 'break-word' }}>
+              Error: {saveError}
+            </p>
+          )}
           <button
             onClick={handleSave}
             disabled={!canSave || saving}

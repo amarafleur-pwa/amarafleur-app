@@ -44,12 +44,14 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
   const [depositPaid, setDepositPaid] = useState(order?.depositPaid?.toString() ?? '0')
   const [notes, setNotes] = useState(order?.notes ?? '')
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const canSave = customerName.trim() && description.trim() && dueDate
 
   async function handleSave() {
     if (!canSave) return
     setSaving(true)
+    setSaveError(null)
     const data: Omit<Order, 'id'> = {
       customerName: customerName.trim(),
       description: description.trim(),
@@ -89,6 +91,8 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
       }
       onSaved()
       onClose()
+    } catch (err: any) {
+      setSaveError(err?.message ?? 'Unknown error')
     } finally {
       setSaving(false)
     }
@@ -253,6 +257,11 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
 
         {/* Save button */}
         <div style={{ padding: '16px 20px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' }}>
+          {saveError && (
+            <p style={{ fontSize: '13px', color: '#ef4444', marginBottom: '10px', wordBreak: 'break-word' }}>
+              Error: {saveError}
+            </p>
+          )}
           <button
             onClick={handleSave}
             disabled={!canSave || saving}
