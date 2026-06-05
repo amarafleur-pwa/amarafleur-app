@@ -374,7 +374,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
                   {uploading ? 'Uploading...' : 'Upload receipt / Take photo'}
                 </button>
               )}
-              <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleReceiptPick} />
+              <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleReceiptPick} />
             </div>
 
           </div>

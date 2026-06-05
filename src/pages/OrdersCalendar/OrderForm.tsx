@@ -39,7 +39,16 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
   const isEdit = !!order?.id
 
   const [customerName, setCustomerName] = useState(order?.customerName ?? '')
-  const [description, setDescription] = useState(order?.description ?? '')
+  const [arrangementType, setArrangementType] = useState(() =>
+    order?.description?.split(' - ')[0] ?? ''
+  )
+  const [arrangementVariant, setArrangementVariant] = useState(() => {
+    const parts = order?.description?.split(' - ')
+    return parts && parts.length > 1 ? parts[1] : ''
+  })
+  const description = arrangementVariant
+    ? `${arrangementType} - ${arrangementVariant}`
+    : arrangementType
   const [fulfillmentType, setFulfillmentType] = useState<'pickup' | 'delivery'>(order?.fulfillmentType ?? 'pickup')
   const [quantity, setQuantity] = useState(order?.quantity?.toString() ?? '1')
   const [dueDate, setDueDate] = useState(order?.dueDate ?? defaultDate ?? '')
@@ -51,7 +60,8 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
   const [closing, setClosing] = useState(false)
   const handleClose = () => setClosing(true)
 
-  const canSave = customerName.trim() && description.trim() && dueDate
+  const variantRequired = arrangementType === 'Bouquet' || arrangementType === 'Fresh Flowers'
+  const canSave = customerName.trim() && arrangementType && (!variantRequired || arrangementVariant) && dueDate
 
   async function handleSave() {
     if (!canSave) return
@@ -178,13 +188,33 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
 
             <div>
               <span style={lbl}>Flower / Arrangement Details *</span>
-              <input
-                style={input}
-                placeholder="e.g. Red roses bouquet, 12 stems"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-              />
+              <select
+                style={{ ...input, cursor: 'pointer' }}
+                value={arrangementType}
+                onChange={e => { setArrangementType(e.target.value); setArrangementVariant('') }}
+              >
+                <option value="">Select type…</option>
+                {['Custom', 'Bouquet', 'Fresh Flowers', 'Vase', 'Kraft Box', 'Single Rose', 'Flower Dome', 'Money Cake']
+                  .map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
             </div>
+
+            {(arrangementType === 'Bouquet' || arrangementType === 'Fresh Flowers') && (
+              <div>
+                <span style={lbl}>Variant *</span>
+                <select
+                  style={{ ...input, cursor: 'pointer' }}
+                  value={arrangementVariant}
+                  onChange={e => setArrangementVariant(e.target.value)}
+                >
+                  <option value="">Select variant…</option>
+                  {(arrangementType === 'Bouquet'
+                    ? ['Mini', 'Small', 'Simple', 'Deluxe', 'Premium', 'Bridal', 'Money Bouquet']
+                    : ['Tulips', 'Ecuadorian Roses']
+                  ).map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </div>
+            )}
 
             <div>
               <span style={lbl}>Fulfillment Type</span>
