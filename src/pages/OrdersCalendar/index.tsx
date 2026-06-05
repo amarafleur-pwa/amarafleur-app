@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Plus, CheckCircle2, Circle, Pencil } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment } from '../../db/db'
 import OrderForm from './OrderForm'
@@ -39,12 +39,6 @@ const fmt = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDi
 
 type MainView = 'log' | 'advance'
 
-function getPaymentStatus(totalPaid: number, balance: number, orderPayments: Payment[]) {
-  if (balance <= 0) return { label: 'Fully Paid', color: '#7A9E7E', bg: '#7A9E7E18' }
-  if (totalPaid <= 0) return { label: 'Unpaid', color: '#C9848A', bg: '#C9848A18' }
-  if (orderPayments.length === 0) return { label: 'Deposit', color: '#E8A838', bg: '#E8A83818' }
-  return { label: 'Partial', color: '#E8A838', bg: '#E8A83818' }
-}
 
 export default function OrdersCalendar() {
   const syncVersion = useSyncVersion()
@@ -75,6 +69,7 @@ export default function OrdersCalendar() {
   // Form
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Order | undefined>()
+  const [formMode, setFormMode] = useState<'log' | 'advance'>('advance')
 
   const year = viewDate.getFullYear()
   const month = viewDate.getMonth()
@@ -89,10 +84,10 @@ export default function OrdersCalendar() {
 
   useEffect(() => { load() }, [syncVersion])
 
-  // Log tab: orders for logDate with computed payment totals
+  // Log tab: fulfilled orders for logDate with computed payment totals
   const logItems = useMemo(() => {
     return orders
-      .filter(o => o.dueDate === logDate)
+      .filter(o => o.dueDate === logDate && o.isDone)
       .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
       .map(o => {
         const orderPayments = allPayments.filter(p => p.orderId === o.id)
@@ -102,10 +97,10 @@ export default function OrdersCalendar() {
       })
   }, [orders, allPayments, logDate])
 
-  // Calendar: map dueDate → orders
+  // Calendar: map dueDate → pending (undone) orders only
   const orderMap = useMemo(() => {
     const map = new Map<string, Order[]>()
-    for (const o of orders) {
+    for (const o of orders.filter(o => !o.isDone)) {
       const list = map.get(o.dueDate) ?? []
       list.push(o)
       map.set(o.dueDate, list)
@@ -141,13 +136,17 @@ export default function OrdersCalendar() {
 
   function stepLogDate(days: number) {
     setLogDate(d => {
-      const dt = new Date(d + 'T00:00:00')
-      dt.setDate(dt.getDate() + days)
-      return dt.toISOString().split('T')[0]
+      const [y, mo, dy] = d.split('-').map(Number)
+      const dt = new Date(y, mo - 1, dy + days)
+      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
     })
   }
 
-  function openAdd() { setEditing(undefined); setShowForm(true) }
+  function openAdd() {
+    setFormMode(mainView)
+    setEditing(undefined)
+    setShowForm(true)
+  }
   function openEdit(order: Order) { setEditing(order); setShowForm(true) }
 
   function prevMonth() {
@@ -238,69 +237,57 @@ export default function OrdersCalendar() {
           {!loading && logItems.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {logItems.map(o => {
-                const status = getPaymentStatus(o.totalPaid, o.balance, o.orderPayments)
                 const fulfillment = o.fulfillmentType ?? 'pickup'
+                const isPartial = o.totalAmount > o.depositPaid
                 return (
-                  <div key={o.id} style={{ background: '#fff', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', opacity: o.isDone ? 0.6 : 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                      <button
-                        onClick={() => toggleDone(o)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, display: 'flex', marginTop: '1px' }}
-                      >
-                        {o.isDone ? <CheckCircle2 size={20} color="#7A9E7E" /> : <Circle size={20} color="#d1ccc8" />}
-                      </button>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                          <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', textDecoration: o.isDone ? 'line-through' : 'none', margin: 0 }}>
-                            {o.customerName}
-                          </p>
-                          <button
-                            onClick={() => openEdit(o)}
-                            style={{ background: '#f3f4f6', border: 'none', borderRadius: '7px', padding: '6px', cursor: 'pointer', display: 'flex', flexShrink: 0 }}
-                          >
-                            <Pencil size={14} color="#6b7280" />
-                          </button>
-                        </div>
-                        <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px', marginBottom: 0 }}>
-                          {o.description}{o.quantity && o.quantity > 1 ? ` × ${o.quantity}` : ''}
-                        </p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
-                          <span style={{
-                            fontSize: '11px', fontWeight: 700, borderRadius: '5px', padding: '2px 8px',
-                            color: fulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
-                            background: fulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
-                          }}>
-                            {fulfillment === 'delivery' ? '🚚 Delivered' : '🌸 Picked up'}
-                          </span>
-                          {o.time && (
-                            <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500 }}>{formatTime(o.time)}</span>
-                          )}
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: status.color, background: status.bg, borderRadius: '5px', padding: '2px 8px' }}>
-                            {status.label}
-                          </span>
-                        </div>
-                      </div>
+                  <div
+                    key={o.id}
+                    onClick={() => setPreviewOrder(o)}
+                    style={{ background: '#fff', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', cursor: 'pointer' }}
+                  >
+                    <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', margin: '0 0 2px' }}>
+                      {o.customerName}
+                    </p>
+                    <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 8px' }}>
+                      {o.description}{o.quantity && o.quantity > 1 ? ` × ${o.quantity}` : ''}
+                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <span style={{
+                        fontSize: '11px', fontWeight: 700, borderRadius: '5px', padding: '2px 8px',
+                        color: fulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
+                        background: fulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
+                      }}>
+                        {fulfillment === 'delivery' ? '🚚 Delivery' : '🌸 Pickup'}
+                      </span>
+                      {o.time && (
+                        <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500 }}>{formatTime(o.time)}</span>
+                      )}
                     </div>
 
                     {o.totalAmount > 0 && (
-                      <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-around' }}>
-                        <div style={{ textAlign: 'center' }}>
-                          <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Total</p>
-                          <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{fmt(o.totalAmount)}</p>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                          <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Paid</p>
-                          <p style={{ fontSize: '14px', fontWeight: 700, color: '#7A9E7E', margin: 0 }}>{fmt(o.totalPaid)}</p>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                          <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Balance</p>
-                          <p style={{ fontSize: '14px', fontWeight: 700, color: o.balance > 0 ? '#E8A838' : '#7A9E7E', margin: 0 }}>{fmt(Math.max(0, o.balance))}</p>
-                        </div>
+                      <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6' }}>
+                        {isPartial ? (
+                          <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+                            <div style={{ textAlign: 'center' }}>
+                              <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Total</p>
+                              <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{fmt(o.totalAmount)}</p>
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                              <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Paid</p>
+                              <p style={{ fontSize: '14px', fontWeight: 700, color: '#7A9E7E', margin: 0 }}>{fmt(o.totalPaid)}</p>
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                              <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Balance</p>
+                              <p style={{ fontSize: '14px', fontWeight: 700, color: o.balance > 0 ? '#E8A838' : '#7A9E7E', margin: 0 }}>{fmt(Math.max(0, o.balance))}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: 'center' }}>
+                            <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Total</p>
+                            <p style={{ fontSize: '15px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{fmt(o.totalAmount)}</p>
+                          </div>
+                        )}
                       </div>
-                    )}
-
-                    {o.notes && (
-                      <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px', fontStyle: 'italic', marginBottom: 0 }}>{o.notes}</p>
                     )}
                   </div>
                 )
@@ -400,10 +387,6 @@ export default function OrdersCalendar() {
                   {selectedOrders
                     .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
                     .map(o => {
-                      const fulfillment = o.fulfillmentType ?? 'pickup'
-                      const fulfillLabel = o.isDone
-                        ? (fulfillment === 'delivery' ? '🚚 Delivered' : '🌸 Picked up')
-                        : (fulfillment === 'delivery' ? '🚚 Delivery' : '🌸 Pickup')
                       return (
                         <SwipeableItem
                           key={o.id}
@@ -414,47 +397,62 @@ export default function OrdersCalendar() {
                           onEdit={() => openEdit(o)}
                           onDelete={() => setPendingDeleteOrder(o)}
                         >
-                          <div
-                            onClick={() => setPreviewOrder(o)}
-                            style={{ background: '#fff', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', opacity: o.isDone ? 0.6 : 1, cursor: 'pointer' }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                              <button
-                                onClick={e => { e.stopPropagation(); toggleDone(o) }}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, display: 'flex', marginTop: '2px' }}
+                          {(() => {
+                            const advFulfillment = o.fulfillmentType ?? 'pickup'
+                            const advIsPartial = o.totalAmount > o.depositPaid
+                            const advOrderPayments = allPayments.filter(p => p.orderId === o.id)
+                            const advTotalPaid = o.depositPaid + advOrderPayments.reduce((s, p) => s + p.amount, 0)
+                            const advBalance = o.totalAmount - advTotalPaid
+                            return (
+                              <div
+                                onClick={() => setPreviewOrder(o)}
+                                style={{ background: '#fff', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', cursor: 'pointer' }}
                               >
-                                {o.isDone ? <CheckCircle2 size={20} color="#7A9E7E" /> : <Circle size={20} color="#d1ccc8" />}
-                              </button>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', textDecoration: o.isDone ? 'line-through' : 'none', margin: 0 }}>
+                                <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', margin: '0 0 2px' }}>
                                   {o.customerName}
                                 </p>
-                                <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '3px', marginBottom: 0 }}>
+                                <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 8px' }}>
                                   {o.description}{o.quantity && o.quantity > 1 ? ` × ${o.quantity}` : ''}
                                 </p>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                                   <span style={{
                                     fontSize: '11px', fontWeight: 700, borderRadius: '5px', padding: '2px 8px',
-                                    color: fulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
-                                    background: fulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
+                                    color: advFulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
+                                    background: advFulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
                                   }}>
-                                    {fulfillLabel}
+                                    {advFulfillment === 'delivery' ? '🚚 Delivery' : '🌸 Pickup'}
                                   </span>
-                                  {o.time && <span style={{ fontSize: '12px', color: '#C9848A', fontWeight: 600 }}>{formatTime(o.time)}</span>}
-                                  {o.totalAmount > 0 && <span style={{ fontSize: '12px', color: '#2D2D2D', fontWeight: 600 }}>{fmt(o.totalAmount)}</span>}
-                                  {o.depositPaid > 0 && <span style={{ fontSize: '12px', color: '#9ca3af' }}>dep {fmt(o.depositPaid)}</span>}
-                                  {o.totalAmount > o.depositPaid && <span style={{ fontSize: '12px', color: '#E8A838', fontWeight: 600 }}>bal {fmt(o.totalAmount - o.depositPaid)}</span>}
+                                  {o.time && <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500 }}>{formatTime(o.time)}</span>}
                                 </div>
-                                {o.notes && <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '6px', fontStyle: 'italic', marginBottom: 0 }}>{o.notes}</p>}
-                              </div>
-                            </div>
 
-                            {o.isDone && (
-                              <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #f3f4f6' }}>
-                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#7A9E7E', background: '#7A9E7E18', borderRadius: '5px', padding: '2px 8px' }}>Done</span>
+                                {o.totalAmount > 0 && (
+                                  <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6' }}>
+                                    {advIsPartial ? (
+                                      <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+                                        <div style={{ textAlign: 'center' }}>
+                                          <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Total</p>
+                                          <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{fmt(o.totalAmount)}</p>
+                                        </div>
+                                        <div style={{ textAlign: 'center' }}>
+                                          <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Paid</p>
+                                          <p style={{ fontSize: '14px', fontWeight: 700, color: '#7A9E7E', margin: 0 }}>{fmt(advTotalPaid)}</p>
+                                        </div>
+                                        <div style={{ textAlign: 'center' }}>
+                                          <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Balance</p>
+                                          <p style={{ fontSize: '14px', fontWeight: 700, color: advBalance > 0 ? '#E8A838' : '#7A9E7E', margin: 0 }}>{fmt(Math.max(0, advBalance))}</p>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div style={{ textAlign: 'center' }}>
+                                        <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Total</p>
+                                        <p style={{ fontSize: '15px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{fmt(o.totalAmount)}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
+                            )
+                          })()}
                         </SwipeableItem>
                       )
                     })}
@@ -616,6 +614,7 @@ export default function OrdersCalendar() {
         <OrderForm
           order={editing}
           defaultDate={mainView === 'log' ? logDate : (selectedDate ?? undefined)}
+          mode={editing ? 'advance' : formMode}
           onClose={() => setShowForm(false)}
           onSaved={load}
         />

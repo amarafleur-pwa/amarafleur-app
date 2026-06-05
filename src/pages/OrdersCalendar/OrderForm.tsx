@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase'
 interface Props {
   order?: Order
   defaultDate?: string
+  mode?: 'log' | 'advance'
   onClose: () => void
   onSaved: () => void
 }
@@ -35,7 +36,7 @@ const lbl: React.CSSProperties = {
   display: 'block',
 }
 
-export default function OrderForm({ order, defaultDate, onClose, onSaved }: Props) {
+export default function OrderForm({ order, defaultDate, mode = 'advance', onClose, onSaved }: Props) {
   const isEdit = !!order?.id
 
   const [customerName, setCustomerName] = useState(order?.customerName ?? '')
@@ -69,15 +70,17 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
   const variantRequired = arrangementType === 'Bouquet' || arrangementType === 'Fresh Flowers'
   const canSave = customerName.trim() && arrangementType && (!variantRequired || arrangementVariant) && dueDate &&
     totalAmount && parseFloat(totalAmount) > 0 &&
-    (paymentType === 'full' || (depositPaid && parseFloat(depositPaid) > 0))
+    (mode === 'log' || paymentType === 'full' || (depositPaid && parseFloat(depositPaid) > 0))
 
   async function handleSave() {
     if (!canSave) return
     setSaving(true)
     const totalAmt = parseFloat(totalAmount) || 0
-    const depositAmt = paymentType === 'partial'
-      ? (parseFloat(depositPaid) || 0)
-      : (isEdit ? order!.depositPaid : totalAmt)
+    const depositAmt = mode === 'log'
+      ? totalAmt
+      : paymentType === 'partial'
+        ? (parseFloat(depositPaid) || 0)
+        : (isEdit ? order!.depositPaid : totalAmt)
     const data: Omit<Order, 'id'> = {
       customerName: customerName.trim(),
       description: description.trim(),
@@ -88,7 +91,7 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
       dueDate,
       totalAmount: totalAmt,
       depositPaid: depositAmt,
-      isDone: order?.isDone ?? false,
+      isDone: mode === 'log' ? true : (order?.isDone ?? false),
       notes: notes.trim() || undefined,
     }
     const supabasePayload = {
@@ -164,7 +167,7 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px 8px' }}>
           <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#2D2D2D' }}>
-            {isEdit ? 'Edit Order' : 'New Order'}
+            {isEdit ? 'Edit Order' : mode === 'log' ? 'Log Order' : 'New Order'}
           </h2>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             {isEdit && (
@@ -295,30 +298,32 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
               />
             </div>
 
-            <div>
-              <span style={lbl}>Payment Type</span>
-              <div style={{ display: 'flex', background: '#e5e0db', borderRadius: '10px', padding: '3px', gap: '3px' }}>
-                {(['full', 'partial'] as const).map(pt => (
-                  <button
-                    key={pt}
-                    type="button"
-                    onClick={() => { setPaymentType(pt); if (pt === 'full') setDepositPaid('') }}
-                    style={{
-                      flex: 1, padding: '10px', border: 'none', borderRadius: '8px', cursor: 'pointer',
-                      fontSize: '13px', fontWeight: 600,
-                      background: paymentType === pt ? '#fff' : 'transparent',
-                      color: paymentType === pt ? '#2D2D2D' : '#9ca3af',
-                      boxShadow: paymentType === pt ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {pt === 'full' ? 'Full Payment' : 'Partial Payment'}
-                  </button>
-                ))}
+            {mode === 'advance' && (
+              <div>
+                <span style={lbl}>Payment Type</span>
+                <div style={{ display: 'flex', background: '#e5e0db', borderRadius: '10px', padding: '3px', gap: '3px' }}>
+                  {(['full', 'partial'] as const).map(pt => (
+                    <button
+                      key={pt}
+                      type="button"
+                      onClick={() => { setPaymentType(pt); if (pt === 'full') setDepositPaid('') }}
+                      style={{
+                        flex: 1, padding: '10px', border: 'none', borderRadius: '8px', cursor: 'pointer',
+                        fontSize: '13px', fontWeight: 600,
+                        background: paymentType === pt ? '#fff' : 'transparent',
+                        color: paymentType === pt ? '#2D2D2D' : '#9ca3af',
+                        boxShadow: paymentType === pt ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {pt === 'full' ? 'Full Payment' : 'Partial Payment'}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            {paymentType === 'partial' && (
+            {mode === 'advance' && paymentType === 'partial' && (
               <div>
                 <span style={lbl}>Deposit Paid (₱) *</span>
                 <input
