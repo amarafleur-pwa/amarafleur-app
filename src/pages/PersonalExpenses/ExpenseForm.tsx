@@ -64,6 +64,9 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   const [name, setName] = useState(expense?.name ?? '')
   const [amount, setAmount] = useState(expense?.amount?.toString() ?? '')
   const [amountPaid, setAmountPaid] = useState(expense?.amountPaid?.toString() ?? '')
+  const [paymentType, setPaymentType] = useState<'full' | 'partial'>(
+    expense?.amountPaid && expense.amountPaid > 0 && expense.amountPaid < expense.amount ? 'partial' : 'full'
+  )
   const [dueDate, setDueDate] = useState(expense?.dueDate ?? '')
   const [category, setCategory] = useState(expense?.category ?? 'Bills')
   const [notes, setNotes] = useState(expense?.notes ?? '')
@@ -74,7 +77,8 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   const handleClose = () => setClosing(true)
 
   const needsDate = expenseType !== 'instant'
-  const canSave = name.trim() && amount && parseFloat(amount) > 0 && (!needsDate || dueDate)
+  const canSave = name.trim() && amount && parseFloat(amount) > 0 && (!needsDate || dueDate) &&
+    (!needsDate || paymentType === 'full' || (amountPaid && parseFloat(amountPaid) > 0))
 
   async function handleReceiptPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -100,7 +104,10 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     const isMonthly = expenseType === 'monthly'
     const isInstant = expenseType === 'instant'
     const totalAmt = parseFloat(amount)
-    const paidAmt = isInstant ? totalAmt : (parseFloat(amountPaid) || 0)
+    const paidAmt = isInstant ? totalAmt : (
+      paymentType === 'partial' ? (parseFloat(amountPaid) || 0) :
+      (isEdit ? (expense?.isPaid ? totalAmt : (expense?.amountPaid ?? 0)) : 0)
+    )
     const data: Omit<PersonalExpense, 'id'> = {
       name: name.trim(),
       amount: totalAmt,
@@ -239,13 +246,38 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
             </div>
 
             <div>
-              <span style={lbl}>Amount (₱) *</span>
+              <span style={lbl}>Total Amount (₱) *</span>
               <input style={inp} type="number" inputMode="decimal" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
             </div>
 
             {needsDate && (
               <div>
-                <span style={lbl}>Amount Paid (₱)</span>
+                <span style={lbl}>Payment Type</span>
+                <div style={{ display: 'flex', background: '#e5e0db', borderRadius: '10px', padding: '3px', gap: '3px' }}>
+                  {(['full', 'partial'] as const).map(pt => (
+                    <button
+                      key={pt}
+                      type="button"
+                      onClick={() => { setPaymentType(pt); if (pt === 'full') setAmountPaid('') }}
+                      style={{
+                        flex: 1, padding: '10px', border: 'none', borderRadius: '8px', cursor: 'pointer',
+                        fontSize: '13px', fontWeight: 600,
+                        background: paymentType === pt ? '#fff' : 'transparent',
+                        color: paymentType === pt ? '#2D2D2D' : '#9ca3af',
+                        boxShadow: paymentType === pt ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {pt === 'full' ? 'Full Payment' : 'Partial Payment'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {needsDate && paymentType === 'partial' && (
+              <div>
+                <span style={lbl}>Amount Paid (₱) *</span>
                 <input style={inp} type="number" inputMode="decimal" placeholder="0.00" value={amountPaid} onChange={e => setAmountPaid(e.target.value)} />
               </div>
             )}

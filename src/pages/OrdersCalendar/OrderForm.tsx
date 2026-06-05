@@ -53,19 +53,31 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
   const [quantity, setQuantity] = useState(order?.quantity?.toString() ?? '1')
   const [dueDate, setDueDate] = useState(order?.dueDate ?? defaultDate ?? '')
   const [time, setTime] = useState(order?.time ?? '')
-  const [totalAmount, setTotalAmount] = useState(order?.totalAmount?.toString() ?? '')
-  const [depositPaid, setDepositPaid] = useState(order?.depositPaid?.toString() ?? '0')
+  const [totalAmount, setTotalAmount] = useState(order?.totalAmount ? order.totalAmount.toString() : '')
+  const [depositPaid, setDepositPaid] = useState(order?.depositPaid?.toString() ?? '')
+  const [paymentType, setPaymentType] = useState<'full' | 'partial'>(() => {
+    if (!order) return 'full'
+    const dp = order.depositPaid ?? 0
+    const ta = order.totalAmount ?? 0
+    return dp > 0 && dp < ta ? 'partial' : 'full'
+  })
   const [notes, setNotes] = useState(order?.notes ?? '')
   const [saving, setSaving] = useState(false)
   const [closing, setClosing] = useState(false)
   const handleClose = () => setClosing(true)
 
   const variantRequired = arrangementType === 'Bouquet' || arrangementType === 'Fresh Flowers'
-  const canSave = customerName.trim() && arrangementType && (!variantRequired || arrangementVariant) && dueDate
+  const canSave = customerName.trim() && arrangementType && (!variantRequired || arrangementVariant) && dueDate &&
+    totalAmount && parseFloat(totalAmount) > 0 &&
+    (paymentType === 'full' || (depositPaid && parseFloat(depositPaid) > 0))
 
   async function handleSave() {
     if (!canSave) return
     setSaving(true)
+    const totalAmt = parseFloat(totalAmount) || 0
+    const depositAmt = paymentType === 'partial'
+      ? (parseFloat(depositPaid) || 0)
+      : (isEdit ? order!.depositPaid : totalAmt)
     const data: Omit<Order, 'id'> = {
       customerName: customerName.trim(),
       description: description.trim(),
@@ -74,8 +86,8 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
       time: time || undefined,
       orderDate: order?.orderDate ?? new Date().toISOString().split('T')[0],
       dueDate,
-      totalAmount: parseFloat(totalAmount) || 0,
-      depositPaid: parseFloat(depositPaid) || 0,
+      totalAmount: totalAmt,
+      depositPaid: depositAmt,
       isDone: order?.isDone ?? false,
       notes: notes.trim() || undefined,
     }
@@ -272,7 +284,7 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
             </div>
 
             <div>
-              <span style={lbl}>Total Amount (₱)</span>
+              <span style={lbl}>Total Amount (₱) *</span>
               <input
                 style={input}
                 type="number"
@@ -284,16 +296,41 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
             </div>
 
             <div>
-              <span style={lbl}>Deposit Paid (₱)</span>
-              <input
-                style={input}
-                type="number"
-                inputMode="decimal"
-                placeholder="0.00"
-                value={depositPaid}
-                onChange={e => setDepositPaid(e.target.value)}
-              />
+              <span style={lbl}>Payment Type</span>
+              <div style={{ display: 'flex', background: '#e5e0db', borderRadius: '10px', padding: '3px', gap: '3px' }}>
+                {(['full', 'partial'] as const).map(pt => (
+                  <button
+                    key={pt}
+                    type="button"
+                    onClick={() => { setPaymentType(pt); if (pt === 'full') setDepositPaid('') }}
+                    style={{
+                      flex: 1, padding: '10px', border: 'none', borderRadius: '8px', cursor: 'pointer',
+                      fontSize: '13px', fontWeight: 600,
+                      background: paymentType === pt ? '#fff' : 'transparent',
+                      color: paymentType === pt ? '#2D2D2D' : '#9ca3af',
+                      boxShadow: paymentType === pt ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {pt === 'full' ? 'Full Payment' : 'Partial Payment'}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {paymentType === 'partial' && (
+              <div>
+                <span style={lbl}>Deposit Paid (₱) *</span>
+                <input
+                  style={input}
+                  type="number"
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  value={depositPaid}
+                  onChange={e => setDepositPaid(e.target.value)}
+                />
+              </div>
+            )}
 
             <div>
               <span style={lbl}>Notes</span>

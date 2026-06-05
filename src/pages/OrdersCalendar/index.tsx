@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Plus, CheckCircle2, Circle, Pencil } from 'l
 import { db } from '../../db/db'
 import type { Order, Payment } from '../../db/db'
 import OrderForm from './OrderForm'
+import PaymentForm from '../CustomerPayments/PaymentForm'
 import { supabase } from '../../lib/supabase'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
@@ -63,6 +64,7 @@ export default function OrdersCalendar() {
   const [selectedDate, setSelectedDate] = useState<string | null>(todayStr())
   const [previewOrder, setPreviewOrder] = useState<Order | null>(null)
   const [closingPreview, setClosingPreview] = useState(false)
+  const [showPayForm, setShowPayForm] = useState(false)
 
   // Form
   const [showForm, setShowForm] = useState(false)
@@ -490,18 +492,33 @@ export default function OrdersCalendar() {
                         <span style={{ fontSize: '13px', fontWeight: 600, color: '#C9848A' }}>{formatTime(previewOrder.time)}</span>
                       </div>
                     )}
-                    {previewOrder.depositPaid > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '13px', color: '#9ca3af' }}>Deposit paid</span>
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#7A9E7E' }}>{fmt(previewOrder.depositPaid)}</span>
-                      </div>
-                    )}
-                    {previewOrder.totalAmount > previewOrder.depositPaid && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '13px', color: '#9ca3af' }}>Balance</span>
-                        <span style={{ fontSize: '13px', fontWeight: 700, color: '#E8A838' }}>{fmt(previewOrder.totalAmount - previewOrder.depositPaid)}</span>
-                      </div>
-                    )}
+                    {(() => {
+                      const orderPayments = allPayments.filter(p => p.orderId === previewOrder.id)
+                      const totalPaid = previewOrder.depositPaid + orderPayments.reduce((s, p) => s + p.amount, 0)
+                      const balance = previewOrder.totalAmount - totalPaid
+                      return (
+                        <>
+                          {previewOrder.depositPaid > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ fontSize: '13px', color: '#9ca3af' }}>Deposit paid</span>
+                              <span style={{ fontSize: '13px', fontWeight: 600, color: '#7A9E7E' }}>{fmt(previewOrder.depositPaid)}</span>
+                            </div>
+                          )}
+                          {orderPayments.length > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ fontSize: '13px', color: '#9ca3af' }}>Total paid</span>
+                              <span style={{ fontSize: '13px', fontWeight: 600, color: '#7A9E7E' }}>{fmt(totalPaid)}</span>
+                            </div>
+                          )}
+                          {balance > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ fontSize: '13px', color: '#9ca3af' }}>Balance</span>
+                              <span style={{ fontSize: '13px', fontWeight: 700, color: '#E8A838' }}>{fmt(balance)}</span>
+                            </div>
+                          )}
+                        </>
+                      )
+                    })()}
                     {previewOrder.notes && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         <span style={{ fontSize: '13px', color: '#9ca3af' }}>Notes</span>
@@ -510,6 +527,19 @@ export default function OrdersCalendar() {
                     )}
                   </div>
 
+                  {(() => {
+                    const orderPayments = allPayments.filter(p => p.orderId === previewOrder.id)
+                    const totalPaid = previewOrder.depositPaid + orderPayments.reduce((s, p) => s + p.amount, 0)
+                    const balance = previewOrder.totalAmount - totalPaid
+                    return previewOrder.totalAmount > 0 && balance > 0 && (
+                      <button
+                        onClick={() => setShowPayForm(true)}
+                        style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#7A9E7E', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #7A9E7E44', marginBottom: '10px' }}
+                      >
+                        Log Payment
+                      </button>
+                    )
+                  })()}
                   <button
                     onClick={() => { setClosingPreview(true); openEdit(previewOrder) }}
                     style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#E8A838', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #E8A83844' }}
@@ -521,6 +551,14 @@ export default function OrdersCalendar() {
             </div>
           )}
         </>
+      )}
+
+      {previewOrder && showPayForm && (
+        <PaymentForm
+          order={previewOrder}
+          onClose={() => setShowPayForm(false)}
+          onSaved={() => { setShowPayForm(false); load() }}
+        />
       )}
 
       {showForm && (

@@ -71,6 +71,9 @@ export default function BusinessExpenses() {
   const [pendingDelete, setPendingDelete] = useState<BusinessExpense | null>(null)
   const [previewEntry, setPreviewEntry] = useState<BusinessExpense | null>(null)
   const [closingPreview, setClosingPreview] = useState(false)
+  const [logPayEntry, setLogPayEntry] = useState<BusinessExpense | null>(null)
+  const [logPayAmount, setLogPayAmount] = useState('')
+  const [logPaySaving, setLogPaySaving] = useState(false)
 
   function load() {
     db.businessExpenses
@@ -123,6 +126,24 @@ export default function BusinessExpenses() {
       await supabase.from('business_expenses').delete().eq('id', e.supabaseId)
     }
     await db.businessExpenses.delete(e.id!)
+    load()
+  }
+
+  async function handleLogPay() {
+    if (!logPayEntry || !logPayAmount || parseFloat(logPayAmount) <= 0) return
+    setLogPaySaving(true)
+    const newPaid = Math.min((logPayEntry.amountPaid ?? 0) + parseFloat(logPayAmount), logPayEntry.amount)
+    const nowPaid = newPaid >= logPayEntry.amount
+    await db.businessExpenses.update(logPayEntry.id!, { amountPaid: newPaid, isPaid: nowPaid, pendingSync: true })
+    if (navigator.onLine && logPayEntry.supabaseId) {
+      const { error } = await supabase.from('business_expenses')
+        .update({ amount_paid: newPaid, is_paid: nowPaid })
+        .eq('id', logPayEntry.supabaseId)
+      if (!error) await db.businessExpenses.update(logPayEntry.id!, { pendingSync: false })
+    }
+    setLogPayEntry(null)
+    setLogPayAmount('')
+    setLogPaySaving(false)
     load()
   }
 
@@ -505,12 +526,66 @@ export default function BusinessExpenses() {
                 </div>
               )}
 
+              {!previewEntry.isPaid && (previewEntry.amountPaid ?? 0) > 0 && (
+                <button
+                  onClick={() => { setLogPayEntry(previewEntry); setClosingPreview(true) }}
+                  style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#7A9E7E', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #7A9E7E44', marginBottom: '10px' }}
+                >
+                  Log Payment
+                </button>
+              )}
               <button
                 onClick={() => { setClosingPreview(true); setEditing(previewEntry); setShowForm(true) }}
                 style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#E8A838', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #E8A83844' }}
               >
                 Edit
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Log Pay modal */}
+      {logPayEntry && (
+        <div
+          onClick={() => { setLogPayEntry(null); setLogPayAmount('') }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 110, display: 'flex', alignItems: 'flex-end' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: '100%', background: '#F9F3EE', borderRadius: '20px 20px 0 0' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
+              <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#d1ccc8' }} />
+            </div>
+            <div style={{ padding: '16px 20px', paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#2D2D2D', margin: '0 0 4px' }}>Log Payment</h3>
+              <p style={{ fontSize: '13px', color: '#9ca3af', margin: '0 0 16px' }}>
+                {logPayEntry.name} · Balance {fmt(logPayEntry.amount - (logPayEntry.amountPaid ?? 0))}
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#6b7280', marginBottom: '6px', display: 'block' }}>Amount (₱) *</span>
+                  <input
+                    style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e5e0db', borderRadius: '10px', fontSize: '15px', color: '#2D2D2D', background: '#fff', outline: 'none', boxSizing: 'border-box', WebkitAppearance: 'none' }}
+                    type="number" inputMode="decimal" placeholder="0.00" autoFocus
+                    value={logPayAmount} onChange={e => setLogPayAmount(e.target.value)}
+                  />
+                </div>
+                <button
+                  onClick={handleLogPay}
+                  disabled={!logPayAmount || parseFloat(logPayAmount) <= 0 || logPaySaving}
+                  style={{
+                    width: '100%', padding: '14px', border: 'none', borderRadius: '12px',
+                    background: logPayAmount && parseFloat(logPayAmount) > 0 ? '#7A9E7E' : '#e5e0db',
+                    color: logPayAmount && parseFloat(logPayAmount) > 0 ? '#fff' : '#9ca3af',
+                    fontSize: '15px', fontWeight: 700, cursor: logPayAmount && parseFloat(logPayAmount) > 0 ? 'pointer' : 'default',
+                    boxShadow: logPayAmount && parseFloat(logPayAmount) > 0 ? '0 4px 14px #7A9E7E44' : 'none',
+                  }}
+                >
+                  {logPaySaving ? 'Saving...' : 'Confirm Payment'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
