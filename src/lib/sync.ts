@@ -54,6 +54,7 @@ export async function syncPendingItems(): Promise<void> {
   for (const o of pendingOrders) {
     const payload = {
       customer_name: o.customerName, description: o.description,
+      fulfillment_type: o.fulfillmentType ?? 'pickup',
       quantity: o.quantity ?? null, time: o.time ?? null,
       order_date: o.orderDate, due_date: o.dueDate,
       total_amount: o.totalAmount, deposit_paid: o.depositPaid,
@@ -145,6 +146,7 @@ export async function restoreFromSupabase(): Promise<void> {
     for (const r of (ord.data ?? [])) {
       const localId = await db.orders.add({
         supabaseId: r.id, customerName: r.customer_name, description: r.description,
+        fulfillmentType: r.fulfillment_type ?? 'pickup',
         quantity: r.quantity, time: r.time, orderDate: r.order_date, dueDate: r.due_date,
         totalAmount: r.total_amount, depositPaid: r.deposit_paid, isDone: r.is_done, notes: r.notes,
       })

@@ -495,14 +495,16 @@ export default function OrdersCalendar() {
 
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px' }}>
                 {previewOrder.isDone && (
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#7A9E7E', background: '#7A9E7E18', borderRadius: '6px', padding: '3px 10px' }}>Done</span>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#7A9E7E', background: '#7A9E7E18', borderRadius: '6px', padding: '3px 10px' }}>Paid</span>
                 )}
                 <span style={{
                   fontSize: '12px', fontWeight: 700, borderRadius: '6px', padding: '3px 10px',
                   color: (previewOrder.fulfillmentType ?? 'pickup') === 'delivery' ? '#7A9E7E' : '#C9848A',
                   background: (previewOrder.fulfillmentType ?? 'pickup') === 'delivery' ? '#7A9E7E18' : '#C9848A18',
                 }}>
-                  {(previewOrder.fulfillmentType ?? 'pickup') === 'delivery' ? '🚚 Delivery' : '🌸 Pickup'}
+                  {(previewOrder.fulfillmentType ?? 'pickup') === 'delivery'
+                    ? (previewOrder.isDone ? '🚚 Delivered' : '🚚 Delivery')
+                    : (previewOrder.isDone ? '🌸 Picked up' : '🌸 Pickup')}
                 </span>
               </div>
 
