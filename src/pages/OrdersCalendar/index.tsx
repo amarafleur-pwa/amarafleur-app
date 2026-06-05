@@ -5,8 +5,10 @@ import type { Order, Payment } from '../../db/db'
 import OrderForm from './OrderForm'
 import PaymentForm from '../CustomerPayments/PaymentForm'
 import { supabase } from '../../lib/supabase'
+import { deleteSheetRow } from '../../lib/sheets'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
+import SwipeableItem from '../../components/SwipeableItem'
 
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
@@ -66,6 +68,10 @@ export default function OrdersCalendar() {
   const [closingPreview, setClosingPreview] = useState(false)
   const [showPayForm, setShowPayForm] = useState(false)
 
+  // Advance swipe + delete
+  const [activeSwipeId, setActiveSwipeId] = useState<number | null>(null)
+  const [pendingDeleteOrder, setPendingDeleteOrder] = useState<Order | null>(null)
+
   // Form
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Order | undefined>()
@@ -120,6 +126,16 @@ export default function OrdersCalendar() {
       await supabase.from('orders').update({ is_done: !order.isDone }).eq('id', order.supabaseId)
     }
     await db.orders.update(order.id!, { isDone: !order.isDone })
+    load()
+  }
+
+  async function handleDeleteAdvanceOrder(order: Order) {
+    if (order.supabaseId) {
+      deleteSheetRow('Orders', order.supabaseId)
+      await supabase.from('orders').delete().eq('id', order.supabaseId)
+    }
+    await db.payments.where('orderId').equals(order.id!).delete()
+    await db.orders.delete(order.id!)
     load()
   }
 
@@ -254,7 +270,7 @@ export default function OrdersCalendar() {
                             color: fulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
                             background: fulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
                           }}>
-                            {fulfillment === 'delivery' ? '🚚 Delivery' : '🌸 Pickup'}
+                            {fulfillment === 'delivery' ? '🚚 Delivered' : '🌸 Picked up'}
                           </span>
                           {o.time && (
                             <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500 }}>{formatTime(o.time)}</span>
@@ -385,57 +401,61 @@ export default function OrdersCalendar() {
                     .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
                     .map(o => {
                       const fulfillment = o.fulfillmentType ?? 'pickup'
+                      const fulfillLabel = o.isDone
+                        ? (fulfillment === 'delivery' ? '🚚 Delivered' : '🌸 Picked up')
+                        : (fulfillment === 'delivery' ? '🚚 Delivery' : '🌸 Pickup')
                       return (
-                        <div
+                        <SwipeableItem
                           key={o.id}
-                          onClick={() => setPreviewOrder(o)}
-                          style={{ background: '#fff', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', opacity: o.isDone ? 0.6 : 1, cursor: 'pointer' }}
+                          id={o.id!}
+                          activeId={activeSwipeId}
+                          onActivate={setActiveSwipeId}
+                          onPaid={() => toggleDone(o)}
+                          onEdit={() => openEdit(o)}
+                          onDelete={() => setPendingDeleteOrder(o)}
                         >
-                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                            <button
-                              onClick={e => { e.stopPropagation(); toggleDone(o) }}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, display: 'flex', marginTop: '2px' }}
-                            >
-                              {o.isDone ? <CheckCircle2 size={20} color="#7A9E7E" /> : <Circle size={20} color="#d1ccc8" />}
-                            </button>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                          <div
+                            onClick={() => setPreviewOrder(o)}
+                            style={{ background: '#fff', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', opacity: o.isDone ? 0.6 : 1, cursor: 'pointer' }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                              <button
+                                onClick={e => { e.stopPropagation(); toggleDone(o) }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, display: 'flex', marginTop: '2px' }}
+                              >
+                                {o.isDone ? <CheckCircle2 size={20} color="#7A9E7E" /> : <Circle size={20} color="#d1ccc8" />}
+                              </button>
+                              <div style={{ flex: 1, minWidth: 0 }}>
                                 <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', textDecoration: o.isDone ? 'line-through' : 'none', margin: 0 }}>
                                   {o.customerName}
                                 </p>
-                                <button
-                                  onClick={e => { e.stopPropagation(); openEdit(o) }}
-                                  style={{ background: '#f3f4f6', border: 'none', borderRadius: '7px', padding: '6px', cursor: 'pointer', display: 'flex', flexShrink: 0 }}
-                                >
-                                  <Pencil size={14} color="#6b7280" />
-                                </button>
+                                <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '3px', marginBottom: 0 }}>
+                                  {o.description}{o.quantity && o.quantity > 1 ? ` × ${o.quantity}` : ''}
+                                </p>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                                  <span style={{
+                                    fontSize: '11px', fontWeight: 700, borderRadius: '5px', padding: '2px 8px',
+                                    color: fulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
+                                    background: fulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
+                                  }}>
+                                    {fulfillLabel}
+                                  </span>
+                                  {o.time && <span style={{ fontSize: '12px', color: '#C9848A', fontWeight: 600 }}>{formatTime(o.time)}</span>}
+                                  {o.totalAmount > 0 && <span style={{ fontSize: '12px', color: '#2D2D2D', fontWeight: 600 }}>{fmt(o.totalAmount)}</span>}
+                                  {o.depositPaid > 0 && <span style={{ fontSize: '12px', color: '#9ca3af' }}>dep {fmt(o.depositPaid)}</span>}
+                                  {o.totalAmount > o.depositPaid && <span style={{ fontSize: '12px', color: '#E8A838', fontWeight: 600 }}>bal {fmt(o.totalAmount - o.depositPaid)}</span>}
+                                </div>
+                                {o.notes && <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '6px', fontStyle: 'italic', marginBottom: 0 }}>{o.notes}</p>}
                               </div>
-                              <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '3px', marginBottom: 0 }}>
-                                {o.description}{o.quantity && o.quantity > 1 ? ` × ${o.quantity}` : ''}
-                              </p>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
-                                <span style={{
-                                  fontSize: '11px', fontWeight: 700, borderRadius: '5px', padding: '2px 8px',
-                                  color: fulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
-                                  background: fulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
-                                }}>
-                                  {fulfillment === 'delivery' ? '🚚 Delivery' : '🌸 Pickup'}
-                                </span>
-                                {o.time && <span style={{ fontSize: '12px', color: '#C9848A', fontWeight: 600 }}>{formatTime(o.time)}</span>}
-                                {o.totalAmount > 0 && <span style={{ fontSize: '12px', color: '#2D2D2D', fontWeight: 600 }}>{fmt(o.totalAmount)}</span>}
-                                {o.depositPaid > 0 && <span style={{ fontSize: '12px', color: '#9ca3af' }}>dep {fmt(o.depositPaid)}</span>}
-                                {o.totalAmount > o.depositPaid && <span style={{ fontSize: '12px', color: '#E8A838', fontWeight: 600 }}>bal {fmt(o.totalAmount - o.depositPaid)}</span>}
-                              </div>
-                              {o.notes && <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '6px', fontStyle: 'italic', marginBottom: 0 }}>{o.notes}</p>}
                             </div>
-                          </div>
 
-                          {o.isDone && (
-                            <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #f3f4f6' }}>
-                              <span style={{ fontSize: '11px', fontWeight: 700, color: '#7A9E7E', background: '#7A9E7E18', borderRadius: '5px', padding: '2px 8px' }}>Done</span>
-                            </div>
-                          )}
-                        </div>
+                            {o.isDone && (
+                              <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #f3f4f6' }}>
+                                <span style={{ fontSize: '11px', fontWeight: 700, color: '#7A9E7E', background: '#7A9E7E18', borderRadius: '5px', padding: '2px 8px' }}>Done</span>
+                              </div>
+                            )}
+                          </div>
+                        </SwipeableItem>
                       )
                     })}
                 </div>
@@ -545,6 +565,37 @@ export default function OrdersCalendar() {
                     style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#E8A838', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #E8A83844' }}
                   >
                     Edit
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* Delete confirmation */}
+          {pendingDeleteOrder && (
+            <div
+              onClick={() => setPendingDeleteOrder(null)}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+            >
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{ background: '#fff', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '320px', boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}
+              >
+                <p style={{ fontSize: '16px', fontWeight: 700, color: '#2D2D2D', marginBottom: '6px' }}>Delete order?</p>
+                <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '20px' }}>
+                  "{pendingDeleteOrder.customerName}" will be permanently deleted.
+                </p>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => setPendingDeleteOrder(null)}
+                    style={{ flex: 1, padding: '12px', border: '1.5px solid #e5e0db', borderRadius: '10px', background: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer', color: '#6b7280' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => { const o = pendingDeleteOrder; setPendingDeleteOrder(null); handleDeleteAdvanceOrder(o) }}
+                    style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '10px', background: '#C9848A', fontSize: '14px', fontWeight: 700, cursor: 'pointer', color: '#fff', boxShadow: '0 2px 8px #C9848A44' }}
+                  >
+                    Delete
                   </button>
                 </div>
               </div>

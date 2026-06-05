@@ -139,7 +139,11 @@ export default function BusinessExpenses() {
       const { error } = await supabase.from('business_expenses')
         .update({ amount_paid: newPaid, is_paid: nowPaid })
         .eq('id', logPayEntry.supabaseId)
-      if (!error) await db.businessExpenses.update(logPayEntry.id!, { pendingSync: false })
+      if (!error) {
+        await db.businessExpenses.update(logPayEntry.id!, { pendingSync: false })
+        deleteSheetRow('Business Expenses', logPayEntry.supabaseId)
+        logBusinessExpense({ ...logPayEntry, amountPaid: newPaid }, logPayEntry.supabaseId)
+      }
     }
     setLogPayEntry(null)
     setLogPayAmount('')

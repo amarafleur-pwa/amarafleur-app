@@ -13,6 +13,7 @@ export async function syncPendingItems(): Promise<void> {
       category: e.category ?? null, is_paid: e.isPaid,
       is_recurring: e.isRecurring, notes: e.notes ?? null,
       expense_type: e.expenseType ?? null, receipt_url: e.receiptUrl ?? null,
+      amount_paid: e.amountPaid ?? null,
     }
     if (!e.supabaseId) {
       const { data: row, error } = await supabase.from('personal_expenses').insert(payload).select().single()
@@ -124,6 +125,7 @@ export async function restoreFromSupabase(): Promise<void> {
         supabaseId: r.id, name: r.name, amount: r.amount, dueDate: r.due_date,
         category: r.category, isPaid: r.is_paid, isRecurring: r.is_recurring, notes: r.notes,
         expenseType: r.expense_type ?? undefined, receiptUrl: r.receipt_url ?? undefined,
+        amountPaid: r.amount_paid ?? undefined,
       }))
     )
 

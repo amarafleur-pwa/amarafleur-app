@@ -3,8 +3,8 @@ import { JWT } from 'google-auth-library'
 const BASE = 'https://sheets.googleapis.com/v4/spreadsheets'
 
 const HEADERS: Record<string, string[]> = {
-  'Personal Expenses': ['Name', 'Amount', 'Due Date', 'Category', 'Recurring', 'Notes', 'Logged At', 'App ID'],
-  'Business Expenses': ['Name', 'Amount', 'Due Date', 'Category', 'Recurring', 'Notes', 'Logged At', 'App ID'],
+  'Personal Expenses': ['Name', 'Amount', 'Amount Paid', 'Due Date', 'Category', 'Recurring', 'Notes', 'Logged At', 'App ID'],
+  'Business Expenses': ['Name', 'Amount', 'Amount Paid', 'Due Date', 'Category', 'Recurring', 'Notes', 'Logged At', 'App ID'],
   'Orders': ['Customer Name', 'Description', 'Quantity', 'Due Date', 'Time', 'Total Amount', 'Deposit Paid', 'Notes', 'Logged At', 'App ID'],
   'Payments': ['Customer Name', 'Order Description', 'Amount', 'Type', 'Paid At', 'Notes', 'Logged At', 'App ID'],
   'Customers': ['Name', 'Phone', 'Notes', 'Logged At', 'App ID'],

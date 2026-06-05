@@ -24,21 +24,21 @@ export function deleteSheetRow(sheet: string, appId: string) {
 }
 
 export function logPersonalExpense(e: {
-  name: string; amount: number; dueDate: string; category?: string;
+  name: string; amount: number; amountPaid?: number; dueDate: string; category?: string;
   isRecurring: boolean; notes?: string
 }, appId: string) {
   void appendRow('Personal Expenses', [
-    e.name, e.amount, e.dueDate, e.category ?? '',
+    e.name, e.amount, e.amountPaid ?? 0, e.dueDate, e.category ?? '',
     e.isRecurring ? 'Yes' : 'No', e.notes ?? '', now(), appId,
   ])
 }
 
 export function logBusinessExpense(e: {
-  name: string; amount: number; dueDate: string; category: string;
+  name: string; amount: number; amountPaid?: number; dueDate: string; category: string;
   isRecurring?: boolean; notes?: string
 }, appId: string) {
   void appendRow('Business Expenses', [
-    e.name, e.amount, e.dueDate, e.category,
+    e.name, e.amount, e.amountPaid ?? 0, e.dueDate, e.category,
     e.isRecurring ? 'Yes' : 'No', e.notes ?? '', now(), appId,
   ])
 }
