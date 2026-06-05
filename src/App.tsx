@@ -63,7 +63,12 @@ function BottomNav() {
   return (
     <>
       {moreOpen && (
-        <div onClick={() => setMoreOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 49 }} />
+        <div onClick={() => setMoreOpen(false)} style={{
+          position: 'fixed', inset: 0, zIndex: 49,
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          background: 'rgba(249, 243, 238, 0.55)',
+        }} />
       )}
 
       {moreOpen && (
@@ -77,19 +82,22 @@ function BottomNav() {
           alignItems: 'flex-end',
           gap: 8,
         }}>
-          {moreTabs.map(({ to, icon: Icon, label }) => (
+          {moreTabs.map(({ to, icon: Icon, label }, i) => (
             <NavLink key={to} to={to} style={{ textDecoration: 'none' }}>
               {({ isActive }) => (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '10px 16px',
-                  background: isActive ? '#FDE8EA' : '#fff',
-                  borderRadius: 50,
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.10)',
-                  color: isActive ? '#C9848A' : '#374151',
-                  fontWeight: isActive ? 600 : 400,
-                  fontSize: 15,
-                }}>
+                <div
+                  className="pill-pop"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 16px',
+                    background: isActive ? '#FDE8EA' : '#fff',
+                    borderRadius: 50,
+                    boxShadow: '0 2px 12px rgba(0,0,0,0.10)',
+                    color: isActive ? '#C9848A' : '#374151',
+                    fontWeight: isActive ? 600 : 400,
+                    fontSize: 15,
+                    animationDelay: `${(moreTabs.length - 1 - i) * 40}ms`,
+                  }}>
                   <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
                   {label}
                 </div>
