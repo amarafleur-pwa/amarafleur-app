@@ -12,6 +12,7 @@ export async function syncPendingItems(): Promise<void> {
       name: e.name, amount: e.amount, due_date: e.dueDate,
       category: e.category ?? null, is_paid: e.isPaid,
       is_recurring: e.isRecurring, notes: e.notes ?? null,
+      expense_type: e.expenseType ?? null, receipt_url: e.receiptUrl ?? null,
     }
     if (!e.supabaseId) {
       const { data: row, error } = await supabase.from('personal_expenses').insert(payload).select().single()
@@ -31,7 +32,8 @@ export async function syncPendingItems(): Promise<void> {
     const payload = {
       name: e.name, amount: e.amount, due_date: e.dueDate,
       mode_of_payment: e.modeOfPayment ?? null, is_paid: e.isPaid,
-      category: e.category, notes: e.notes ?? null,
+      is_recurring: e.isRecurring ?? false, category: e.category, notes: e.notes ?? null,
+      expense_type: e.expenseType ?? null, receipt_url: e.receiptUrl ?? null,
     }
     if (!e.supabaseId) {
       const { data: row, error } = await supabase.from('business_expenses').insert(payload).select().single()
@@ -121,13 +123,16 @@ export async function restoreFromSupabase(): Promise<void> {
       (pe.data ?? []).map(r => ({
         supabaseId: r.id, name: r.name, amount: r.amount, dueDate: r.due_date,
         category: r.category, isPaid: r.is_paid, isRecurring: r.is_recurring, notes: r.notes,
+        expenseType: r.expense_type ?? undefined, receiptUrl: r.receipt_url ?? undefined,
       }))
     )
 
     await db.businessExpenses.bulkAdd(
       (be.data ?? []).map(r => ({
         supabaseId: r.id, name: r.name, amount: r.amount, dueDate: r.due_date,
-        modeOfPayment: r.mode_of_payment, isPaid: r.is_paid, category: r.category, notes: r.notes,
+        modeOfPayment: r.mode_of_payment, isPaid: r.is_paid, isRecurring: r.is_recurring ?? false,
+        category: r.category, notes: r.notes,
+        expenseType: r.expense_type ?? undefined, receiptUrl: r.receipt_url ?? undefined,
       }))
     )
 

@@ -1,0 +1,139 @@
+import { useRef, useState } from 'react'
+
+interface Props {
+  onPaid?: () => void
+  onEdit: () => void
+  onDelete: () => void
+  children: React.ReactNode
+}
+
+const SNAP_THRESHOLD = 60
+const REVEAL_WIDTH_3 = 168  // Paid + Edit + Delete
+const REVEAL_WIDTH_2 = 112  // Edit + Delete only
+
+export default function SwipeableItem({ onPaid, onEdit, onDelete, children }: Props) {
+  const revealW = onPaid ? REVEAL_WIDTH_3 : REVEAL_WIDTH_2
+  const [offset, setOffset] = useState(0)
+  const [isOpen, setIsOpen] = useState(false)
+  const startX = useRef(0)
+  const startOffset = useRef(0)
+  const dragging = useRef(false)
+
+  function onTouchStart(e: React.TouchEvent) {
+    startX.current = e.touches[0].clientX
+    startOffset.current = isOpen ? -revealW : 0
+    dragging.current = true
+  }
+
+  function onTouchMove(e: React.TouchEvent) {
+    if (!dragging.current) return
+    const dx = e.touches[0].clientX - startX.current
+    const next = Math.max(-revealW, Math.min(0, startOffset.current + dx))
+    setOffset(next)
+  }
+
+  function onTouchEnd() {
+    dragging.current = false
+    const open = offset < -SNAP_THRESHOLD
+    setOffset(open ? -revealW : 0)
+    setIsOpen(open)
+  }
+
+  function close() {
+    setOffset(0)
+    setIsOpen(false)
+  }
+
+  function handleEdit(e: React.MouseEvent) {
+    e.stopPropagation()
+    close()
+    onEdit()
+  }
+
+  function handlePaid(e: React.MouseEvent) {
+    e.stopPropagation()
+    close()
+    onPaid?.()
+  }
+
+  function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation()
+    close()
+    onDelete()
+  }
+
+  function handleCardClick() {
+    if (isOpen) { close(); return }
+    onEdit()
+  }
+
+  return (
+    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px' }}>
+      {/* Action buttons behind */}
+      <div style={{
+        position: 'absolute', right: 0, top: 0, bottom: 0,
+        display: 'flex', alignItems: 'stretch',
+        width: revealW,
+      }}>
+        {onPaid && (
+          <button
+            onClick={handlePaid}
+            style={{
+              flex: 1, border: 'none', cursor: 'pointer',
+              background: '#7A9E7E', color: '#fff',
+              fontSize: '11px', fontWeight: 700,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: '3px',
+            }}
+          >
+            <span style={{ fontSize: '16px' }}>✓</span>
+            Paid
+          </button>
+        )}
+        <button
+          onClick={handleEdit}
+          style={{
+            flex: 1, border: 'none', cursor: 'pointer',
+            background: '#E8A838', color: '#fff',
+            fontSize: '11px', fontWeight: 700,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: '3px',
+          }}
+        >
+          <span style={{ fontSize: '16px' }}>✎</span>
+          Edit
+        </button>
+        <button
+          onClick={handleDelete}
+          style={{
+            flex: 1, border: 'none', cursor: 'pointer',
+            background: '#C9848A', color: '#fff',
+            fontSize: '11px', fontWeight: 700,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: '3px',
+            borderRadius: '0 12px 12px 0',
+          }}
+        >
+          <span style={{ fontSize: '16px' }}>✕</span>
+          Delete
+        </button>
+      </div>
+
+      {/* Card */}
+      <div
+        onClick={handleCardClick}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        style={{
+          transform: `translateX(${offset}px)`,
+          transition: dragging.current ? 'none' : 'transform 0.22s ease',
+          position: 'relative',
+          cursor: 'pointer',
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}

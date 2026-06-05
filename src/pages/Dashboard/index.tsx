@@ -248,7 +248,7 @@ export default function Dashboard() {
       </div>
 
       {/* Today's Orders */}
-      <div style={{ ...card, borderLeft: '4px solid #C9848A' }}>
+      <div style={{ ...card }}>
         <div style={cardHeader}>
           <CalendarCheck2 size={18} color="#C9848A" />
           <span style={cardTitle}>Today's Orders</span>
@@ -285,7 +285,7 @@ export default function Dashboard() {
       </div>
 
       {/* Upcoming Bills */}
-      <div style={{ ...card, borderLeft: '4px solid #E8A838' }}>
+      <div style={{ ...card }}>
         <div style={cardHeader}>
           <Clock size={18} color="#E8A838" />
           <span style={cardTitle}>Upcoming Bills</span>
@@ -329,7 +329,7 @@ export default function Dashboard() {
       </div>
 
       {/* Unpaid Balances */}
-      <div style={{ ...card, borderLeft: '4px solid #7A9E7E' }}>
+      <div style={{ ...card }}>
         <div style={cardHeader}>
           <DollarSign size={18} color="#7A9E7E" />
           <span style={cardTitle}>Unpaid Balances</span>

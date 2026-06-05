@@ -11,6 +11,8 @@ export interface PersonalExpense {
   isPaid: boolean
   isRecurring: boolean
   notes?: string
+  expenseType?: 'one-time' | 'monthly' | 'instant'
+  receiptUrl?: string
 }
 
 export interface BusinessExpense {
@@ -22,8 +24,11 @@ export interface BusinessExpense {
   dueDate: string
   modeOfPayment?: string
   isPaid: boolean
+  isRecurring?: boolean
   category: string
   notes?: string
+  expenseType?: 'one-time' | 'monthly' | 'instant'
+  receiptUrl?: string
 }
 
 export interface Order {
@@ -117,6 +122,10 @@ class FlowerShopDB extends Dexie {
       businessExpenses: '++id, dueDate, isPaid, category, supabaseId, pendingSync',
       orders: '++id, customerName, orderDate, dueDate, isDone, supabaseId, pendingSync',
       payments: '++id, orderId, paidAt, type, supabaseId, pendingSync',
+    })
+    this.version(7).stores({
+      personalExpenses: '++id, dueDate, isPaid, isRecurring, supabaseId, pendingSync, expenseType',
+      businessExpenses: '++id, dueDate, isPaid, isRecurring, category, supabaseId, pendingSync, expenseType',
     })
   }
 }
