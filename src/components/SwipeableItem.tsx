@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 
 interface Props {
-  id: string | number
-  activeId: string | number | null
-  onActivate: (id: string | number | null) => void
+  id: number
+  activeId: number | null
+  onActivate: (id: number | null) => void
   onPaid?: () => void
   onEdit: () => void
   onDelete: () => void
