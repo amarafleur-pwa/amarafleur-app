@@ -72,9 +72,10 @@ export default function Settings() {
     const businessIds = businessExpenses.map(e => e.supabaseId).filter(Boolean) as string[]
     const customerIds = customers.map(c => c.supabaseId).filter(Boolean) as string[]
 
+    // payments MUST go before orders (FK: payments.order_id → orders.id)
+    if (paymentIds.length) await supabase.from('payments').delete().in('id', paymentIds)
+    if (orderIds.length) await supabase.from('orders').delete().in('id', orderIds)
     await Promise.all([
-      orderIds.length ? supabase.from('orders').delete().in('id', orderIds) : Promise.resolve(),
-      paymentIds.length ? supabase.from('payments').delete().in('id', paymentIds) : Promise.resolve(),
       personalIds.length ? supabase.from('personal_expenses').delete().in('id', personalIds) : Promise.resolve(),
       businessIds.length ? supabase.from('business_expenses').delete().in('id', businessIds) : Promise.resolve(),
       customerIds.length ? supabase.from('customers').delete().in('id', customerIds) : Promise.resolve(),
