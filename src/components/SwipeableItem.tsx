@@ -19,6 +19,7 @@ export default function SwipeableItem({ id, activeId, onActivate, onPaid, onPrev
   const revealW = onPaid ? REVEAL_WIDTH_3 : REVEAL_WIDTH_2
   const [offset, setOffset] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
+  const [isSnapped, setIsSnapped] = useState(false)
   const startX = useRef(0)
   const startOffset = useRef(0)
   const dragging = useRef(false)
@@ -55,6 +56,7 @@ export default function SwipeableItem({ id, activeId, onActivate, onPaid, onPrev
     direction.current = 'close'
     setOffset(0)
     setIsOpen(false)
+    setIsSnapped(false)
   }
 
   function handleEdit(e: React.MouseEvent) {
@@ -142,13 +144,14 @@ export default function SwipeableItem({ id, activeId, onActivate, onPaid, onPrev
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
+        onTransitionEnd={() => { if (isOpen) setIsSnapped(true) }}
         style={{
           transform: `translateX(${offset}px)`,
           transition: dragging.current ? 'none' : `transform 0.28s ${ease}`,
           position: 'relative',
           cursor: 'pointer',
           overflow: 'hidden',
-          borderRadius: isOpen ? '12px 0 0 12px' : '12px',
+          borderRadius: isSnapped ? '12px 0 0 12px' : '12px',
         }}
       >
         {children}
