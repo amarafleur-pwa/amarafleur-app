@@ -295,15 +295,16 @@ export default function Dashboard() {
                 <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                     <span style={{
-                      minWidth: '38px',
+                      width: '52px',
                       textAlign: 'center',
                       background: color + '22',
                       color,
                       borderRadius: '5px',
-                      padding: '2px 3px',
+                      padding: '2px 0',
                       fontSize: '10px',
                       fontWeight: 700,
                       flexShrink: 0,
+                      boxSizing: 'border-box',
                     }}>
                       {label}
                     </span>
