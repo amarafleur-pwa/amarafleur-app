@@ -34,12 +34,12 @@ export function logPersonalExpense(e: {
 }
 
 export function logBusinessExpense(e: {
-  name: string; amount: number; dueDate: string; modeOfPayment?: string;
-  category: string; notes?: string
+  name: string; amount: number; dueDate: string; category: string;
+  isRecurring?: boolean; notes?: string
 }, appId: string) {
   void appendRow('Business Expenses', [
-    e.name, e.dueDate, e.modeOfPayment ?? '', e.amount,
-    e.category, e.notes ?? '', now(), appId,
+    e.name, e.amount, e.dueDate, e.category,
+    e.isRecurring ? 'Yes' : 'No', e.notes ?? '', now(), appId,
   ])
 }
 
