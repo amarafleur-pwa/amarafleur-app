@@ -45,12 +45,13 @@ export function logBusinessExpense(e: {
 
 export function logOrder(o: {
   customerName: string; description: string; quantity?: number;
-  dueDate: string; time?: string; totalAmount: number; depositPaid: number; notes?: string
+  dueDate: string; time?: string; totalAmount: number; depositPaid: number;
+  notes?: string; fulfillmentType?: 'delivery' | 'pickup'
 }, appId: string) {
   void appendRow('Orders', [
     o.customerName, o.description, o.quantity ?? 1,
     o.dueDate, o.time ?? '', o.totalAmount, o.depositPaid,
-    o.notes ?? '', now(), appId,
+    o.notes ?? '', o.fulfillmentType ?? '', now(), appId,
   ])
 }
 
