@@ -121,7 +121,6 @@ export default function PersonalExpenses() {
     load()
   }
 
-  const today = todayStr()
   const q = search.toLowerCase()
 
   const filtered = expenses.filter(e => {
