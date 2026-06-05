@@ -76,6 +76,7 @@ export default function PersonalExpenses() {
   const [logPayEntry, setLogPayEntry] = useState<PersonalExpense | null>(null)
   const [logPayAmount, setLogPayAmount] = useState('')
   const [logPaySaving, setLogPaySaving] = useState(false)
+  const [confirmPayAll, setConfirmPayAll] = useState<PersonalExpense | null>(null)
 
   function load() {
     db.personalExpenses
@@ -148,6 +149,25 @@ export default function PersonalExpenses() {
     setLogPayAmount('')
     setLogPaySaving(false)
     load()
+  }
+
+  async function handlePayAll() {
+    if (!confirmPayAll) return
+    const entry = confirmPayAll
+    setConfirmPayAll(null)
+    await db.personalExpenses.update(entry.id!, { amountPaid: entry.amount, isPaid: true, pendingSync: true })
+    if (navigator.onLine && entry.supabaseId) {
+      const { error } = await supabase.from('personal_expenses')
+        .update({ amount_paid: entry.amount, is_paid: true })
+        .eq('id', entry.supabaseId)
+      if (!error) {
+        await db.personalExpenses.update(entry.id!, { pendingSync: false })
+        deleteSheetRow('Personal Expenses', entry.supabaseId)
+        logPersonalExpense({ ...entry, amountPaid: entry.amount }, entry.supabaseId)
+      }
+    }
+    load()
+    setClosingPreview(true)
   }
 
   const q = search.toLowerCase()
@@ -511,12 +531,20 @@ export default function PersonalExpenses() {
               )}
 
               {!previewEntry.isPaid && (previewEntry.amountPaid ?? 0) > 0 && (
-                <button
-                  onClick={() => { setLogPayEntry(previewEntry); setClosingPreview(true) }}
-                  style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#7A9E7E', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #7A9E7E44', marginBottom: '10px' }}
-                >
-                  Log Payment
-                </button>
+                <>
+                  <button
+                    onClick={() => setConfirmPayAll(previewEntry)}
+                    style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#8B1A1A', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #8B1A1A44', marginBottom: '10px' }}
+                  >
+                    Pay the remaining
+                  </button>
+                  <button
+                    onClick={() => { setLogPayEntry(previewEntry); setClosingPreview(true) }}
+                    style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#7A9E7E', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #7A9E7E44', marginBottom: '10px' }}
+                  >
+                    Log Payment
+                  </button>
+                </>
               )}
               <button
                 onClick={() => { setClosingPreview(true); setEditing(previewEntry); setShowForm(true) }}
@@ -570,6 +598,26 @@ export default function PersonalExpenses() {
                   {logPaySaving ? 'Saving...' : 'Confirm Payment'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pay remaining confirmation */}
+      {confirmPayAll && (
+        <div onClick={() => setConfirmPayAll(null)} style={{ position: 'fixed', inset: 0, background: '#00000066', zIndex: 60, display: 'flex', alignItems: 'flex-end' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '100%', background: '#FAF7F4', borderRadius: '20px 20px 0 0', padding: '24px 20px', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#2D2D2D', margin: '0 0 8px' }}>Pay the remaining?</h3>
+            <p style={{ fontSize: '13px', color: '#9ca3af', margin: '0 0 20px' }}>
+              This will mark <strong style={{ color: '#2D2D2D' }}>{confirmPayAll.name}</strong> as fully paid by adding {fmt(confirmPayAll.amount - (confirmPayAll.amountPaid ?? 0))} to the paid amount.
+            </p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setConfirmPayAll(null)} style={{ flex: 1, padding: '14px', border: '1.5px solid #e5e0db', borderRadius: '12px', background: '#fff', color: '#9ca3af', fontSize: '15px', fontWeight: 600, cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={handlePayAll} style={{ flex: 1, padding: '14px', border: 'none', borderRadius: '12px', background: '#8B1A1A', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #8B1A1A44' }}>
+                Confirm
+              </button>
             </div>
           </div>
         </div>
