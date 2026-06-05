@@ -318,12 +318,12 @@ export default function PersonalExpenses() {
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px', flexWrap: 'wrap' }}>
                         {!isInstant && (
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: u.color, background: u.bg, borderRadius: '5px', padding: '1px 6px' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: u.color, background: u.bg, borderRadius: '5px', padding: '1px 8px', minWidth: '44px', display: 'inline-block', textAlign: 'center' }}>
                             {u.label}
                           </span>
                         )}
                         {isInstant && (
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#7A9E7E', background: '#7A9E7E18', borderRadius: '5px', padding: '1px 6px' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#7A9E7E', background: '#7A9E7E18', borderRadius: '5px', padding: '1px 8px', minWidth: '44px', display: 'inline-block', textAlign: 'center' }}>
                             Paid
                           </span>
                         )}
