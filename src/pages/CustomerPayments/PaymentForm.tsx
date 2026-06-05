@@ -28,6 +28,9 @@ const input: React.CSSProperties = {
   background: '#fff',
   outline: 'none',
   boxSizing: 'border-box',
+  minWidth: 0,
+  maxWidth: '100%',
+  WebkitAppearance: 'none',
 }
 
 const lbl: React.CSSProperties = {

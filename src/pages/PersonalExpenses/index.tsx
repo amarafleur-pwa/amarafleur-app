@@ -10,6 +10,7 @@ import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
 
 type ListTab = 'active' | 'monthly' | 'instant' | 'history'
+type HistoryFilter = 'today' | 'yesterday' | '7days' | 'range'
 
 function todayStr() {
   return new Date().toISOString().split('T')[0]
@@ -42,18 +43,16 @@ function resolveType(e: PersonalExpense): 'one-time' | 'monthly' | 'instant' {
   return 'one-time'
 }
 
-function getMonthStrips(count = 12): { label: string; value: string }[] {
-  const result = []
+function yesterdayStr() {
   const d = new Date()
-  for (let i = 0; i < count; i++) {
-    const year = d.getFullYear()
-    const month = d.getMonth()
-    const value = `${year}-${String(month + 1).padStart(2, '0')}`
-    const label = d.toLocaleDateString('en-PH', { month: 'short', year: '2-digit' })
-    result.push({ label, value })
-    d.setMonth(month - 1)
-  }
-  return result
+  d.setDate(d.getDate() - 1)
+  return d.toISOString().split('T')[0]
+}
+
+function daysAgoStr(n: number) {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d.toISOString().split('T')[0]
 }
 
 export default function PersonalExpenses() {
@@ -63,10 +62,11 @@ export default function PersonalExpenses() {
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<ListTab>('active')
   const [search, setSearch] = useState('')
-  const [historyMonth, setHistoryMonth] = useState(() => {
-    const d = new Date()
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-  })
+  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>('7days')
+  const [rangeFrom, setRangeFrom] = useState('')
+  const [rangeTo, setRangeTo] = useState('')
+  const [activeSwipeId, setActiveSwipeId] = useState<number | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<PersonalExpense | undefined>()
   const [pendingDelete, setPendingDelete] = useState<PersonalExpense | null>(null)
@@ -129,7 +129,18 @@ export default function PersonalExpenses() {
     if (tab === 'active') return !e.isPaid && (type === 'one-time' || type === 'monthly')
     if (tab === 'monthly') return type === 'monthly'
     if (tab === 'instant') return type === 'instant'
-    if (tab === 'history') return e.isPaid && e.dueDate.startsWith(historyMonth)
+    if (tab === 'history') {
+      if (!e.isPaid) return false
+      if (historyFilter === 'today') return e.dueDate === todayStr()
+      if (historyFilter === 'yesterday') return e.dueDate === yesterdayStr()
+      if (historyFilter === '7days') return e.dueDate >= daysAgoStr(7)
+      if (historyFilter === 'range') {
+        if (rangeFrom && e.dueDate < rangeFrom) return false
+        if (rangeTo && e.dueDate > rangeTo) return false
+        return true
+      }
+      return true
+    }
     return true
   })
 
@@ -145,7 +156,14 @@ export default function PersonalExpenses() {
     { key: 'history', label: 'History' },
   ]
 
-  const monthStrips = getMonthStrips(12)
+  const historyTotal = tab === 'history' ? filtered.reduce((s, e) => s + e.amount, 0) : 0
+
+  const historyPills: { key: HistoryFilter; label: string }[] = [
+    { key: 'today', label: 'Today' },
+    { key: 'yesterday', label: 'Yesterday' },
+    { key: '7days', label: '7 Days' },
+    { key: 'range', label: '📅 Range' },
+  ]
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
@@ -205,24 +223,42 @@ export default function PersonalExpenses() {
           })}
         </div>
 
-        {/* Month strip — History tab only */}
+        {/* History filters */}
         {tab === 'history' && (
-          <div style={{ display: 'flex', gap: '6px', marginTop: '10px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none' }}>
-            {monthStrips.map(m => (
-              <button
-                key={m.value}
-                onClick={() => setHistoryMonth(m.value)}
-                style={{
-                  padding: '5px 12px', borderRadius: '16px', border: 'none',
-                  fontSize: '12px', fontWeight: historyMonth === m.value ? 700 : 500,
-                  cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                  background: historyMonth === m.value ? '#2D2D2D' : '#fff',
-                  color: historyMonth === m.value ? '#fff' : '#6b7280',
-                }}
-              >
-                {m.label}
-              </button>
-            ))}
+          <div style={{ marginTop: '10px' }}>
+            <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none' }}>
+              {historyPills.map(p => (
+                <button
+                  key={p.key}
+                  onClick={() => setHistoryFilter(p.key)}
+                  style={{
+                    padding: '5px 12px', borderRadius: '16px', border: 'none',
+                    fontSize: '12px', fontWeight: historyFilter === p.key ? 700 : 500,
+                    cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                    background: historyFilter === p.key ? '#2D2D2D' : '#fff',
+                    color: historyFilter === p.key ? '#fff' : '#6b7280',
+                  }}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            {historyFilter === 'range' && (
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                <input
+                  type="date"
+                  value={rangeFrom}
+                  onChange={e => setRangeFrom(e.target.value)}
+                  style={{ flex: 1, padding: '8px 10px', border: '1.5px solid #e5e0db', borderRadius: '8px', fontSize: '13px', color: '#2D2D2D', background: '#fff', outline: 'none', minWidth: 0 }}
+                />
+                <input
+                  type="date"
+                  value={rangeTo}
+                  onChange={e => setRangeTo(e.target.value)}
+                  style={{ flex: 1, padding: '8px 10px', border: '1.5px solid #e5e0db', borderRadius: '8px', fontSize: '13px', color: '#2D2D2D', background: '#fff', outline: 'none', minWidth: 0 }}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -243,6 +279,13 @@ export default function PersonalExpenses() {
           </div>
         )}
 
+        {tab === 'history' && !loading && !error && filtered.length > 0 && (
+          <div style={{ background: '#fff', borderRadius: '10px', padding: '10px 14px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
+            <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 500 }}>Period Total</span>
+            <span style={{ fontSize: '16px', fontWeight: 700, color: '#2D2D2D' }}>{fmt(historyTotal)}</span>
+          </div>
+        )}
+
         {!loading && !error && filtered.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
             {filtered.map(e => {
@@ -252,6 +295,9 @@ export default function PersonalExpenses() {
               return (
                 <SwipeableItem
                   key={e.id}
+                  id={e.id!}
+                  activeId={activeSwipeId}
+                  onActivate={setActiveSwipeId}
                   onPaid={!isInstant ? () => markPaid(e) : undefined}
                   onEdit={() => { setEditing(e); setShowForm(true) }}
                   onDelete={() => setPendingDelete(e)}
@@ -289,7 +335,12 @@ export default function PersonalExpenses() {
                     {/* Right side: amount + receipt thumbnail */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                       {e.receiptUrl && (
-                        <img src={e.receiptUrl} alt="Receipt" style={{ width: '36px', height: '36px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #e5e0db' }} />
+                        <img
+                          src={e.receiptUrl}
+                          alt="Receipt"
+                          onClick={ev => { ev.stopPropagation(); setPreviewUrl(e.receiptUrl!) }}
+                          style={{ width: '36px', height: '36px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #e5e0db', cursor: 'zoom-in' }}
+                        />
                       )}
                       <p style={{ fontWeight: 700, fontSize: '14px', color: '#2D2D2D' }}>{fmt(e.amount)}</p>
                     </div>
@@ -344,6 +395,21 @@ export default function PersonalExpenses() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Image preview */}
+      {previewUrl && (
+        <div
+          onClick={() => setPreviewUrl(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+        >
+          <img
+            src={previewUrl}
+            alt="Receipt preview"
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '100%', maxHeight: '90svh', borderRadius: '12px', objectFit: 'contain' }}
+          />
         </div>
       )}
     </div>

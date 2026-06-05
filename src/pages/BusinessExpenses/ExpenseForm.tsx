@@ -20,6 +20,7 @@ const inp: React.CSSProperties = {
   border: '1.5px solid #e5e0db', borderRadius: '10px',
   fontSize: '15px', color: '#2D2D2D', background: '#fff',
   outline: 'none', boxSizing: 'border-box',
+  minWidth: 0, maxWidth: '100%', WebkitAppearance: 'none',
 }
 
 const lbl: React.CSSProperties = {

@@ -1,6 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 interface Props {
+  id: string | number
+  activeId: string | number | null
+  onActivate: (id: string | number | null) => void
   onPaid?: () => void
   onEdit: () => void
   onDelete: () => void
@@ -11,15 +14,21 @@ const SNAP_THRESHOLD = 60
 const REVEAL_WIDTH_3 = 168  // Paid + Edit + Delete
 const REVEAL_WIDTH_2 = 112  // Edit + Delete only
 
-export default function SwipeableItem({ onPaid, onEdit, onDelete, children }: Props) {
+export default function SwipeableItem({ id, activeId, onActivate, onPaid, onEdit, onDelete, children }: Props) {
   const revealW = onPaid ? REVEAL_WIDTH_3 : REVEAL_WIDTH_2
   const [offset, setOffset] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
   const startX = useRef(0)
   const startOffset = useRef(0)
   const dragging = useRef(false)
+  const direction = useRef<'open' | 'close'>('close')
+
+  useEffect(() => {
+    if (activeId !== id && isOpen) close()
+  }, [activeId, id])
 
   function onTouchStart(e: React.TouchEvent) {
+    onActivate(id)
     startX.current = e.touches[0].clientX
     startOffset.current = isOpen ? -revealW : 0
     dragging.current = true
@@ -35,11 +44,14 @@ export default function SwipeableItem({ onPaid, onEdit, onDelete, children }: Pr
   function onTouchEnd() {
     dragging.current = false
     const open = offset < -SNAP_THRESHOLD
+    direction.current = open ? 'open' : 'close'
     setOffset(open ? -revealW : 0)
     setIsOpen(open)
+    if (!open) onActivate(null)
   }
 
   function close() {
+    direction.current = 'close'
     setOffset(0)
     setIsOpen(false)
   }
@@ -66,6 +78,10 @@ export default function SwipeableItem({ onPaid, onEdit, onDelete, children }: Pr
     if (isOpen) { close(); return }
     onEdit()
   }
+
+  const ease = direction.current === 'open'
+    ? 'cubic-bezier(0.34, 1.56, 0.64, 1)'
+    : 'cubic-bezier(0.25, 0, 0.25, 1)'
 
   return (
     <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px' }}>
@@ -127,9 +143,11 @@ export default function SwipeableItem({ onPaid, onEdit, onDelete, children }: Pr
         onTouchEnd={onTouchEnd}
         style={{
           transform: `translateX(${offset}px)`,
-          transition: dragging.current ? 'none' : 'transform 0.22s ease',
+          transition: dragging.current ? 'none' : `transform 0.28s ${ease}`,
           position: 'relative',
           cursor: 'pointer',
+          overflow: 'hidden',
+          borderRadius: isOpen ? '12px 0 0 12px' : '12px',
         }}
       >
         {children}

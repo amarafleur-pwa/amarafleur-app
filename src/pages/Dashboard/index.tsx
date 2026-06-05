@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarCheck2, Clock, DollarSign, Wallet, ShoppingBag, Receipt } from 'lucide-react'
+import { CalendarCheck2, Clock, DollarSign } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order } from '../../db/db'
 import { useSyncVersion } from '../../lib/SyncContext'
@@ -127,8 +127,8 @@ export default function Dashboard() {
 
     Promise.all([
       db.orders.filter(o => o.dueDate === t && !o.isDone).toArray(),
-      db.personalExpenses.where('dueDate').belowOrEqual(in7).filter(e => !e.isPaid).toArray(),
-      db.businessExpenses.where('dueDate').belowOrEqual(in7).filter(e => !e.isPaid).toArray(),
+      db.personalExpenses.where('dueDate').belowOrEqual(in7).filter(e => !e.isPaid && e.expenseType !== 'instant').toArray(),
+      db.businessExpenses.where('dueDate').belowOrEqual(in7).filter(e => !e.isPaid && e.expenseType !== 'instant').toArray(),
       db.orders.filter(o => !o.isDone).toArray(),
     ]).then(([orders, personal, business, active]) => {
       setTodayOrders(orders)
@@ -161,13 +161,6 @@ export default function Dashboard() {
       setUnpaidCount(active.filter(o => o.totalAmount - o.depositPaid > 0).length)
     })
   }, [syncVersion])
-
-  const quickAdd = [
-    { label: 'Order', icon: CalendarCheck2, path: '/calendar', color: '#C9848A' },
-    { label: 'Personal Bill', icon: Wallet, path: '/personal', color: '#E8A838' },
-    { label: 'Business Bill', icon: ShoppingBag, path: '/business', color: '#7A9E7E' },
-    { label: 'Payment', icon: Receipt, path: '/payments', color: '#2D2D2D' },
-  ]
 
   return (
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '24px' }}>
@@ -295,30 +288,31 @@ export default function Dashboard() {
         {dueItems.length === 0 ? (
           <p style={emptyText}>No bills due in the next 7 days</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', marginTop: '10px' }}>
             {dueItems.map(item => {
               const { color, label } = urgencyTag(item.diff)
               return (
                 <div key={item.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                     <span style={{
-                      minWidth: '44px',
+                      minWidth: '38px',
                       textAlign: 'center',
                       background: color + '22',
                       color,
-                      borderRadius: '6px',
-                      padding: '3px 4px',
-                      fontSize: '11px',
+                      borderRadius: '5px',
+                      padding: '2px 3px',
+                      fontSize: '10px',
                       fontWeight: 700,
+                      flexShrink: 0,
                     }}>
                       {label}
                     </span>
-                    <div>
-                      <p style={{ fontWeight: 500, fontSize: '14px', color: '#2D2D2D' }}>{item.name}</p>
-                      <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '1px' }}>{item.type}</p>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontWeight: 500, fontSize: '13px', color: '#2D2D2D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</p>
+                      <p style={{ fontSize: '10px', color: '#9ca3af' }}>{item.type}</p>
                     </div>
                   </div>
-                  <span style={{ fontWeight: 600, fontSize: '14px', color: '#2D2D2D', whiteSpace: 'nowrap', marginLeft: '12px' }}>
+                  <span style={{ fontWeight: 600, fontSize: '13px', color: '#2D2D2D', whiteSpace: 'nowrap', marginLeft: '10px', flexShrink: 0 }}>
                     {fmt(item.amount)}
                   </span>
                 </div>
@@ -349,47 +343,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Quick Add */}
-      <div>
-        <p style={{ fontSize: '12px', fontWeight: 600, color: '#9ca3af', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          Quick Add
-        </p>
-        <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none' }}>
-          {quickAdd.map(({ label, icon: Icon, path, color }) => (
-            <button
-              key={path}
-              onClick={() => navigate(path)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 18px',
-                background: '#fff',
-                border: `1.5px solid ${color}28`,
-                borderRadius: '50px',
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: '13px',
-                color: '#2D2D2D',
-                boxShadow: `0 2px 8px ${color}18`,
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              }}
-            >
-              <span style={{
-                background: color + '18',
-                borderRadius: '50%',
-                padding: '5px',
-                display: 'flex',
-                flexShrink: 0,
-              }}>
-                <Icon size={14} color={color} />
-              </span>
-              + {label}
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   )
 }
