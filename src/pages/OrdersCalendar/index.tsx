@@ -422,40 +422,38 @@ export default function OrdersCalendar() {
                                 <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 8px' }}>
                                   {o.description}{o.quantity && o.quantity > 1 ? ` × ${o.quantity}` : ''}
                                 </p>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                  <span style={{
-                                    fontSize: '11px', fontWeight: 700, borderRadius: '5px', padding: '2px 8px',
-                                    color: advFulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
-                                    background: advFulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
-                                  }}>
-                                    {advFulfillment === 'delivery' ? '🚚 Delivered' : '🌸 Picked up'}
-                                  </span>
-                                  {o.time && <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500 }}>{formatTime(o.time)}</span>}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', flexWrap: 'wrap' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{
+                                      fontSize: '11px', fontWeight: 700, borderRadius: '5px', padding: '2px 8px',
+                                      color: advFulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
+                                      background: advFulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
+                                    }}>
+                                      {advFulfillment === 'delivery' ? '🚚 For Delivery' : '🌸 For Pickup'}
+                                    </span>
+                                    {o.time && <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500 }}>{formatTime(o.time)}</span>}
+                                  </div>
+                                  {!advIsPartial && o.totalAmount > 0 && (
+                                    <p style={{ fontSize: '15px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{fmt(o.totalAmount)}</p>
+                                  )}
                                 </div>
 
-                                {o.totalAmount > 0 && (
+                                {o.totalAmount > 0 && advIsPartial && (
                                   <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6' }}>
-                                    {advIsPartial ? (
-                                      <div style={{ display: 'flex', justifyContent: 'space-around' }}>
-                                        <div style={{ textAlign: 'center' }}>
-                                          <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Total</p>
-                                          <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{fmt(o.totalAmount)}</p>
-                                        </div>
-                                        <div style={{ textAlign: 'center' }}>
-                                          <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Paid</p>
-                                          <p style={{ fontSize: '14px', fontWeight: 700, color: '#7A9E7E', margin: 0 }}>{fmt(advTotalPaid)}</p>
-                                        </div>
-                                        <div style={{ textAlign: 'center' }}>
-                                          <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Balance</p>
-                                          <p style={{ fontSize: '14px', fontWeight: 700, color: advBalance > 0 ? '#E8A838' : '#7A9E7E', margin: 0 }}>{fmt(Math.max(0, advBalance))}</p>
-                                        </div>
-                                      </div>
-                                    ) : (
+                                    <div style={{ display: 'flex', justifyContent: 'space-around' }}>
                                       <div style={{ textAlign: 'center' }}>
                                         <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Total</p>
-                                        <p style={{ fontSize: '15px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{fmt(o.totalAmount)}</p>
+                                        <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{fmt(o.totalAmount)}</p>
                                       </div>
-                                    )}
+                                      <div style={{ textAlign: 'center' }}>
+                                        <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Paid</p>
+                                        <p style={{ fontSize: '14px', fontWeight: 700, color: '#7A9E7E', margin: 0 }}>{fmt(advTotalPaid)}</p>
+                                      </div>
+                                      <div style={{ textAlign: 'center' }}>
+                                        <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Balance</p>
+                                        <p style={{ fontSize: '14px', fontWeight: 700, color: advBalance > 0 ? '#E8A838' : '#7A9E7E', margin: 0 }}>{fmt(Math.max(0, advBalance))}</p>
+                                      </div>
+                                    </div>
                                   </div>
                                 )}
                               </div>
