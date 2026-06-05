@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarCheck2, Clock, DollarSign, Wallet, ShoppingBag, Receipt, Lock } from 'lucide-react'
+import { CalendarCheck2, Clock, DollarSign, Wallet, ShoppingBag, Receipt } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order } from '../../db/db'
 import { useSyncVersion } from '../../lib/SyncContext'
@@ -69,6 +69,40 @@ const emptyText: CSSProperties = {
   padding: '4px 0',
 }
 
+type BibleVerse = { text: string; ref: string }
+
+function useDailyVerse(): BibleVerse | null {
+  const [verse, setVerse] = useState<BibleVerse | null>(() => {
+    try {
+      const cached = localStorage.getItem('af-bible-verse')
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (parsed.date === new Date().toISOString().split('T')[0]) {
+          return { text: parsed.text, ref: parsed.ref }
+        }
+      }
+    } catch {}
+    return null
+  })
+
+  useEffect(() => {
+    if (verse) return
+    fetch('https://labs.bible.org/api/?passage=votd&type=json')
+      .then(r => r.json())
+      .then((data: Array<{ bookname: string; chapter: string; verse: string; text: string }>) => {
+        const v = data[0]
+        const text = v.text.replace(/<[^>]+>/g, '').trim()
+        const ref = `${v.bookname} ${v.chapter}:${v.verse}`
+        const today = new Date().toISOString().split('T')[0]
+        localStorage.setItem('af-bible-verse', JSON.stringify({ date: today, text, ref }))
+        setVerse({ text, ref })
+      })
+      .catch(() => {})
+  }, [verse])
+
+  return verse
+}
+
 export default function Dashboard() {
   const navigate = useNavigate()
   const syncVersion = useSyncVersion()
@@ -76,6 +110,16 @@ export default function Dashboard() {
   const [dueItems, setDueItems] = useState<DueItem[]>([])
   const [unpaidTotal, setUnpaidTotal] = useState(0)
   const [unpaidCount, setUnpaidCount] = useState(0)
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(() => localStorage.getItem('af-profile-photo'))
+  const dailyVerse = useDailyVerse()
+
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === 'af-profile-photo') setProfilePhoto(e.newValue)
+    }
+    window.addEventListener('storage', handler)
+    return () => window.removeEventListener('storage', handler)
+  }, [])
 
   useEffect(() => {
     const t = todayStr()
@@ -132,7 +176,7 @@ export default function Dashboard() {
       <div style={{
         background: 'linear-gradient(135deg, #C9848A1A 0%, #F9F3EE 60%, #7A9E7E14 100%)',
         borderRadius: '0 0 28px 28px',
-        padding: '20px 16px 28px',
+        padding: '20px 16px 24px',
         margin: '-16px -16px 0',
         position: 'relative',
         overflow: 'hidden',
@@ -157,18 +201,49 @@ export default function Dashboard() {
           <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#2D2D2D', letterSpacing: '-0.2px', fontStyle: 'italic', lineHeight: 1.2 }}>
             Hello, Amara Fleur 🌸
           </h1>
-          <button
-            onClick={() => { localStorage.removeItem('af-authed'); window.location.reload() }}
-            title="Lock app"
+          <div
+            onClick={() => navigate('/settings')}
+            title="Profile"
             style={{
-              background: '#fff', border: 'none', cursor: 'pointer',
-              padding: '8px', display: 'flex', flexShrink: 0,
-              borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-              marginTop: '2px',
+              width: 52, height: 52, borderRadius: '50%',
+              border: '2px solid #C9848A',
+              boxShadow: '0 2px 8px rgba(201,132,138,0.25)',
+              overflow: 'hidden', flexShrink: 0,
+              marginTop: '2px', cursor: 'pointer',
+              background: '#F9E8EA',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <Lock size={18} color="#C9848A" />
-          </button>
+            {profilePhoto
+              ? <img src={profilePhoto} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ fontSize: '15px', fontWeight: 700, color: '#C9848A', letterSpacing: '0.5px' }}>AF</span>
+            }
+          </div>
+        </div>
+        {/* Daily Bible Verse */}
+        <div style={{ position: 'relative', marginTop: '16px' }}>
+          {dailyVerse ? (
+            <>
+              <p style={{
+                fontSize: '12px', fontStyle: 'italic', color: '#6b7280',
+                lineHeight: 1.5, margin: 0,
+                display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+              }}>
+                <span style={{ color: '#C9848A', fontStyle: 'normal', fontWeight: 700, marginRight: 2 }}>"</span>
+                {dailyVerse.text}
+                <span style={{ color: '#C9848A', fontStyle: 'normal', fontWeight: 700, marginLeft: 2 }}>"</span>
+              </p>
+              <p style={{ fontSize: '11px', color: '#C9848A', fontWeight: 600, margin: '4px 0 0', textAlign: 'right' }}>
+                — {dailyVerse.ref}
+              </p>
+            </>
+          ) : (
+            <div style={{
+              height: '14px', width: '65%',
+              borderRadius: '6px', background: '#C9848A14',
+              animation: 'pulse 1.5s ease-in-out infinite',
+            }} />
+          )}
         </div>
       </div>
 

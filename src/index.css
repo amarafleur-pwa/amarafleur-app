@@ -54,6 +54,8 @@ html, body {
 .sheet-enter { animation: sheet-up   0.3s  cubic-bezier(0.32, 0.72, 0, 1) both; }
 .sheet-exit  { animation: sheet-down 0.25s cubic-bezier(0.32, 0.72, 0, 1) both; }
 
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
 @keyframes net-fade-in-inline  { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes net-fade-out-inline { from { opacity: 1; } to { opacity: 0; } }
 .net-enter-inline { animation: net-fade-in-inline  0.5s ease both; }

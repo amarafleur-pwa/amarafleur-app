@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { KeyRound, Trash2, Lock, Plus, RefreshCw } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { KeyRound, Trash2, Lock, Plus, RefreshCw, Camera } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Passkey } from '../../db/db'
 import { NetworkPill } from '../../components/OfflineBanner'
@@ -30,6 +30,26 @@ export default function Settings() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(() => localStorage.getItem('af-profile-photo'))
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      localStorage.setItem('af-profile-photo', dataUrl)
+      setProfilePhoto(dataUrl)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function handleRemovePhoto() {
+    localStorage.removeItem('af-profile-photo')
+    setProfilePhoto(null)
+    if (photoInputRef.current) photoInputRef.current.value = ''
+  }
 
   function load() {
     db.passkeys.toArray().then(setPasskeys).finally(() => setLoading(false))
@@ -116,6 +136,74 @@ export default function Settings() {
           <Lock size={15} />
           Lock
         </button>
+      </div>
+
+      {/* Profile Photo section */}
+      <div style={{
+        background: '#fff', borderRadius: '16px',
+        border: '1px solid #e5e0db',
+        marginBottom: '20px', overflow: 'hidden',
+      }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f0ed' }}>
+          <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
+            Profile
+          </p>
+        </div>
+        <div style={{ padding: '24px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <div style={{
+              width: 88, height: 88, borderRadius: '50%',
+              border: '2.5px solid #C9848A',
+              boxShadow: '0 4px 14px rgba(201,132,138,0.22)',
+              overflow: 'hidden', background: '#F9E8EA',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {profilePhoto
+                ? <img src={profilePhoto} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <span style={{ fontSize: '22px', fontWeight: 700, color: '#C9848A', letterSpacing: '1px' }}>AF</span>
+              }
+            </div>
+            <button
+              onClick={() => photoInputRef.current?.click()}
+              style={{
+                position: 'absolute', bottom: 0, right: 0,
+                width: 28, height: 28, borderRadius: '50%',
+                background: '#C9848A', border: '2px solid #fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', boxShadow: '0 2px 6px rgba(201,132,138,0.4)',
+              }}
+            >
+              <Camera size={13} color="#fff" />
+            </button>
+          </div>
+          <input ref={photoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoChange} />
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              onClick={() => photoInputRef.current?.click()}
+              style={{
+                padding: '9px 18px', borderRadius: '10px',
+                background: '#C9848A', color: '#fff',
+                border: 'none', fontSize: '13px', fontWeight: 600,
+                cursor: 'pointer', boxShadow: '0 2px 8px rgba(201,132,138,0.35)',
+              }}
+            >
+              Change Photo
+            </button>
+            {profilePhoto && (
+              <button
+                onClick={handleRemovePhoto}
+                style={{
+                  padding: '9px 18px', borderRadius: '10px',
+                  background: 'none', color: '#9ca3af',
+                  border: '1.5px solid #e5e0db', fontSize: '13px', fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Remove
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Security section */}
