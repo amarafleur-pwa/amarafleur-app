@@ -45,15 +45,15 @@ function BottomNav() {
   const tabs = [
     { to: '/' as string | null, icon: LayoutDashboard, label: 'Home', exact: true, more: false },
     { to: '/personal' as string | null, icon: Wallet, label: 'Personal', exact: false, more: false },
-    { to: null as string | null, icon: MoreHorizontal, label: 'More', exact: false, more: true },
     { to: '/business' as string | null, icon: ShoppingBag, label: 'Business', exact: false, more: false },
     { to: '/calendar' as string | null, icon: CalendarDays, label: 'Orders', exact: false, more: false },
+    { to: null as string | null, icon: MoreHorizontal, label: 'More', exact: false, more: true },
   ]
 
   const moreRouteActive = moreTabs.some(t => t.to === location.pathname)
 
   const activeIdx = (() => {
-    if (moreOpen || moreRouteActive) return 2
+    if (moreOpen || moreRouteActive) return 4
     const i = tabs.findIndex(t => !t.more && t.to && (t.exact ? location.pathname === t.to : location.pathname.startsWith(t.to)))
     return i < 0 ? 0 : i
   })()
