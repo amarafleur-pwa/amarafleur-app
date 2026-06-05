@@ -364,8 +364,9 @@ export default function PersonalExpenses() {
                         {e.category && <span style={{ fontSize: '11px', color: '#9ca3af' }}>· {e.category}</span>}
                       </div>
                       {partial && (
-                        <p style={{ fontSize: '11px', color: '#E8A838', fontWeight: 600, marginTop: '2px' }}>
-                          Paid {fmt(e.amountPaid!)} · Bal {fmt(e.amount - e.amountPaid!)}
+                        <p style={{ fontSize: '11px', fontWeight: 600, marginTop: '2px' }}>
+                          <span style={{ color: '#E8A838' }}>Paid {fmt(e.amountPaid!)} · </span>
+                          <span style={{ color: '#8B1A1A' }}>Bal {fmt(e.amount - e.amountPaid!)}</span>
                         </p>
                       )}
                     </div>

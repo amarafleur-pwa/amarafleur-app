@@ -290,7 +290,7 @@ export default function OrdersCalendar() {
                             </div>
                             <div style={{ textAlign: 'center' }}>
                               <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Balance</p>
-                              <p style={{ fontSize: '14px', fontWeight: 700, color: o.balance > 0 ? '#E8A838' : '#7A9E7E', margin: 0 }}>{fmt(Math.max(0, o.balance))}</p>
+                              <p style={{ fontSize: '14px', fontWeight: 700, color: o.balance > 0 ? '#8B1A1A' : '#7A9E7E', margin: 0 }}>{fmt(Math.max(0, o.balance))}</p>
                             </div>
                           </div>
                         </div>
@@ -451,7 +451,7 @@ export default function OrdersCalendar() {
                                       </div>
                                       <div style={{ textAlign: 'center' }}>
                                         <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Balance</p>
-                                        <p style={{ fontSize: '14px', fontWeight: 700, color: advBalance > 0 ? '#E8A838' : '#7A9E7E', margin: 0 }}>{fmt(Math.max(0, advBalance))}</p>
+                                        <p style={{ fontSize: '14px', fontWeight: 700, color: advBalance > 0 ? '#8B1A1A' : '#7A9E7E', margin: 0 }}>{fmt(Math.max(0, advBalance))}</p>
                                       </div>
                                     </div>
                                   </div>
@@ -542,7 +542,7 @@ export default function OrdersCalendar() {
                       {balance > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ fontSize: '13px', color: '#9ca3af' }}>Balance</span>
-                          <span style={{ fontSize: '13px', fontWeight: 700, color: '#E8A838' }}>{fmt(balance)}</span>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: '#8B1A1A' }}>{fmt(balance)}</span>
                         </div>
                       )}
                     </>

@@ -332,7 +332,7 @@ export default function CustomerPayments() {
                       display: 'flex', justifyContent: 'space-between',
                     }}>
                       <span style={{ fontSize: '12px', color: '#9ca3af' }}>Paid: {fmt(s.totalPaid)}</span>
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#C9848A' }}>Balance: {fmt(s.balance)}</span>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#8B1A1A' }}>Balance: {fmt(s.balance)}</span>
                     </div>
                   )}
                 </div>
@@ -437,7 +437,7 @@ export default function CustomerPayments() {
                       {s.balance > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ fontSize: '13px', color: '#9ca3af' }}>Balance</span>
-                          <span style={{ fontSize: '13px', fontWeight: 700, color: '#C9848A' }}>{fmt(s.balance)}</span>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: '#8B1A1A' }}>{fmt(s.balance)}</span>
                         </div>
                       )}
                     </div>
@@ -538,7 +538,7 @@ export default function CustomerPayments() {
                               {s.label}
                             </span>
                             <p style={{ fontSize: '13px', fontWeight: 700, color: '#2D2D2D', margin: '4px 0 0' }}>{fmt(o.totalAmount)}</p>
-                            {s.balance > 0 && <p style={{ fontSize: '11px', color: '#C9848A', margin: '2px 0 0' }}>Balance: {fmt(s.balance)}</p>}
+                            {s.balance > 0 && <p style={{ fontSize: '11px', color: '#8B1A1A', margin: '2px 0 0' }}>Balance: {fmt(s.balance)}</p>}
                           </div>
                         </div>
                       </div>

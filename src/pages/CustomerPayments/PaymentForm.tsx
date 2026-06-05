@@ -163,7 +163,7 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
             </div>
             <div>
               <p style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>Balance</p>
-              <p style={{ fontSize: '15px', fontWeight: 700, color: balance > 0 ? '#C9848A' : '#7A9E7E' }}>{fmt(balance)}</p>
+              <p style={{ fontSize: '15px', fontWeight: 700, color: balance > 0 ? '#8B1A1A' : '#7A9E7E' }}>{fmt(balance)}</p>
             </div>
           </div>
         </div>
