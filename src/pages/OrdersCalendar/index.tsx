@@ -252,29 +252,33 @@ export default function OrdersCalendar() {
                     onEdit={() => openEdit(o)}
                     onDelete={() => setPendingDeleteOrder(o)}
                   >
-                    <div style={{ background: '#fff', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', cursor: 'pointer' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2px' }}>
-                        <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', margin: 0 }}>
-                          {o.customerName}
-                        </p>
-                        {o.totalAmount > 0 && (
-                          <p style={{ fontSize: '15px', fontWeight: 700, color: '#2D2D2D', margin: 0, flexShrink: 0, marginLeft: '8px' }}>{fmt(o.totalAmount)}</p>
-                        )}
-                      </div>
-                      <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 8px' }}>
-                        {o.description}{o.quantity && o.quantity > 1 ? ` × ${o.quantity}` : ''}
-                      </p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                        <span style={{
-                          fontSize: '11px', fontWeight: 700, borderRadius: '5px', padding: '2px 8px',
-                          color: fulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
-                          background: fulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
-                        }}>
-                          {fulfillment === 'delivery' ? '🚚 Delivered' : '🌸 Picked up'}
-                        </span>
-                        {o.time && (
-                          <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500 }}>{formatTime(o.time)}</span>
-                        )}
+                    <div style={{ background: '#fff', padding: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', cursor: 'pointer' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', margin: '0 0 2px' }}>
+                            {o.customerName}
+                          </p>
+                          <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>
+                            {o.description}{o.quantity && o.quantity > 1 ? ` × ${o.quantity}` : ''}
+                          </p>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', marginBottom: '4px' }}>
+                            <span style={{
+                              fontSize: '10px', fontWeight: 700, borderRadius: '5px', padding: '2px 6px',
+                              color: fulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
+                              background: fulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
+                            }}>
+                              {fulfillment === 'delivery' ? '🚚 Delivered' : '🌸 Picked up'}
+                            </span>
+                            {o.time && (
+                              <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: 500 }}>{formatTime(o.time)}</span>
+                            )}
+                          </div>
+                          {o.totalAmount > 0 && (
+                            <p style={{ fontSize: '15px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{fmt(o.totalAmount)}</p>
+                          )}
+                        </div>
                       </div>
 
                       {isPartial && (
@@ -410,7 +414,7 @@ export default function OrdersCalendar() {
                             const advBalance = o.totalAmount - advTotalPaid
                             return (
                               <div
-                                style={{ background: '#fff', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', cursor: 'pointer' }}
+                                style={{ background: '#fff', padding: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', cursor: 'pointer' }}
                               >
                                 <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', margin: '0 0 2px' }}>
                                   {o.customerName}
@@ -465,145 +469,147 @@ export default function OrdersCalendar() {
             </div>
           )}
 
-          {/* Order preview sheet */}
-          {previewOrder && (
-            <div
-              onClick={() => setClosingPreview(true)}
-              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}
-            >
-              <div
-                onClick={e => e.stopPropagation()}
-                className={closingPreview ? 'sheet-exit' : 'sheet-enter'}
-                onAnimationEnd={e => { if (closingPreview && e.animationName === 'sheet-down') { setPreviewOrder(null); setClosingPreview(false) } }}
-                style={{ width: '100%', background: '#F9F3EE', borderRadius: '20px 20px 0 0', maxHeight: '85svh', overflow: 'hidden' }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
-                  <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#d1ccc8' }} />
-                </div>
-                <div style={{ padding: '12px 20px 24px', overflowY: 'auto' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                    <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#2D2D2D', margin: 0, flex: 1, marginRight: '12px' }}>{previewOrder.customerName}</h2>
-                    {previewOrder.totalAmount > 0 && (
-                      <p style={{ fontSize: '20px', fontWeight: 800, color: '#2D2D2D', margin: 0, flexShrink: 0 }}>{fmt(previewOrder.totalAmount)}</p>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px' }}>
-                    {previewOrder.isDone && (
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#7A9E7E', background: '#7A9E7E18', borderRadius: '6px', padding: '3px 10px' }}>Done</span>
-                    )}
-                    <span style={{
-                      fontSize: '12px', fontWeight: 700, borderRadius: '6px', padding: '3px 10px',
-                      color: (previewOrder.fulfillmentType ?? 'pickup') === 'delivery' ? '#7A9E7E' : '#C9848A',
-                      background: (previewOrder.fulfillmentType ?? 'pickup') === 'delivery' ? '#7A9E7E18' : '#C9848A18',
-                    }}>
-                      {(previewOrder.fulfillmentType ?? 'pickup') === 'delivery' ? '🚚 Delivery' : '🌸 Pickup'}
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#fff', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '13px', color: '#9ca3af' }}>Description</span>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D', maxWidth: '60%', textAlign: 'right' }}>
-                        {previewOrder.description}{previewOrder.quantity && previewOrder.quantity > 1 ? ` × ${previewOrder.quantity}` : ''}
-                      </span>
-                    </div>
-                    {previewOrder.time && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: '13px', color: '#9ca3af' }}>Time</span>
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#C9848A' }}>{formatTime(previewOrder.time)}</span>
-                      </div>
-                    )}
-                    {(() => {
-                      const orderPayments = allPayments.filter(p => p.orderId === previewOrder.id)
-                      const totalPaid = previewOrder.depositPaid + orderPayments.reduce((s, p) => s + p.amount, 0)
-                      const balance = previewOrder.totalAmount - totalPaid
-                      return (
-                        <>
-                          {previewOrder.depositPaid > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <span style={{ fontSize: '13px', color: '#9ca3af' }}>Deposit paid</span>
-                              <span style={{ fontSize: '13px', fontWeight: 600, color: '#7A9E7E' }}>{fmt(previewOrder.depositPaid)}</span>
-                            </div>
-                          )}
-                          {orderPayments.length > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <span style={{ fontSize: '13px', color: '#9ca3af' }}>Total paid</span>
-                              <span style={{ fontSize: '13px', fontWeight: 600, color: '#7A9E7E' }}>{fmt(totalPaid)}</span>
-                            </div>
-                          )}
-                          {balance > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <span style={{ fontSize: '13px', color: '#9ca3af' }}>Balance</span>
-                              <span style={{ fontSize: '13px', fontWeight: 700, color: '#E8A838' }}>{fmt(balance)}</span>
-                            </div>
-                          )}
-                        </>
-                      )
-                    })()}
-                    {previewOrder.notes && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                        <span style={{ fontSize: '13px', color: '#9ca3af' }}>Notes</span>
-                        <span style={{ fontSize: '13px', color: '#2D2D2D', fontStyle: 'italic' }}>{previewOrder.notes}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {(() => {
-                    const orderPayments = allPayments.filter(p => p.orderId === previewOrder.id)
-                    const totalPaid = previewOrder.depositPaid + orderPayments.reduce((s, p) => s + p.amount, 0)
-                    const balance = previewOrder.totalAmount - totalPaid
-                    return previewOrder.totalAmount > 0 && balance > 0 && (
-                      <button
-                        onClick={() => setShowPayForm(true)}
-                        style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#7A9E7E', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #7A9E7E44', marginBottom: '10px' }}
-                      >
-                        Log Payment
-                      </button>
-                    )
-                  })()}
-                  <button
-                    onClick={() => { setClosingPreview(true); openEdit(previewOrder) }}
-                    style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#E8A838', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #E8A83844' }}
-                  >
-                    Edit
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-          {/* Delete confirmation */}
-          {pendingDeleteOrder && (
-            <div
-              onClick={() => setPendingDeleteOrder(null)}
-              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
-            >
-              <div
-                onClick={e => e.stopPropagation()}
-                style={{ background: '#fff', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '320px', boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}
-              >
-                <p style={{ fontSize: '16px', fontWeight: 700, color: '#2D2D2D', marginBottom: '6px' }}>Delete order?</p>
-                <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '20px' }}>
-                  "{pendingDeleteOrder.customerName}" will be permanently deleted.
-                </p>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    onClick={() => setPendingDeleteOrder(null)}
-                    style={{ flex: 1, padding: '12px', border: '1.5px solid #e5e0db', borderRadius: '10px', background: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer', color: '#6b7280' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => { const o = pendingDeleteOrder; setPendingDeleteOrder(null); handleDeleteAdvanceOrder(o) }}
-                    style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '10px', background: '#C9848A', fontSize: '14px', fontWeight: 700, cursor: 'pointer', color: '#fff', boxShadow: '0 2px 8px #C9848A44' }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </>
+      )}
+
+      {/* Order preview sheet */}
+      {previewOrder && (
+        <div
+          onClick={() => setClosingPreview(true)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className={closingPreview ? 'sheet-exit' : 'sheet-enter'}
+            onAnimationEnd={e => { if (closingPreview && e.animationName === 'sheet-down') { setPreviewOrder(null); setClosingPreview(false) } }}
+            style={{ width: '100%', background: '#F9F3EE', borderRadius: '20px 20px 0 0', maxHeight: '85svh', overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
+              <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#d1ccc8' }} />
+            </div>
+            <div style={{ padding: '12px 20px 24px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#2D2D2D', margin: 0, flex: 1, marginRight: '12px' }}>{previewOrder.customerName}</h2>
+                {previewOrder.totalAmount > 0 && (
+                  <p style={{ fontSize: '20px', fontWeight: 800, color: '#2D2D2D', margin: 0, flexShrink: 0 }}>{fmt(previewOrder.totalAmount)}</p>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                {previewOrder.isDone && (
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#7A9E7E', background: '#7A9E7E18', borderRadius: '6px', padding: '3px 10px' }}>Done</span>
+                )}
+                <span style={{
+                  fontSize: '12px', fontWeight: 700, borderRadius: '6px', padding: '3px 10px',
+                  color: (previewOrder.fulfillmentType ?? 'pickup') === 'delivery' ? '#7A9E7E' : '#C9848A',
+                  background: (previewOrder.fulfillmentType ?? 'pickup') === 'delivery' ? '#7A9E7E18' : '#C9848A18',
+                }}>
+                  {(previewOrder.fulfillmentType ?? 'pickup') === 'delivery' ? '🚚 Delivery' : '🌸 Pickup'}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#fff', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '13px', color: '#9ca3af' }}>Description</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D', maxWidth: '60%', textAlign: 'right' }}>
+                    {previewOrder.description}{previewOrder.quantity && previewOrder.quantity > 1 ? ` × ${previewOrder.quantity}` : ''}
+                  </span>
+                </div>
+                {previewOrder.time && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '13px', color: '#9ca3af' }}>Time</span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#C9848A' }}>{formatTime(previewOrder.time)}</span>
+                  </div>
+                )}
+                {(() => {
+                  const orderPayments = allPayments.filter(p => p.orderId === previewOrder.id)
+                  const totalPaid = previewOrder.depositPaid + orderPayments.reduce((s, p) => s + p.amount, 0)
+                  const balance = previewOrder.totalAmount - totalPaid
+                  return (
+                    <>
+                      {previewOrder.depositPaid > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '13px', color: '#9ca3af' }}>Deposit paid</span>
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: '#7A9E7E' }}>{fmt(previewOrder.depositPaid)}</span>
+                        </div>
+                      )}
+                      {orderPayments.length > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '13px', color: '#9ca3af' }}>Total paid</span>
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: '#7A9E7E' }}>{fmt(totalPaid)}</span>
+                        </div>
+                      )}
+                      {balance > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '13px', color: '#9ca3af' }}>Balance</span>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: '#E8A838' }}>{fmt(balance)}</span>
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
+                {previewOrder.notes && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <span style={{ fontSize: '13px', color: '#9ca3af' }}>Notes</span>
+                    <span style={{ fontSize: '13px', color: '#2D2D2D', fontStyle: 'italic' }}>{previewOrder.notes}</span>
+                  </div>
+                )}
+              </div>
+
+              {(() => {
+                const orderPayments = allPayments.filter(p => p.orderId === previewOrder.id)
+                const totalPaid = previewOrder.depositPaid + orderPayments.reduce((s, p) => s + p.amount, 0)
+                const balance = previewOrder.totalAmount - totalPaid
+                return previewOrder.totalAmount > 0 && balance > 0 && (
+                  <button
+                    onClick={() => setShowPayForm(true)}
+                    style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#7A9E7E', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #7A9E7E44', marginBottom: '10px' }}
+                  >
+                    Log Payment
+                  </button>
+                )
+              })()}
+              <button
+                onClick={() => { setClosingPreview(true); openEdit(previewOrder) }}
+                style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#E8A838', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #E8A83844' }}
+              >
+                Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation */}
+      {pendingDeleteOrder && (
+        <div
+          onClick={() => setPendingDeleteOrder(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '320px', boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}
+          >
+            <p style={{ fontSize: '16px', fontWeight: 700, color: '#2D2D2D', marginBottom: '6px' }}>Delete order?</p>
+            <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '20px' }}>
+              "{pendingDeleteOrder.customerName}" will be permanently deleted.
+            </p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => setPendingDeleteOrder(null)}
+                style={{ flex: 1, padding: '12px', border: '1.5px solid #e5e0db', borderRadius: '10px', background: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer', color: '#6b7280' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { const o = pendingDeleteOrder; setPendingDeleteOrder(null); handleDeleteAdvanceOrder(o) }}
+                style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '10px', background: '#C9848A', fontSize: '14px', fontWeight: 700, cursor: 'pointer', color: '#fff', boxShadow: '0 2px 8px #C9848A44' }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {previewOrder && showPayForm && (
