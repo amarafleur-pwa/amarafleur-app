@@ -69,7 +69,7 @@ function BottomNav() {
       {moreOpen && (
         <div style={{
           position: 'fixed',
-          bottom: 'calc(108px + env(safe-area-inset-bottom))',
+          bottom: 'calc(113px + env(safe-area-inset-bottom))',
           left: 12, right: 12,
           zIndex: 51,
           background: '#fff',
@@ -100,7 +100,7 @@ function BottomNav() {
       {/* Outer wrapper — extra paddingTop makes room for the elevated circle */}
       <div style={{
         position: 'fixed',
-        bottom: 0, left: 0, right: 0,
+        bottom: 5, left: 0, right: 0,
         zIndex: 50,
         paddingTop: 28,
         paddingLeft: 12,
