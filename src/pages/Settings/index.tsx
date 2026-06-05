@@ -4,6 +4,8 @@ import { db } from '../../db/db'
 import type { Passkey } from '../../db/db'
 import { NetworkPill } from '../../components/OfflineBanner'
 import { useSyncActions } from '../../lib/SyncContext'
+import { supabase } from '../../lib/supabase'
+import { deleteSheetRow } from '../../lib/sheets'
 
 function bufferToBase64(buf: ArrayBuffer): string {
   return btoa(String.fromCharCode(...new Uint8Array(buf)))
@@ -47,6 +49,37 @@ export default function Settings() {
   }
 
   async function handleDeleteAll() {
+    const [orders, payments, personalExpenses, businessExpenses, customers] = await Promise.all([
+      db.orders.toArray(),
+      db.payments.toArray(),
+      db.personalExpenses.toArray(),
+      db.businessExpenses.toArray(),
+      db.customers.toArray(),
+    ])
+
+    // Fire-and-forget sheet row deletions
+    orders.forEach(o => { if (o.supabaseId) deleteSheetRow('Orders', o.supabaseId) })
+    payments.forEach(p => { if (p.supabaseId) deleteSheetRow('Payments', p.supabaseId) })
+    personalExpenses.forEach(e => { if (e.supabaseId) deleteSheetRow('Personal Expenses', e.supabaseId) })
+    businessExpenses.forEach(e => { if (e.supabaseId) deleteSheetRow('Business Expenses', e.supabaseId) })
+    customers.forEach(c => { if (c.supabaseId) deleteSheetRow('Customers', c.supabaseId) })
+
+    // Bulk delete from Supabase
+    const orderIds = orders.map(o => o.supabaseId).filter(Boolean) as string[]
+    const paymentIds = payments.map(p => p.supabaseId).filter(Boolean) as string[]
+    const personalIds = personalExpenses.map(e => e.supabaseId).filter(Boolean) as string[]
+    const businessIds = businessExpenses.map(e => e.supabaseId).filter(Boolean) as string[]
+    const customerIds = customers.map(c => c.supabaseId).filter(Boolean) as string[]
+
+    await Promise.all([
+      orderIds.length ? supabase.from('orders').delete().in('id', orderIds) : Promise.resolve(),
+      paymentIds.length ? supabase.from('payments').delete().in('id', paymentIds) : Promise.resolve(),
+      personalIds.length ? supabase.from('personal_expenses').delete().in('id', personalIds) : Promise.resolve(),
+      businessIds.length ? supabase.from('business_expenses').delete().in('id', businessIds) : Promise.resolve(),
+      customerIds.length ? supabase.from('customers').delete().in('id', customerIds) : Promise.resolve(),
+    ])
+
+    // Clear IndexedDB
     await Promise.all([
       db.orders.clear(),
       db.payments.clear(),
@@ -55,6 +88,7 @@ export default function Settings() {
       db.customers.clear(),
       db.inventory.clear(),
     ])
+
     setShowDeleteAll(false)
   }
 
