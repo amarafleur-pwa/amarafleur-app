@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Plus, Receipt, RefreshCw, Search } from 'lucide-react'
+import { Plus, RefreshCw, Search } from 'lucide-react'
+import receiptIcon from '../../assets/receipt.svg'
 import { db } from '../../db/db'
 import type { BusinessExpense } from '../../db/db'
 import ExpenseForm from './ExpenseForm'
@@ -359,7 +360,7 @@ export default function BusinessExpenses() {
                           onClick={ev => { ev.stopPropagation(); setPreviewUrl(e.receiptUrl!) }}
                           style={{ background: 'none', border: 'none', padding: 0, cursor: 'zoom-in', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         >
-                          <Receipt size={28} color="#b45309" />
+                          <img src={receiptIcon} width={22} height={22} alt="receipt" />
                         </button>
                       )}
                       <p style={{ fontWeight: 700, fontSize: '14px', color: '#2D2D2D' }}>{fmt(e.amount)}</p>
@@ -490,7 +491,7 @@ export default function BusinessExpenses() {
                     onClick={() => setPreviewUrl(previewEntry.receiptUrl!)}
                     style={{ background: 'none', border: 'none', padding: 0, cursor: 'zoom-in', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                   >
-                    <Receipt size={48} color="#b45309" />
+                    <img src={receiptIcon} width={38} height={38} alt="receipt" />
                   </button>
                 </div>
               )}
