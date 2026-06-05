@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Wallet, ShoppingBag, CalendarDays, CreditCard, TrendingUp, MoreHorizontal, Settings as SettingsIcon, Package } from 'lucide-react'
+import { LayoutDashboard, Wallet, ShoppingBag, CalendarDays, CreditCard, TrendingUp, MoreHorizontal, Settings as SettingsIcon, Package, X } from 'lucide-react'
 import NotificationBanner from './components/NotificationBanner'
 import InstallBanner from './components/InstallBanner'
 import { checkAndFireReminders } from './lib/notifications'
@@ -63,9 +63,10 @@ function BottomNav() {
   return (
     <>
       {moreOpen && (
-        <div onClick={() => setMoreOpen(false)} style={{
+        <div style={{
           position: 'fixed', inset: 0, zIndex: 49,
           background: 'rgba(249, 243, 238, 0.72)',
+          pointerEvents: 'none',
         }} />
       )}
 
@@ -80,6 +81,22 @@ function BottomNav() {
           alignItems: 'flex-end',
           gap: 8,
         }}>
+          <button
+            onClick={() => setMoreOpen(false)}
+            style={{
+              alignSelf: 'flex-start',
+              background: '#fff',
+              border: 'none',
+              borderRadius: '50%',
+              width: 32, height: 32,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
+              cursor: 'pointer',
+              color: '#9ca3af',
+            }}
+          >
+            <X size={16} strokeWidth={2} />
+          </button>
           {moreTabs.map(({ to, icon: Icon, label }, i) => (
             <NavLink key={to} to={to} style={{ textDecoration: 'none' }}>
               {({ isActive }) => (
