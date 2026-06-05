@@ -270,7 +270,7 @@ export default function OrdersCalendar() {
                           color: fulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
                           background: fulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
                         }}>
-                          {fulfillment === 'delivery' ? '🚚 Delivery' : '🌸 Pickup'}
+                          {fulfillment === 'delivery' ? '🚚 Delivered' : '🌸 Picked up'}
                         </span>
                         {o.time && (
                           <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500 }}>{formatTime(o.time)}</span>
@@ -424,7 +424,7 @@ export default function OrdersCalendar() {
                                     color: advFulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
                                     background: advFulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
                                   }}>
-                                    {advFulfillment === 'delivery' ? '🚚 Delivery' : '🌸 Pickup'}
+                                    {advFulfillment === 'delivery' ? '🚚 Delivered' : '🌸 Picked up'}
                                   </span>
                                   {o.time && <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500 }}>{formatTime(o.time)}</span>}
                                 </div>

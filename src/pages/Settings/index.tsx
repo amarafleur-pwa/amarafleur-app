@@ -30,6 +30,7 @@ export default function Settings() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
+  const [showDeleteAll, setShowDeleteAll] = useState(false)
   const [profilePhoto, setProfilePhoto] = useState<string | null>(() => localStorage.getItem('af-profile-photo'))
   const photoInputRef = useRef<HTMLInputElement>(null)
 
@@ -43,6 +44,18 @@ export default function Settings() {
       setProfilePhoto(dataUrl)
     }
     reader.readAsDataURL(file)
+  }
+
+  async function handleDeleteAll() {
+    await Promise.all([
+      db.orders.clear(),
+      db.payments.clear(),
+      db.personalExpenses.clear(),
+      db.businessExpenses.clear(),
+      db.customers.clear(),
+      db.inventory.clear(),
+    ])
+    setShowDeleteAll(false)
   }
 
   function handleRemovePhoto() {
@@ -387,8 +400,40 @@ export default function Settings() {
           <span style={{ fontSize: '14px', color: '#2D2D2D' }}>Storage</span>
           <span style={{ fontSize: '13px', color: '#9ca3af' }}>Local + Supabase sync</span>
         </div>
+        <div
+          onClick={() => setShowDeleteAll(true)}
+          style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f3f0ed', cursor: 'pointer' }}
+        >
+          <span style={{ fontSize: '14px', color: '#E05C5C' }}>Delete All Entries</span>
+          <Trash2 size={15} color="#E05C5C" />
+        </div>
       </div>
 
     </div>
+
+    {showDeleteAll && (
+      <div
+        onClick={() => setShowDeleteAll(false)}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+      >
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{ background: '#fff', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '320px', boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}
+        >
+          <p style={{ fontSize: '16px', fontWeight: 700, color: '#2D2D2D', marginBottom: '6px' }}>Delete all entries?</p>
+          <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '20px' }}>
+            All orders, payments, expenses, customers, and inventory will be permanently deleted. This cannot be undone.
+          </p>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={() => setShowDeleteAll(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1.5px solid #e5e0db', background: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
+              Cancel
+            </button>
+            <button onClick={handleDeleteAll} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: '#E05C5C', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 3px 10px #E05C5C44' }}>
+              Delete All
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   )
 }
