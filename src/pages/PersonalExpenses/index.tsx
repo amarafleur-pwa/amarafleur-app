@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, RefreshCw, Search } from 'lucide-react'
+import { Plus, Receipt, RefreshCw, Search } from 'lucide-react'
 import { db } from '../../db/db'
 import type { PersonalExpense } from '../../db/db'
 import ExpenseForm from './ExpenseForm'
@@ -338,12 +338,12 @@ export default function PersonalExpenses() {
                     {/* Right side: amount + receipt thumbnail */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                       {e.receiptUrl && (
-                        <img
-                          src={e.receiptUrl}
-                          alt="Receipt"
+                        <button
                           onClick={ev => { ev.stopPropagation(); setPreviewUrl(e.receiptUrl!) }}
-                          style={{ width: '36px', height: '36px', objectFit: 'cover', borderRadius: '6px', border: '1px solid #e5e0db', cursor: 'zoom-in' }}
-                        />
+                          style={{ background: 'none', border: 'none', padding: 0, cursor: 'zoom-in', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <Receipt size={28} color="#b45309" />
+                        </button>
                       )}
                       <p style={{ fontWeight: 700, fontSize: '14px', color: '#2D2D2D' }}>{fmt(e.amount)}</p>
                     </div>
@@ -465,12 +465,12 @@ export default function PersonalExpenses() {
               {previewEntry.receiptUrl && (
                 <div style={{ marginBottom: '16px' }}>
                   <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px' }}>Receipt</p>
-                  <img
-                    src={previewEntry.receiptUrl}
-                    alt="Receipt"
+                  <button
                     onClick={() => setPreviewUrl(previewEntry.receiptUrl!)}
-                    style={{ width: '72px', height: '72px', objectFit: 'cover', borderRadius: '10px', border: '1px solid #e5e0db', cursor: 'zoom-in' }}
-                  />
+                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'zoom-in', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Receipt size={48} color="#b45309" />
+                  </button>
                 </div>
               )}
 
