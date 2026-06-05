@@ -394,26 +394,27 @@ export default function App() {
     <SyncContext.Provider value={syncVersion}>
     <BrowserRouter>
       <div style={{ display: 'flex', minHeight: '100svh' }}>
-        <InstallBanner />
-        <NotificationBanner />
         {isDesktop && <SideNav />}
-        <main style={{
-          flex: 1,
-          marginLeft: isDesktop ? sidebarWidth : 0,
-          paddingBottom: isDesktop ? '24px' : 'calc(112px + env(safe-area-inset-bottom))',
-          overflowY: 'auto',
-        }}>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/personal" element={<PersonalExpenses />} />
-            <Route path="/business" element={<BusinessExpenses />} />
-            <Route path="/calendar" element={<OrdersCalendar />} />
-            <Route path="/payments" element={<CustomerPayments />} />
-            <Route path="/revenue" element={<RevenueSummary />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/inventory" element={<Inventory />} />
-          </Routes>
-        </main>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', marginLeft: isDesktop ? sidebarWidth : 0, minWidth: 0 }}>
+          <InstallBanner />
+          <NotificationBanner />
+          <main style={{
+            flex: 1,
+            paddingBottom: isDesktop ? '24px' : 'calc(112px + env(safe-area-inset-bottom))',
+            overflowY: 'auto',
+          }}>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/personal" element={<PersonalExpenses />} />
+              <Route path="/business" element={<BusinessExpenses />} />
+              <Route path="/calendar" element={<OrdersCalendar />} />
+              <Route path="/payments" element={<CustomerPayments />} />
+              <Route path="/revenue" element={<RevenueSummary />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/inventory" element={<Inventory />} />
+            </Routes>
+          </main>
+        </div>
         {!isDesktop && <BottomNav />}
       </div>
     </BrowserRouter>

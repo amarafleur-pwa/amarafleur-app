@@ -50,14 +50,15 @@ export default function InstallBanner() {
 
   return (
     <div style={{
-      background: '#2D2D2D',
+      background: '#fff',
+      borderBottom: '1px solid #e5e0db',
       padding: '10px 16px',
       display: 'flex',
       alignItems: 'center',
       gap: '10px',
     }}>
       <div style={{
-        background: '#C9848A28',
+        background: '#C9848A18',
         borderRadius: '10px',
         padding: '8px',
         flexShrink: 0,
@@ -66,7 +67,7 @@ export default function InstallBanner() {
         <Download size={17} color="#C9848A" />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: '13px', fontWeight: 700, color: '#fff' }}>Install Amara Fleur</p>
+        <p style={{ fontSize: '13px', fontWeight: 700, color: '#2D2D2D' }}>Install Amara Fleur</p>
         <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '1px' }}>
           {showIos ? 'Tap Share ↑ → Add to Home Screen' : 'Add to home screen for quick access'}
         </p>
@@ -93,7 +94,7 @@ export default function InstallBanner() {
           flexShrink: 0, display: 'flex',
         }}
       >
-        <X size={16} color="#6b7280" />
+        <X size={16} color="#9ca3af" />
       </button>
     </div>
   )
