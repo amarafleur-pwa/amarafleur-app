@@ -152,6 +152,7 @@ export default function SwipeableItem({ id, activeId, onActivate, onPaid, onPrev
           cursor: 'pointer',
           overflow: 'hidden',
           borderRadius: isSnapped ? '12px 0 0 12px' : '12px',
+          touchAction: 'pan-y',
         }}
       >
         {children}
