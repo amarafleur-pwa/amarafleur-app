@@ -325,7 +325,7 @@ export default function BusinessExpenses() {
                   onDelete={() => setPendingDelete(e)}
                 >
                   <div style={{
-                    background: '#fff', borderRadius: '12px', padding: '10px 12px',
+                    background: '#fff', padding: '10px 12px',
                     boxShadow: '0 1px 6px rgba(0,0,0,0.06)',
                     display: 'flex', alignItems: 'center', gap: '10px',
                     opacity: e.isPaid ? 0.65 : 1,
