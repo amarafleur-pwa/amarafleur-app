@@ -65,9 +65,7 @@ function BottomNav() {
       {moreOpen && (
         <div onClick={() => setMoreOpen(false)} style={{
           position: 'fixed', inset: 0, zIndex: 49,
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          background: 'rgba(249, 243, 238, 0.55)',
+          background: 'rgba(249, 243, 238, 0.72)',
         }} />
       )}
 
