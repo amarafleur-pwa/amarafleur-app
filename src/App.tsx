@@ -70,23 +70,25 @@ function BottomNav() {
         <div style={{
           position: 'fixed',
           bottom: 'calc(113px + env(safe-area-inset-bottom))',
-          left: 12, right: 12,
+          right: 16,
           zIndex: 51,
-          background: '#fff',
-          borderRadius: 20,
-          boxShadow: '0 8px 40px rgba(0,0,0,0.15)',
-          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          gap: 8,
         }}>
-          {moreTabs.map(({ to, icon: Icon, label }, idx) => (
+          {moreTabs.map(({ to, icon: Icon, label }) => (
             <NavLink key={to} to={to} style={{ textDecoration: 'none' }}>
               {({ isActive }) => (
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: 14,
-                  padding: '14px 20px',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 16px',
+                  background: isActive ? '#FDE8EA' : '#fff',
+                  borderRadius: 50,
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.10)',
                   color: isActive ? '#C9848A' : '#374151',
                   fontWeight: isActive ? 600 : 400,
                   fontSize: 15,
-                  borderBottom: idx < moreTabs.length - 1 ? '1px solid #f5f0eb' : 'none',
                 }}>
                   <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
                   {label}
