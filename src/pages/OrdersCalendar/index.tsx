@@ -47,6 +47,8 @@ export default function OrdersCalendar() {
   const [selectedDate, setSelectedDate] = useState<string | null>(todayStr())
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Order | undefined>()
+  const [previewOrder, setPreviewOrder] = useState<Order | null>(null)
+  const [closingPreview, setClosingPreview] = useState(false)
 
   const year = viewDate.getFullYear()
   const month = viewDate.getMonth()
@@ -265,16 +267,18 @@ export default function OrdersCalendar() {
                 .map(o => (
                   <div
                     key={o.id}
+                    onClick={() => setPreviewOrder(o)}
                     style={{
                       background: '#fff', borderRadius: '12px', padding: '14px',
                       boxShadow: '0 1px 6px rgba(0,0,0,0.06)',
                       opacity: o.isDone ? 0.6 : 1,
+                      cursor: 'pointer',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                       {/* Done toggle */}
                       <button
-                        onClick={() => toggleDone(o)}
+                        onClick={e => { e.stopPropagation(); toggleDone(o) }}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, display: 'flex', marginTop: '2px' }}
                       >
                         {o.isDone
@@ -292,7 +296,7 @@ export default function OrdersCalendar() {
                             {o.customerName}
                           </p>
                           <button
-                            onClick={() => openEdit(o)}
+                            onClick={e => { e.stopPropagation(); openEdit(o) }}
                             style={{ background: '#f3f4f6', border: 'none', borderRadius: '7px', padding: '6px', cursor: 'pointer', display: 'flex', flexShrink: 0 }}
                           >
                             <Pencil size={14} color="#6b7280" />
@@ -346,6 +350,79 @@ export default function OrdersCalendar() {
         </div>
       )}
 
+
+      {/* Order preview sheet */}
+      {previewOrder && (
+        <div
+          onClick={() => setClosingPreview(true)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className={closingPreview ? 'sheet-exit' : 'sheet-enter'}
+            onAnimationEnd={e => { if (closingPreview && e.animationName === 'sheet-down') { setPreviewOrder(null); setClosingPreview(false) } }}
+            style={{ width: '100%', background: '#F9F3EE', borderRadius: '20px 20px 0 0', maxHeight: '85svh', overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
+              <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#d1ccc8' }} />
+            </div>
+            <div style={{ padding: '12px 20px 24px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#2D2D2D', margin: 0, flex: 1, marginRight: '12px' }}>{previewOrder.customerName}</h2>
+                {previewOrder.totalAmount > 0 && (
+                  <p style={{ fontSize: '20px', fontWeight: 800, color: '#2D2D2D', margin: 0, flexShrink: 0 }}>{fmt(previewOrder.totalAmount)}</p>
+                )}
+              </div>
+
+              {previewOrder.isDone && (
+                <div style={{ marginBottom: '16px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#7A9E7E', background: '#7A9E7E18', borderRadius: '6px', padding: '3px 10px' }}>Done</span>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#fff', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '13px', color: '#9ca3af' }}>Description</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D', maxWidth: '60%', textAlign: 'right' }}>
+                    {previewOrder.description}{previewOrder.quantity && previewOrder.quantity > 1 ? ` × ${previewOrder.quantity}` : ''}
+                  </span>
+                </div>
+                {previewOrder.time && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '13px', color: '#9ca3af' }}>Time</span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#C9848A' }}>{formatTime(previewOrder.time)}</span>
+                  </div>
+                )}
+                {previewOrder.depositPaid > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '13px', color: '#9ca3af' }}>Deposit paid</span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#7A9E7E' }}>{fmt(previewOrder.depositPaid)}</span>
+                  </div>
+                )}
+                {previewOrder.totalAmount > previewOrder.depositPaid && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '13px', color: '#9ca3af' }}>Balance</span>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#E8A838' }}>{fmt(previewOrder.totalAmount - previewOrder.depositPaid)}</span>
+                  </div>
+                )}
+                {previewOrder.notes && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <span style={{ fontSize: '13px', color: '#9ca3af' }}>Notes</span>
+                    <span style={{ fontSize: '13px', color: '#2D2D2D', fontStyle: 'italic' }}>{previewOrder.notes}</span>
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => { setClosingPreview(true); openEdit(previewOrder) }}
+                style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#E8A838', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #E8A83844' }}
+              >
+                Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showForm && (
         <OrderForm

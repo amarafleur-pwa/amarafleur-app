@@ -68,6 +68,8 @@ export default function BusinessExpenses() {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<BusinessExpense | undefined>()
   const [pendingDelete, setPendingDelete] = useState<BusinessExpense | null>(null)
+  const [previewEntry, setPreviewEntry] = useState<BusinessExpense | null>(null)
+  const [closingPreview, setClosingPreview] = useState(false)
 
   function load() {
     db.businessExpenses
@@ -317,6 +319,7 @@ export default function BusinessExpenses() {
                   activeId={activeSwipeId}
                   onActivate={setActiveSwipeId}
                   onPaid={!isInstant ? () => markPaid(e) : undefined}
+                  onPreview={() => setPreviewEntry(e)}
                   onEdit={() => { setEditing(e); setShowForm(true) }}
                   onDelete={() => setPendingDelete(e)}
                 >
@@ -407,6 +410,96 @@ export default function BusinessExpenses() {
                 style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '10px', background: '#7A9E7E', fontSize: '14px', fontWeight: 700, cursor: 'pointer', color: '#fff', boxShadow: '0 2px 8px #7A9E7E44' }}
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Entry preview sheet */}
+      {previewEntry && (
+        <div
+          onClick={() => setClosingPreview(true)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className={closingPreview ? 'sheet-exit' : 'sheet-enter'}
+            onAnimationEnd={e => { if (closingPreview && e.animationName === 'sheet-down') { setPreviewEntry(null); setClosingPreview(false) } }}
+            style={{ width: '100%', background: '#F9F3EE', borderRadius: '20px 20px 0 0', maxHeight: '85svh', overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
+              <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#d1ccc8' }} />
+            </div>
+            <div style={{ padding: '12px 20px 24px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#2D2D2D', margin: 0, flex: 1, marginRight: '12px' }}>{previewEntry.name}</h2>
+                <p style={{ fontSize: '20px', fontWeight: 800, color: '#2D2D2D', margin: 0, flexShrink: 0 }}>{fmt(previewEntry.amount)}</p>
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '16px' }}>
+                {(() => {
+                  const type = resolveType(previewEntry)
+                  const isInstant = type === 'instant'
+                  const u = urgency(previewEntry.dueDate, previewEntry.isPaid)
+                  return (
+                    <>
+                      {!isInstant && (
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: u.color, background: u.bg, borderRadius: '6px', padding: '3px 10px' }}>{u.label}</span>
+                      )}
+                      {isInstant && (
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#7A9E7E', background: '#7A9E7E18', borderRadius: '6px', padding: '3px 10px' }}>Paid</span>
+                      )}
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', background: '#f3f4f6', borderRadius: '6px', padding: '3px 10px', textTransform: 'capitalize' }}>{type}</span>
+                    </>
+                  )
+                })()}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#fff', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px' }}>
+                {previewEntry.category && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '13px', color: '#9ca3af' }}>Category</span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>{previewEntry.category}</span>
+                  </div>
+                )}
+                {resolveType(previewEntry) !== 'instant' && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '13px', color: '#9ca3af' }}>Due date</span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>{formatDate(previewEntry.dueDate)}</span>
+                  </div>
+                )}
+                {previewEntry.modeOfPayment && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '13px', color: '#9ca3af' }}>Payment mode</span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>{previewEntry.modeOfPayment}</span>
+                  </div>
+                )}
+                {previewEntry.notes && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <span style={{ fontSize: '13px', color: '#9ca3af' }}>Notes</span>
+                    <span style={{ fontSize: '13px', color: '#2D2D2D' }}>{previewEntry.notes}</span>
+                  </div>
+                )}
+              </div>
+
+              {previewEntry.receiptUrl && (
+                <div style={{ marginBottom: '16px' }}>
+                  <p style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px' }}>Receipt</p>
+                  <img
+                    src={previewEntry.receiptUrl}
+                    alt="Receipt"
+                    onClick={() => setPreviewUrl(previewEntry.receiptUrl!)}
+                    style={{ width: '72px', height: '72px', objectFit: 'cover', borderRadius: '10px', border: '1px solid #e5e0db', cursor: 'zoom-in' }}
+                  />
+                </div>
+              )}
+
+              <button
+                onClick={() => { setClosingPreview(true); setEditing(previewEntry); setShowForm(true) }}
+                style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#E8A838', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #E8A83844' }}
+              >
+                Edit
               </button>
             </div>
           </div>

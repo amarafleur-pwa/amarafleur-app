@@ -45,6 +45,8 @@ export default function Inventory() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
   const [closingForm, setClosingForm] = useState(false)
   const handleCloseForm = () => setClosingForm(true)
+  const [previewItem, setPreviewItem] = useState<InventoryItem | null>(null)
+  const [closingPreview, setClosingPreview] = useState(false)
 
   function load() {
     db.inventory.orderBy('name').toArray().then(setItems).finally(() => setLoading(false))
@@ -200,7 +202,7 @@ export default function Inventory() {
                   style={{ background: '#fff', borderRadius: '12px', padding: '12px 14px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => openForm(item)}>
+                    <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => setPreviewItem(item)}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', margin: 0 }}>{item.name}</p>
                         {isLow && (
@@ -258,6 +260,68 @@ export default function Inventory() {
         </div>
       )}
 
+
+      {/* Item preview sheet */}
+      {previewItem && (
+        <div
+          onClick={() => setClosingPreview(true)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className={closingPreview ? 'sheet-exit' : 'sheet-enter'}
+            onAnimationEnd={e => { if (closingPreview && e.animationName === 'sheet-down') { setPreviewItem(null); setClosingPreview(false) } }}
+            style={{ width: '100%', background: '#F9F3EE', borderRadius: '20px 20px 0 0', maxHeight: '85svh', overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
+              <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#d1ccc8' }} />
+            </div>
+            <div style={{ padding: '12px 20px 24px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{previewItem.name}</h2>
+                {(() => {
+                  const isLow = previewItem.minStock !== undefined && previewItem.quantity <= previewItem.minStock
+                  return isLow ? (
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#E8A838', background: '#E8A83812', borderRadius: '5px', padding: '3px 10px' }}>Low</span>
+                  ) : null
+                })()}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#fff', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '13px', color: '#9ca3af' }}>Stock</span>
+                  <span style={{ fontSize: '15px', fontWeight: 800, color: previewItem.minStock !== undefined && previewItem.quantity <= previewItem.minStock ? '#E8A838' : '#2D2D2D' }}>
+                    {previewItem.quantity} {previewItem.unit}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '13px', color: '#9ca3af' }}>Category</span>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>{previewItem.category}</span>
+                </div>
+                {previewItem.minStock !== undefined && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '13px', color: '#9ca3af' }}>Min stock</span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>{previewItem.minStock} {previewItem.unit}</span>
+                  </div>
+                )}
+                {previewItem.notes && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <span style={{ fontSize: '13px', color: '#9ca3af' }}>Notes</span>
+                    <span style={{ fontSize: '13px', color: '#2D2D2D' }}>{previewItem.notes}</span>
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => { setClosingPreview(true); openForm(previewItem) }}
+                style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#E8A838', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #E8A83844' }}
+              >
+                Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add / Edit form */}
       {showForm && (

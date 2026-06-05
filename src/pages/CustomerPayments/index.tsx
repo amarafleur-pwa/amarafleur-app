@@ -66,6 +66,8 @@ export default function CustomerPayments() {
   const [cPhone, setCPhone] = useState('')
   const [cNotes, setCNotes] = useState('')
   const [savingCustomer, setSavingCustomer] = useState(false)
+  const [previewOrder, setPreviewOrder] = useState<Order | null>(null)
+  const [closingPreviewOrder, setClosingPreviewOrder] = useState(false)
   const [closingDetail, setClosingDetail] = useState(false)
   const handleCloseDetail = () => setClosingDetail(true)
   const [closingCustomerForm, setClosingCustomerForm] = useState(false)
@@ -299,7 +301,7 @@ export default function CustomerPayments() {
               return (
                 <div
                   key={o.id}
-                  onClick={() => setSelectedOrder(o)}
+                  onClick={() => setPreviewOrder(o)}
                   style={{
                     background: '#fff', borderRadius: '12px', padding: '14px',
                     boxShadow: '0 1px 6px rgba(0,0,0,0.06)', cursor: 'pointer',
@@ -387,6 +389,72 @@ export default function CustomerPayments() {
         </div>
       )}
 
+
+      {/* Order preview sheet */}
+      {previewOrder && (
+        <div
+          onClick={() => setClosingPreviewOrder(true)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className={closingPreviewOrder ? 'sheet-exit' : 'sheet-enter'}
+            onAnimationEnd={e => { if (closingPreviewOrder && e.animationName === 'sheet-down') { setPreviewOrder(null); setClosingPreviewOrder(false) } }}
+            style={{ width: '100%', background: '#F9F3EE', borderRadius: '20px 20px 0 0', maxHeight: '85svh', overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
+              <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#d1ccc8' }} />
+            </div>
+            <div style={{ padding: '12px 20px 24px', overflowY: 'auto' }}>
+              {(() => {
+                const s = getStatus(previewOrder, paymentMap.get(previewOrder.id!) ?? [])
+                return (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                      <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#2D2D2D', margin: 0, flex: 1, marginRight: '12px' }}>{previewOrder.customerName}</h2>
+                      <p style={{ fontSize: '20px', fontWeight: 800, color: '#2D2D2D', margin: 0, flexShrink: 0 }}>{fmt(previewOrder.totalAmount)}</p>
+                    </div>
+
+                    <div style={{ marginBottom: '16px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: s.color, background: s.bg, borderRadius: '6px', padding: '3px 10px' }}>{s.label}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#fff', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '13px', color: '#9ca3af' }}>Description</span>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D', maxWidth: '60%', textAlign: 'right' }}>{previewOrder.description}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '13px', color: '#9ca3af' }}>Due date</span>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>{formatDate(previewOrder.dueDate)}</span>
+                      </div>
+                      {s.totalPaid > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '13px', color: '#9ca3af' }}>Paid so far</span>
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: '#7A9E7E' }}>{fmt(s.totalPaid)}</span>
+                        </div>
+                      )}
+                      {s.balance > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '13px', color: '#9ca3af' }}>Balance</span>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: '#C9848A' }}>{fmt(s.balance)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => { setClosingPreviewOrder(true); setSelectedOrder(previewOrder) }}
+                      style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#C9848A', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #C9848A44' }}
+                    >
+                      Record Payment
+                    </button>
+                  </>
+                )
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Payment form modal */}
       {selectedOrder && (

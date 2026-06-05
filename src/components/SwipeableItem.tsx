@@ -5,6 +5,7 @@ interface Props {
   activeId: number | null
   onActivate: (id: number | null) => void
   onPaid?: () => void
+  onPreview?: () => void
   onEdit: () => void
   onDelete: () => void
   children: React.ReactNode
@@ -14,7 +15,7 @@ const SNAP_THRESHOLD = 60
 const REVEAL_WIDTH_3 = 168  // Paid + Edit + Delete
 const REVEAL_WIDTH_2 = 112  // Edit + Delete only
 
-export default function SwipeableItem({ id, activeId, onActivate, onPaid, onEdit, onDelete, children }: Props) {
+export default function SwipeableItem({ id, activeId, onActivate, onPaid, onPreview, onEdit, onDelete, children }: Props) {
   const revealW = onPaid ? REVEAL_WIDTH_3 : REVEAL_WIDTH_2
   const [offset, setOffset] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
@@ -76,7 +77,7 @@ export default function SwipeableItem({ id, activeId, onActivate, onPaid, onEdit
 
   function handleCardClick() {
     if (isOpen) { close(); return }
-    onEdit()
+    if (onPreview) { onPreview() } else { onEdit() }
   }
 
   const ease = direction.current === 'open'
