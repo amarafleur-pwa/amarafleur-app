@@ -409,9 +409,7 @@ export default function Settings() {
         </div>
       </div>
 
-    </div>
-
-    {showDeleteAll && (
+      {showDeleteAll && (
       <div
         onClick={() => setShowDeleteAll(false)}
         style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
@@ -434,6 +432,7 @@ export default function Settings() {
           </div>
         </div>
       </div>
-    )}
+      )}
+    </div>
   )
 }
