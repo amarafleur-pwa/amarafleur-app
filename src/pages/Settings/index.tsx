@@ -33,6 +33,7 @@ export default function Settings() {
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
   const [showDeleteAll, setShowDeleteAll] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [profilePhoto, setProfilePhoto] = useState<string | null>(() => localStorage.getItem('af-profile-photo'))
   const photoInputRef = useRef<HTMLInputElement>(null)
 
@@ -90,6 +91,7 @@ export default function Settings() {
     ])
 
     setShowDeleteAll(false)
+    setDeleteConfirmText('')
   }
 
   function handleRemovePhoto() {
@@ -445,7 +447,7 @@ export default function Settings() {
 
       {showDeleteAll && (
       <div
-        onClick={() => setShowDeleteAll(false)}
+        onClick={() => { setShowDeleteAll(false); setDeleteConfirmText('') }}
         style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
       >
         <div
@@ -453,14 +455,25 @@ export default function Settings() {
           style={{ background: '#fff', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '320px', boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}
         >
           <p style={{ fontSize: '16px', fontWeight: 700, color: '#2D2D2D', marginBottom: '6px' }}>Delete all entries?</p>
-          <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '20px' }}>
+          <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '14px' }}>
             All orders, payments, expenses, customers, and inventory will be permanently deleted. This cannot be undone.
           </p>
+          <input
+            type="text"
+            placeholder='Type "delete" to confirm'
+            value={deleteConfirmText}
+            onChange={e => setDeleteConfirmText(e.target.value)}
+            style={{ width: '100%', padding: '11px 14px', border: '1.5px solid #e5e0db', borderRadius: '10px', fontSize: '14px', color: '#2D2D2D', outline: 'none', boxSizing: 'border-box', marginBottom: '16px' }}
+          />
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={() => setShowDeleteAll(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1.5px solid #e5e0db', background: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => { setShowDeleteAll(false); setDeleteConfirmText('') }} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1.5px solid #e5e0db', background: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
               Cancel
             </button>
-            <button onClick={handleDeleteAll} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: '#E05C5C', color: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer', boxShadow: '0 3px 10px #E05C5C44' }}>
+            <button
+              onClick={handleDeleteAll}
+              disabled={deleteConfirmText !== 'delete'}
+              style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', fontSize: '14px', fontWeight: 600, cursor: deleteConfirmText === 'delete' ? 'pointer' : 'not-allowed', background: deleteConfirmText === 'delete' ? '#E05C5C' : '#f3f0ed', color: deleteConfirmText === 'delete' ? '#fff' : '#9ca3af', boxShadow: deleteConfirmText === 'delete' ? '0 3px 10px #E05C5C44' : 'none', transition: 'all 0.15s' }}
+            >
               Delete All
             </button>
           </div>
