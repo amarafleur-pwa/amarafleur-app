@@ -98,7 +98,7 @@ function BottomNav() {
             <X size={16} strokeWidth={2} />
           </button>
           {moreTabs.map(({ to, icon: Icon, label }, i) => (
-            <NavLink key={to} to={to} style={{ textDecoration: 'none' }}>
+            <NavLink key={to} to={to} onClick={() => setMoreOpen(false)} style={{ textDecoration: 'none' }}>
               {({ isActive }) => (
                 <div
                   className="pill-pop"
@@ -213,7 +213,7 @@ function BottomNav() {
               )
             }
             return (
-              <NavLink key={tab.to} to={tab.to!} end={tab.exact} style={tabStyle}>
+              <NavLink key={tab.to} to={tab.to!} end={tab.exact} onClick={() => setMoreOpen(false)} style={tabStyle}>
                 {iconNode}
                 {labelNode}
               </NavLink>
