@@ -63,6 +63,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   const [expenseType, setExpenseType] = useState<ExpenseType>(deriveType(expense))
   const [name, setName] = useState(expense?.name ?? '')
   const [amount, setAmount] = useState(expense?.amount?.toString() ?? '')
+  const [amountPaid, setAmountPaid] = useState(expense?.amountPaid?.toString() ?? '')
   const [dueDate, setDueDate] = useState(expense?.dueDate ?? '')
   const [mode, setMode] = useState(expense?.modeOfPayment ?? 'Cash')
   const [category, setCategory] = useState(expense?.category ?? 'Supplies')
@@ -100,13 +101,17 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     setSaving(true)
     const isMonthly = expenseType === 'monthly'
     const isInstant = expenseType === 'instant'
+    const totalAmt = parseFloat(amount)
+    const paidAmt = isInstant ? totalAmt : (parseFloat(amountPaid) || 0)
+    const derivedPaid = isInstant ? true : (isPaid || paidAmt >= totalAmt)
     const data: Omit<BusinessExpense, 'id'> = {
       name: name.trim(),
-      amount: parseFloat(amount),
+      amount: totalAmt,
       dueDate: isInstant ? new Date().toISOString().split('T')[0] : dueDate,
       modeOfPayment: mode,
       category,
-      isPaid: isInstant ? true : isPaid,
+      isPaid: derivedPaid,
+      amountPaid: paidAmt,
       isRecurring: isMonthly,
       notes: notes.trim() || undefined,
       expenseType,
@@ -117,7 +122,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
       mode_of_payment: data.modeOfPayment ?? null, is_paid: data.isPaid,
       is_recurring: data.isRecurring ?? false, category: data.category,
       notes: data.notes ?? null, expense_type: data.expenseType ?? null,
-      receipt_url: data.receiptUrl ?? null,
+      receipt_url: data.receiptUrl ?? null, amount_paid: paidAmt,
     }
     if (isEdit) {
       await db.businessExpenses.update(expense!.id!, { ...data, pendingSync: true })
@@ -268,6 +273,13 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
               <span style={lbl}>Amount (₱) *</span>
               <input style={inp} type="number" inputMode="decimal" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
             </div>
+
+            {needsDate && (
+              <div>
+                <span style={lbl}>Amount Paid (₱)</span>
+                <input style={inp} type="number" inputMode="decimal" placeholder="0.00" value={amountPaid} onChange={e => setAmountPaid(e.target.value)} />
+              </div>
+            )}
 
             {needsDate && (
               <div>

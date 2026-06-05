@@ -63,6 +63,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   const [expenseType, setExpenseType] = useState<ExpenseType>(deriveType(expense))
   const [name, setName] = useState(expense?.name ?? '')
   const [amount, setAmount] = useState(expense?.amount?.toString() ?? '')
+  const [amountPaid, setAmountPaid] = useState(expense?.amountPaid?.toString() ?? '')
   const [dueDate, setDueDate] = useState(expense?.dueDate ?? '')
   const [category, setCategory] = useState(expense?.category ?? 'Bills')
   const [notes, setNotes] = useState(expense?.notes ?? '')
@@ -98,14 +99,17 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     setSaving(true)
     const isMonthly = expenseType === 'monthly'
     const isInstant = expenseType === 'instant'
+    const totalAmt = parseFloat(amount)
+    const paidAmt = isInstant ? totalAmt : (parseFloat(amountPaid) || 0)
     const data: Omit<PersonalExpense, 'id'> = {
       name: name.trim(),
-      amount: parseFloat(amount),
+      amount: totalAmt,
       dueDate: isInstant ? new Date().toISOString().split('T')[0] : dueDate,
       category,
       notes: notes.trim() || undefined,
       isRecurring: isMonthly,
-      isPaid: isInstant ? true : (expense?.isPaid ?? false),
+      isPaid: isInstant ? true : paidAmt >= totalAmt,
+      amountPaid: paidAmt,
       expenseType,
       receiptUrl: receiptUrl || undefined,
     }
@@ -114,6 +118,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
       category: data.category ?? null, is_paid: data.isPaid,
       is_recurring: data.isRecurring, notes: data.notes ?? null,
       expense_type: data.expenseType ?? null, receipt_url: data.receiptUrl ?? null,
+      amount_paid: paidAmt,
     }
     if (isEdit) {
       await db.personalExpenses.update(expense!.id!, { ...data, pendingSync: true })
@@ -237,6 +242,13 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
               <span style={lbl}>Amount (₱) *</span>
               <input style={inp} type="number" inputMode="decimal" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} />
             </div>
+
+            {needsDate && (
+              <div>
+                <span style={lbl}>Amount Paid (₱)</span>
+                <input style={inp} type="number" inputMode="decimal" placeholder="0.00" value={amountPaid} onChange={e => setAmountPaid(e.target.value)} />
+              </div>
+            )}
 
             {needsDate && (
               <div>

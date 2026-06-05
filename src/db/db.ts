@@ -13,6 +13,7 @@ export interface PersonalExpense {
   notes?: string
   expenseType?: 'one-time' | 'monthly' | 'instant'
   receiptUrl?: string
+  amountPaid?: number
 }
 
 export interface BusinessExpense {
@@ -29,6 +30,7 @@ export interface BusinessExpense {
   notes?: string
   expenseType?: 'one-time' | 'monthly' | 'instant'
   receiptUrl?: string
+  amountPaid?: number
 }
 
 export interface Order {
@@ -45,6 +47,7 @@ export interface Order {
   depositPaid: number
   isDone: boolean
   notes?: string
+  fulfillmentType?: 'delivery' | 'pickup'
 }
 
 export interface Payment {

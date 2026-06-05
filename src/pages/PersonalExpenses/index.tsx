@@ -87,10 +87,11 @@ export default function PersonalExpenses() {
 
   async function markPaid(expense: PersonalExpense) {
     const nowPaid = !expense.isPaid
+    const paidAmt = nowPaid ? expense.amount : 0
     if (expense.supabaseId) {
-      await supabase.from('personal_expenses').update({ is_paid: nowPaid }).eq('id', expense.supabaseId)
+      await supabase.from('personal_expenses').update({ is_paid: nowPaid, amount_paid: paidAmt }).eq('id', expense.supabaseId)
     }
-    await db.personalExpenses.update(expense.id!, { isPaid: nowPaid })
+    await db.personalExpenses.update(expense.id!, { isPaid: nowPaid, amountPaid: paidAmt })
 
     if (nowPaid && expense.isRecurring) {
       const next = new Date(expense.dueDate + 'T00:00:00')
@@ -294,7 +295,10 @@ export default function PersonalExpenses() {
             {filtered.map(e => {
               const type = resolveType(e)
               const isInstant = type === 'instant'
-              const u = urgency(e.dueDate, e.isPaid)
+              const fullyPaid = e.isPaid || (e.amountPaid ?? 0) >= e.amount
+              const partial = !fullyPaid && (e.amountPaid ?? 0) > 0
+              const u = urgency(e.dueDate, fullyPaid)
+              const badge = partial ? { color: '#E8A838', bg: '#E8A83818', label: 'Partial' } : u
               return (
                 <SwipeableItem
                   key={e.id}
@@ -310,20 +314,20 @@ export default function PersonalExpenses() {
                     background: '#fff', padding: '10px 12px',
                     boxShadow: '0 1px 6px rgba(0,0,0,0.06)',
                     display: 'flex', alignItems: 'center', gap: '10px',
-                    opacity: e.isPaid ? 0.65 : 1,
+                    opacity: fullyPaid ? 0.65 : 1,
                   }}>
                     {/* Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <p style={{ fontWeight: 600, fontSize: '14px', color: '#2D2D2D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: e.isPaid ? 'line-through' : 'none' }}>
+                        <p style={{ fontWeight: 600, fontSize: '14px', color: '#2D2D2D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: fullyPaid ? 'line-through' : 'none' }}>
                           {e.name}
                         </p>
                         {type === 'monthly' && <RefreshCw size={12} color="#9ca3af" />}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px', flexWrap: 'wrap' }}>
                         {!isInstant && (
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: u.color, background: u.bg, borderRadius: '5px', padding: '1px 8px', minWidth: '44px', display: 'inline-block', textAlign: 'center' }}>
-                            {u.label}
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: badge.color, background: badge.bg, borderRadius: '5px', padding: '1px 8px', minWidth: '44px', display: 'inline-block', textAlign: 'center' }}>
+                            {badge.label}
                           </span>
                         )}
                         {isInstant && (
@@ -334,6 +338,11 @@ export default function PersonalExpenses() {
                         {!isInstant && <span style={{ fontSize: '11px', color: '#9ca3af' }}>{formatDate(e.dueDate)}</span>}
                         {e.category && <span style={{ fontSize: '11px', color: '#9ca3af' }}>· {e.category}</span>}
                       </div>
+                      {partial && (
+                        <p style={{ fontSize: '11px', color: '#E8A838', fontWeight: 600, marginTop: '2px' }}>
+                          Paid {fmt(e.amountPaid!)} · Bal {fmt(e.amount - e.amountPaid!)}
+                        </p>
+                      )}
                     </div>
 
                     {/* Right side: amount + receipt thumbnail */}

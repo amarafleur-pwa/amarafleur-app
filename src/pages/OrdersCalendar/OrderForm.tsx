@@ -40,6 +40,7 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
 
   const [customerName, setCustomerName] = useState(order?.customerName ?? '')
   const [description, setDescription] = useState(order?.description ?? '')
+  const [fulfillmentType, setFulfillmentType] = useState<'pickup' | 'delivery'>(order?.fulfillmentType ?? 'pickup')
   const [quantity, setQuantity] = useState(order?.quantity?.toString() ?? '1')
   const [dueDate, setDueDate] = useState(order?.dueDate ?? defaultDate ?? '')
   const [time, setTime] = useState(order?.time ?? '')
@@ -58,6 +59,7 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
     const data: Omit<Order, 'id'> = {
       customerName: customerName.trim(),
       description: description.trim(),
+      fulfillmentType,
       quantity: quantity ? parseInt(quantity) : 1,
       time: time || undefined,
       orderDate: order?.orderDate ?? new Date().toISOString().split('T')[0],
@@ -69,6 +71,7 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
     }
     const supabasePayload = {
       customer_name: data.customerName, description: data.description,
+      fulfillment_type: data.fulfillmentType ?? 'pickup',
       quantity: data.quantity ?? null, time: data.time ?? null,
       order_date: data.orderDate, due_date: data.dueDate,
       total_amount: data.totalAmount, deposit_paid: data.depositPaid,
@@ -184,7 +187,29 @@ export default function OrderForm({ order, defaultDate, onClose, onSaved }: Prop
             </div>
 
             <div>
-              <span style={lbl}>Pickup Date *</span>
+              <span style={lbl}>Fulfillment Type</span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {(['pickup', 'delivery'] as const).map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setFulfillmentType(t)}
+                    style={{
+                      flex: 1, padding: '10px', border: 'none', borderRadius: '10px', cursor: 'pointer',
+                      fontSize: '13px', fontWeight: 600,
+                      background: fulfillmentType === t ? (t === 'delivery' ? '#7A9E7E' : '#C9848A') : '#f3f4f6',
+                      color: fulfillmentType === t ? '#fff' : '#6b7280',
+                      boxShadow: fulfillmentType === t ? `0 2px 8px ${t === 'delivery' ? '#7A9E7E44' : '#C9848A44'}` : 'none',
+                    }}
+                  >
+                    {t === 'pickup' ? '🌸 Pickup' : '🚚 Delivery'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <span style={lbl}>Delivery / Pickup Date *</span>
               <input
                 style={input}
                 type="date"
