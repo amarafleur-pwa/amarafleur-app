@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { KeyRound, Trash2, Lock, Plus } from 'lucide-react'
+import { KeyRound, Trash2, Lock, Plus, RefreshCw } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Passkey } from '../../db/db'
 import { NetworkPill } from '../../components/OfflineBanner'
+import { useSyncActions } from '../../lib/SyncContext'
 
 function bufferToBase64(buf: ArrayBuffer): string {
   return btoa(String.fromCharCode(...new Uint8Array(buf)))
@@ -21,6 +22,7 @@ const input: React.CSSProperties = {
 }
 
 export default function Settings() {
+  const { forceSync, isSyncing, lastSyncedAt } = useSyncActions()
   const [passkeys, setPasskeys] = useState<Passkey[]>([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
@@ -237,6 +239,46 @@ export default function Settings() {
             )}
           </>
         )}
+      </div>
+
+      {/* Data section */}
+      <div style={{
+        background: '#fff', borderRadius: '16px',
+        border: '1px solid #e5e0db',
+        marginBottom: '20px', overflow: 'hidden',
+      }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f0ed' }}>
+          <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
+            Data
+          </p>
+        </div>
+        <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <p style={{ fontSize: '14px', fontWeight: 500, color: '#2D2D2D', margin: 0 }}>Sync Now</p>
+            <p style={{ fontSize: '12px', color: '#9ca3af', margin: '2px 0 0' }}>
+              {lastSyncedAt
+                ? `Last synced at ${lastSyncedAt.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}`
+                : '—'}
+            </p>
+          </div>
+          <button
+            onClick={forceSync}
+            disabled={isSyncing}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '8px 16px',
+              background: isSyncing ? '#f3f0ed' : '#C9848A',
+              color: isSyncing ? '#9ca3af' : '#fff',
+              border: 'none', borderRadius: '10px',
+              fontSize: '13px', fontWeight: 600,
+              cursor: isSyncing ? 'default' : 'pointer',
+              boxShadow: isSyncing ? 'none' : '0 3px 10px #C9848A44',
+            }}
+          >
+            <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
+            {isSyncing ? 'Syncing…' : 'Sync'}
+          </button>
+        </div>
       </div>
 
       {/* App info section */}

@@ -5,7 +5,7 @@ import NotificationBanner from './components/NotificationBanner'
 import InstallBanner from './components/InstallBanner'
 import { checkAndFireReminders } from './lib/notifications'
 import { restoreFromSupabase, syncPendingItems } from './lib/sync'
-import { SyncContext } from './lib/SyncContext'
+import { SyncContext, SyncActionsContext } from './lib/SyncContext'
 import { supabase } from './lib/supabase'
 import Auth from './pages/Auth'
 import Dashboard from './pages/Dashboard'
@@ -308,6 +308,8 @@ function SideNav() {
 export default function App() {
   const [authed, setAuthed] = useState(() => !!localStorage.getItem('af-authed'))
   const [syncVersion, setSyncVersion] = useState(0)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
   const isDesktop = useMediaQuery('(min-width: 768px)')
   const isWide = useMediaQuery('(min-width: 1264px)')
   const sidebarWidth = isWide ? SIDEBAR_WIDE : SIDEBAR_NARROW
@@ -315,15 +317,16 @@ export default function App() {
   useEffect(() => {
     if (!authed) return
     checkAndFireReminders()
-    syncPendingItems().then(() => restoreFromSupabase()).then(() => setSyncVersion(v => v + 1)).catch(console.warn)
+    const bump = () => { setSyncVersion(v => v + 1); setLastSyncedAt(new Date()) }
+    syncPendingItems().then(() => restoreFromSupabase()).then(bump).catch(console.warn)
 
     const handleOnline = () =>
-      syncPendingItems().then(() => restoreFromSupabase()).then(() => setSyncVersion(v => v + 1)).catch(console.warn)
+      syncPendingItems().then(() => restoreFromSupabase()).then(bump).catch(console.warn)
     window.addEventListener('online', handleOnline)
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
-        restoreFromSupabase().then(() => setSyncVersion(v => v + 1)).catch(console.warn)
+        restoreFromSupabase().then(bump).catch(console.warn)
       }
     }
     document.addEventListener('visibilitychange', handleVisibility)
@@ -332,7 +335,7 @@ export default function App() {
     const debouncedRestore = () => {
       clearTimeout(restoreTimer)
       restoreTimer = setTimeout(() => {
-        restoreFromSupabase().then(() => setSyncVersion(v => v + 1)).catch(console.warn)
+        restoreFromSupabase().then(bump).catch(console.warn)
       }, 1500)
     }
 
@@ -352,11 +355,27 @@ export default function App() {
     }
   }, [authed])
 
+  async function forceSync() {
+    if (isSyncing || !navigator.onLine) return
+    setIsSyncing(true)
+    try {
+      await syncPendingItems()
+      await restoreFromSupabase()
+      setSyncVersion(v => v + 1)
+      setLastSyncedAt(new Date())
+    } catch (e) {
+      console.warn(e)
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+
   if (!authed) {
     return <Auth onAuth={() => setAuthed(true)} />
   }
 
   return (
+    <SyncActionsContext.Provider value={{ forceSync, isSyncing, lastSyncedAt }}>
     <SyncContext.Provider value={syncVersion}>
     <BrowserRouter>
       <div style={{ display: 'flex', minHeight: '100svh' }}>
@@ -384,5 +403,6 @@ export default function App() {
       </div>
     </BrowserRouter>
     </SyncContext.Provider>
+    </SyncActionsContext.Provider>
   )
 }
