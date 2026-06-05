@@ -168,7 +168,7 @@ export default function BusinessExpenses() {
       }
     }
     load()
-    setClosingPreview(true)
+    if (previewEntry) setClosingPreview(true)
   }
 
   const q = search.toLowerCase()
@@ -368,7 +368,7 @@ export default function BusinessExpenses() {
                   id={e.id!}
                   activeId={activeSwipeId}
                   onActivate={setActiveSwipeId}
-                  onPaid={!isInstant ? () => markPaid(e) : undefined}
+                  onPaid={!isInstant && !e.isPaid ? () => (e.amountPaid ?? 0) > 0 ? setConfirmPayAll(e) : markPaid(e) : undefined}
                   onPreview={() => setPreviewEntry(e)}
                   onEdit={() => { setEditing(e); setShowForm(true) }}
                   onDelete={() => setPendingDelete(e)}
@@ -626,7 +626,7 @@ export default function BusinessExpenses() {
 
       {/* Pay remaining confirmation */}
       {confirmPayAll && (
-        <div onClick={() => setConfirmPayAll(null)} style={{ position: 'fixed', inset: 0, background: '#00000066', zIndex: 60, display: 'flex', alignItems: 'flex-end' }}>
+        <div onClick={() => setConfirmPayAll(null)} style={{ position: 'fixed', inset: 0, background: '#00000066', zIndex: 120, display: 'flex', alignItems: 'flex-end' }}>
           <div onClick={e => e.stopPropagation()} style={{ width: '100%', background: '#FAF7F4', borderRadius: '20px 20px 0 0', padding: '24px 20px', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}>
             <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#2D2D2D', margin: '0 0 8px' }}>Pay the remaining?</h3>
             <p style={{ fontSize: '13px', color: '#9ca3af', margin: '0 0 20px' }}>
