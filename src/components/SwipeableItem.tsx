@@ -5,6 +5,7 @@ interface Props {
   activeId: number | null
   onActivate: (id: number | null) => void
   onPaid?: () => void
+  paidLabel?: string
   onPreview?: () => void
   onEdit: () => void
   onDelete: () => void
@@ -15,7 +16,7 @@ const SNAP_THRESHOLD = 60
 const REVEAL_WIDTH_3 = 168  // Paid + Edit + Delete
 const REVEAL_WIDTH_2 = 112  // Edit + Delete only
 
-export default function SwipeableItem({ id, activeId, onActivate, onPaid, onPreview, onEdit, onDelete, children }: Props) {
+export default function SwipeableItem({ id, activeId, onActivate, onPaid, paidLabel, onPreview, onEdit, onDelete, children }: Props) {
   const revealW = onPaid ? REVEAL_WIDTH_3 : REVEAL_WIDTH_2
   const [offset, setOffset] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
@@ -106,7 +107,7 @@ export default function SwipeableItem({ id, activeId, onActivate, onPaid, onPrev
             }}
           >
             <span style={{ fontSize: '16px' }}>✓</span>
-            Paid
+            {paidLabel ?? 'Paid'}
           </button>
         )}
         <button

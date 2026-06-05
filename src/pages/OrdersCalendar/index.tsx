@@ -62,6 +62,9 @@ export default function OrdersCalendar() {
   const [closingPreview, setClosingPreview] = useState(false)
   const [showPayForm, setShowPayForm] = useState(false)
 
+  // Log swipe
+  const [activeLogSwipeId, setActiveLogSwipeId] = useState<number | null>(null)
+
   // Advance swipe + delete
   const [activeSwipeId, setActiveSwipeId] = useState<number | null>(null)
   const [pendingDeleteOrder, setPendingDeleteOrder] = useState<Order | null>(null)
@@ -240,38 +243,43 @@ export default function OrdersCalendar() {
                 const fulfillment = o.fulfillmentType ?? 'pickup'
                 const isPartial = o.totalAmount > o.depositPaid
                 return (
-                  <div
+                  <SwipeableItem
                     key={o.id}
-                    onClick={() => setPreviewOrder(o)}
-                    style={{ background: '#fff', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', cursor: 'pointer' }}
+                    id={o.id!}
+                    activeId={activeLogSwipeId}
+                    onActivate={setActiveLogSwipeId}
+                    onPreview={() => setPreviewOrder(o)}
+                    onEdit={() => openEdit(o)}
+                    onDelete={() => setPendingDeleteOrder(o)}
                   >
-                    <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', margin: '0 0 2px' }}>
-                      {o.customerName}
-                    </p>
-                    <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 8px' }}>
-                      {o.description}{o.quantity && o.quantity > 1 ? ` × ${o.quantity}` : ''}
-                    </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                      <span style={{
-                        fontSize: '11px', fontWeight: 700, borderRadius: '5px', padding: '2px 8px',
-                        color: fulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
-                        background: fulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
-                      }}>
-                        {fulfillment === 'delivery' ? '🚚 Delivery' : '🌸 Pickup'}
-                      </span>
-                      {o.time && (
-                        <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500 }}>{formatTime(o.time)}</span>
-                      )}
-                    </div>
+                    <div style={{ background: '#fff', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', cursor: 'pointer' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2px' }}>
+                        <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', margin: 0 }}>
+                          {o.customerName}
+                        </p>
+                        {o.totalAmount > 0 && (
+                          <p style={{ fontSize: '15px', fontWeight: 700, color: '#2D2D2D', margin: 0, flexShrink: 0, marginLeft: '8px' }}>{fmt(o.totalAmount)}</p>
+                        )}
+                      </div>
+                      <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 8px' }}>
+                        {o.description}{o.quantity && o.quantity > 1 ? ` × ${o.quantity}` : ''}
+                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{
+                          fontSize: '11px', fontWeight: 700, borderRadius: '5px', padding: '2px 8px',
+                          color: fulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
+                          background: fulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
+                        }}>
+                          {fulfillment === 'delivery' ? '🚚 Delivery' : '🌸 Pickup'}
+                        </span>
+                        {o.time && (
+                          <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500 }}>{formatTime(o.time)}</span>
+                        )}
+                      </div>
 
-                    {o.totalAmount > 0 && (
-                      <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6' }}>
-                        {isPartial ? (
+                      {isPartial && (
+                        <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-around' }}>
-                            <div style={{ textAlign: 'center' }}>
-                              <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Total</p>
-                              <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{fmt(o.totalAmount)}</p>
-                            </div>
                             <div style={{ textAlign: 'center' }}>
                               <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Paid</p>
                               <p style={{ fontSize: '14px', fontWeight: 700, color: '#7A9E7E', margin: 0 }}>{fmt(o.totalPaid)}</p>
@@ -281,15 +289,10 @@ export default function OrdersCalendar() {
                               <p style={{ fontSize: '14px', fontWeight: 700, color: o.balance > 0 ? '#E8A838' : '#7A9E7E', margin: 0 }}>{fmt(Math.max(0, o.balance))}</p>
                             </div>
                           </div>
-                        ) : (
-                          <div style={{ textAlign: 'center' }}>
-                            <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Total</p>
-                            <p style={{ fontSize: '15px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{fmt(o.totalAmount)}</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                        </div>
+                      )}
+                    </div>
+                  </SwipeableItem>
                 )
               })}
             </div>
@@ -394,6 +397,8 @@ export default function OrdersCalendar() {
                           activeId={activeSwipeId}
                           onActivate={setActiveSwipeId}
                           onPaid={() => toggleDone(o)}
+                          paidLabel={o.fulfillmentType === 'delivery' ? 'Delivered' : 'Picked up'}
+                          onPreview={() => setPreviewOrder(o)}
                           onEdit={() => openEdit(o)}
                           onDelete={() => setPendingDeleteOrder(o)}
                         >
@@ -405,7 +410,6 @@ export default function OrdersCalendar() {
                             const advBalance = o.totalAmount - advTotalPaid
                             return (
                               <div
-                                onClick={() => setPreviewOrder(o)}
                                 style={{ background: '#fff', borderRadius: '12px', padding: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', cursor: 'pointer' }}
                               >
                                 <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', margin: '0 0 2px' }}>
