@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { X, Trash2, Camera, RefreshCw } from 'lucide-react'
 import { db } from '../../db/db'
 import type { BusinessExpense } from '../../db/db'
-import { logBusinessExpense, deleteSheetRow } from '../../lib/sheets'
+import { logBusinessExpense, updateBusinessExpense, deleteSheetRow } from '../../lib/sheets'
 import { supabase } from '../../lib/supabase'
 
 const CATEGORIES = ['Supplies', 'Utilities', 'Rent', 'Delivery', 'Other']
@@ -136,7 +136,10 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
       onSaved(); handleClose()
       if (navigator.onLine && expense!.supabaseId) {
         const { error } = await supabase.from('business_expenses').update(supabasePayload).eq('id', expense!.supabaseId)
-        if (!error) await db.businessExpenses.update(expense!.id!, { pendingSync: false })
+        if (!error) {
+          await db.businessExpenses.update(expense!.id!, { pendingSync: false })
+          updateBusinessExpense(data, expense!.supabaseId)
+        }
       }
     } else {
       const localId = await db.businessExpenses.add({ ...data, pendingSync: true })

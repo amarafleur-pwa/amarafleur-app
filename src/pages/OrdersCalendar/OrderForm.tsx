@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order } from '../../db/db'
-import { logOrder, deleteSheetRow } from '../../lib/sheets'
+import { logOrder, updateOrder, deleteSheetRow } from '../../lib/sheets'
 import { supabase } from '../../lib/supabase'
 
 interface Props {
@@ -108,7 +108,10 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
       handleClose()
       if (navigator.onLine && order!.supabaseId) {
         const { error } = await supabase.from('orders').update(supabasePayload).eq('id', order!.supabaseId)
-        if (!error) await db.orders.update(order!.id!, { pendingSync: false })
+        if (!error) {
+          await db.orders.update(order!.id!, { pendingSync: false })
+          updateOrder(data, order!.supabaseId)
+        }
       }
     } else {
       const localId = await db.orders.add({ ...data, pendingSync: true })

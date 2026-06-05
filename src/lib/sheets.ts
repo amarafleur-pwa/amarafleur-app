@@ -15,6 +15,16 @@ async function appendRow(sheet: string, row: (string | number)[]) {
   }
 }
 
+async function updateRow(sheet: string, row: (string | number)[], appId: string) {
+  try {
+    await fetch('/api/sheets-update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sheet, row, appId }),
+    })
+  } catch { }
+}
+
 export function deleteSheetRow(sheet: string, appId: string) {
   void fetch('/api/sheets-delete', {
     method: 'POST',
@@ -71,4 +81,36 @@ export function logCustomer(c: {
   void appendRow('Customers', [
     c.name, c.phone ?? '', c.notes ?? '', now(), appId,
   ])
+}
+
+export function updatePersonalExpense(e: {
+  name: string; amount: number; amountPaid?: number; dueDate: string; category?: string;
+  isRecurring: boolean; notes?: string
+}, appId: string) {
+  void updateRow('Personal Expenses', [
+    e.name, e.amount, e.amountPaid ?? 0, e.dueDate, e.category ?? '',
+    e.isRecurring ? 'Yes' : 'No', e.notes ?? '', now(), appId,
+  ], appId)
+}
+
+export function updateBusinessExpense(e: {
+  name: string; amount: number; amountPaid?: number; dueDate: string; category: string;
+  isRecurring?: boolean; notes?: string
+}, appId: string) {
+  void updateRow('Business Expenses', [
+    e.name, e.amount, e.amountPaid ?? 0, e.dueDate, e.category,
+    e.isRecurring ? 'Yes' : 'No', e.notes ?? '', now(), appId,
+  ], appId)
+}
+
+export function updateOrder(o: {
+  customerName: string; description: string; quantity?: number;
+  dueDate: string; time?: string; totalAmount: number; depositPaid: number;
+  notes?: string; fulfillmentType?: 'delivery' | 'pickup'
+}, appId: string) {
+  void updateRow('Orders', [
+    o.customerName, o.description, o.quantity ?? 1,
+    o.dueDate, o.time ?? '', o.totalAmount, o.depositPaid,
+    o.notes ?? '', o.fulfillmentType ?? '', now(), appId,
+  ], appId)
 }
