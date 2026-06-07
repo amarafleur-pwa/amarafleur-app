@@ -3,11 +3,16 @@
 
 const now = () => new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' })
 
+const API_HEADERS = {
+  'Content-Type': 'application/json',
+  'x-app-secret': import.meta.env.VITE_SHEETS_API_SECRET ?? '',
+}
+
 async function appendRow(sheet: string, row: (string | number)[]) {
   try {
     await fetch('/api/sheets-log', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: API_HEADERS,
       body: JSON.stringify({ sheet, row }),
     })
   } catch {
@@ -19,16 +24,18 @@ async function updateRow(sheet: string, row: (string | number)[], appId: string)
   try {
     await fetch('/api/sheets-update', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: API_HEADERS,
       body: JSON.stringify({ sheet, row, appId }),
     })
-  } catch { }
+  } catch {
+    // Silently ignore — sheets logging is best-effort
+  }
 }
 
 export function deleteSheetRow(sheet: string, appId: string) {
   void fetch('/api/sheets-delete', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: API_HEADERS,
     body: JSON.stringify({ sheet, appId }),
   }).catch(() => {})
 }

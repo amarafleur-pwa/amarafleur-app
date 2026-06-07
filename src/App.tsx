@@ -41,6 +41,11 @@ const moreTabs = [
 function BottomNav() {
   const location = useLocation()
   const [moreOpen, setMoreOpen] = useState(false)
+  const [prevPathname, setPrevPathname] = useState(location.pathname)
+  if (location.pathname !== prevPathname) {
+    setPrevPathname(location.pathname)
+    setMoreOpen(false)
+  }
 
   const tabs = [
     { to: '/' as string | null, icon: LayoutDashboard, label: 'Home', exact: true, more: false },
@@ -57,8 +62,6 @@ function BottomNav() {
     const i = tabs.findIndex(t => !t.more && t.to && (t.exact ? location.pathname === t.to : location.pathname.startsWith(t.to)))
     return i < 0 ? 0 : i
   })()
-
-  useEffect(() => { setMoreOpen(false) }, [location.pathname])
 
   return (
     <>
@@ -341,7 +344,7 @@ export default function App() {
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
-        restoreFromSupabase().then(bump).catch(console.warn)
+        syncPendingItems().then(() => restoreFromSupabase()).then(bump).catch(console.warn)
       }
     }
     document.addEventListener('visibilitychange', handleVisibility)
@@ -350,7 +353,7 @@ export default function App() {
     const debouncedRestore = () => {
       clearTimeout(restoreTimer)
       restoreTimer = setTimeout(() => {
-        restoreFromSupabase().then(bump).catch(console.warn)
+        syncPendingItems().then(() => restoreFromSupabase()).then(bump).catch(console.warn)
       }, 1500)
     }
 

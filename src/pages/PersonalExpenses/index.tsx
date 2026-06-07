@@ -90,14 +90,13 @@ export default function PersonalExpenses() {
   useEffect(() => { load() }, [syncVersion])
 
   async function markPaid(expense: PersonalExpense) {
-    const nowPaid = !expense.isPaid
-    const paidAmt = nowPaid ? expense.amount : 0
+    const paidAmt = expense.amount
     if (expense.supabaseId) {
-      await supabase.from('personal_expenses').update({ is_paid: nowPaid, amount_paid: paidAmt }).eq('id', expense.supabaseId)
+      await supabase.from('personal_expenses').update({ is_paid: true, amount_paid: paidAmt }).eq('id', expense.supabaseId)
     }
-    await db.personalExpenses.update(expense.id!, { isPaid: nowPaid, amountPaid: paidAmt })
+    await db.personalExpenses.update(expense.id!, { isPaid: true, amountPaid: paidAmt })
 
-    if (nowPaid && expense.isRecurring) {
+    if (expense.isRecurring) {
       const next = new Date(expense.dueDate + 'T00:00:00')
       next.setMonth(next.getMonth() + 1)
       const newData = {

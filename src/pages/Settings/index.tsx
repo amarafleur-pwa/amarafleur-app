@@ -90,7 +90,7 @@ export default function Settings() {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [currentUser])
+  }, [currentUser, photoCacheKey])
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]

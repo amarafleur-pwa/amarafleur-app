@@ -83,7 +83,9 @@ function useDailyVerse(): BibleVerse | null {
           return { text: parsed.text, ref: parsed.ref }
         }
       }
-    } catch {}
+    } catch {
+      // Ignore malformed cache — fall through to refetch
+    }
     return null
   })
 
@@ -160,7 +162,7 @@ export default function Dashboard() {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [currentUser])
+  }, [currentUser, photoCacheKey])
 
   useEffect(() => {
     const t = todayStr()

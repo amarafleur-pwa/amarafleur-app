@@ -1,17 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Bell, X } from 'lucide-react'
 import { requestPermission, checkAndFireReminders } from '../lib/notifications'
 
 export default function NotificationBanner() {
-  const [visible, setVisible] = useState(false)
+  const [visible, setVisible] = useState(() => {
+    if (!('Notification' in window)) return false
+    if (Notification.permission !== 'default') return false
+    if (localStorage.getItem('notif-banner-dismissed')) return false
+    return true
+  })
   const [requesting, setRequesting] = useState(false)
-
-  useEffect(() => {
-    if (!('Notification' in window)) return
-    if (Notification.permission !== 'default') return
-    if (localStorage.getItem('notif-banner-dismissed')) return
-    setVisible(true)
-  }, [])
 
   if (!visible) return null
 

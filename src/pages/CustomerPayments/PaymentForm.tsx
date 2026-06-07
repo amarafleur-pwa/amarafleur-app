@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { X, Plus } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment } from '../../db/db'
@@ -59,11 +59,11 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
   const [closing, setClosing] = useState(false)
   const handleClose = () => setClosing(true)
 
-  function loadPayments() {
+  const loadPayments = useCallback(() => {
     db.payments.where('orderId').equals(order.id!).sortBy('paidAt').then(setPayments)
-  }
+  }, [order.id])
 
-  useEffect(() => { loadPayments() }, [order.id])
+  useEffect(() => { loadPayments() }, [loadPayments])
 
   const totalPaid = order.depositPaid + payments.reduce((s, p) => s + p.amount, 0)
   const balance = Math.max(0, order.totalAmount - totalPaid)

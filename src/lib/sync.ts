@@ -20,10 +20,13 @@ export async function syncPendingItems(): Promise<void> {
       if (!error) {
         await db.personalExpenses.update(e.id!, { supabaseId: row.id, pendingSync: false })
         logPersonalExpense(e, row.id)
+      } else {
+        console.warn('[sync] personal_expenses insert failed', e.id, error.message)
       }
     } else {
       const { error } = await supabase.from('personal_expenses').update(payload).eq('id', e.supabaseId)
       if (!error) await db.personalExpenses.update(e.id!, { pendingSync: false })
+      else console.warn('[sync] personal_expenses update failed', e.id, error.message)
     }
   }
 
@@ -42,10 +45,13 @@ export async function syncPendingItems(): Promise<void> {
       if (!error) {
         await db.businessExpenses.update(e.id!, { supabaseId: row.id, pendingSync: false })
         logBusinessExpense(e, row.id)
+      } else {
+        console.warn('[sync] business_expenses insert failed', e.id, error.message)
       }
     } else {
       const { error } = await supabase.from('business_expenses').update(payload).eq('id', e.supabaseId)
       if (!error) await db.businessExpenses.update(e.id!, { pendingSync: false })
+      else console.warn('[sync] business_expenses update failed', e.id, error.message)
     }
   }
 
@@ -65,10 +71,13 @@ export async function syncPendingItems(): Promise<void> {
       if (!error) {
         await db.orders.update(o.id!, { supabaseId: row.id, pendingSync: false })
         logOrder(o, row.id)
+      } else {
+        console.warn('[sync] orders insert failed', o.id, error.message)
       }
     } else {
       const { error } = await supabase.from('orders').update(payload).eq('id', o.supabaseId)
       if (!error) await db.orders.update(o.id!, { pendingSync: false })
+      else console.warn('[sync] orders update failed', o.id, error.message)
     }
   }
 
@@ -89,10 +98,13 @@ export async function syncPendingItems(): Promise<void> {
           customerName: order.customerName, orderDesc: order.description,
           amount: p.amount, type: p.type, paidAt: p.paidAt, notes: p.notes,
         }, row.id)
+      } else {
+        console.warn('[sync] payments insert failed', p.id, error.message)
       }
     } else {
       const { error } = await supabase.from('payments').update(payload).eq('id', p.supabaseId)
       if (!error) await db.payments.update(p.id!, { pendingSync: false })
+      else console.warn('[sync] payments update failed', p.id, error.message)
     }
   }
 }

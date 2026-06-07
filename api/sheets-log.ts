@@ -20,6 +20,11 @@ async function getToken(email: string, key: string): Promise<string> {
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
+  const expectedSecret = process.env.SHEETS_API_SECRET
+  if (!expectedSecret || req.headers['x-app-secret'] !== expectedSecret) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
   const { sheet, row } = req.body ?? {}
   if (!sheet || !Array.isArray(row)) return res.status(400).json({ error: 'Missing sheet or row' })
 

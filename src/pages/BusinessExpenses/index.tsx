@@ -6,6 +6,7 @@ import type { BusinessExpense } from '../../db/db'
 import ExpenseForm from './ExpenseForm'
 import { supabase } from '../../lib/supabase'
 import { deleteSheetRow, logBusinessExpense } from '../../lib/sheets'
+import { createNextRecurringExpense } from './recurring'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
@@ -89,31 +90,14 @@ export default function BusinessExpenses() {
   useEffect(() => { load() }, [syncVersion])
 
   async function markPaid(expense: BusinessExpense) {
-    const nowPaid = !expense.isPaid
-    const paidAmt = nowPaid ? expense.amount : 0
+    const paidAmt = expense.amount
     if (expense.supabaseId) {
-      await supabase.from('business_expenses').update({ is_paid: nowPaid, amount_paid: paidAmt }).eq('id', expense.supabaseId)
+      await supabase.from('business_expenses').update({ is_paid: true, amount_paid: paidAmt }).eq('id', expense.supabaseId)
     }
-    await db.businessExpenses.update(expense.id!, { isPaid: nowPaid, amountPaid: paidAmt })
+    await db.businessExpenses.update(expense.id!, { isPaid: true, amountPaid: paidAmt })
 
-    if (nowPaid && expense.isRecurring) {
-      const next = new Date(expense.dueDate + 'T00:00:00')
-      next.setMonth(next.getMonth() + 1)
-      const newData = {
-        name: expense.name, amount: expense.amount,
-        dueDate: next.toISOString().split('T')[0],
-        category: expense.category, notes: expense.notes,
-        isRecurring: true, isPaid: false, modeOfPayment: expense.modeOfPayment,
-        expenseType: 'monthly' as const,
-      }
-      const { data: row } = await supabase.from('business_expenses').insert({
-        name: newData.name, amount: newData.amount, due_date: newData.dueDate,
-        category: newData.category, notes: newData.notes ?? null,
-        is_paid: false, is_recurring: true, mode_of_payment: newData.modeOfPayment ?? null,
-        expense_type: 'monthly',
-      }).select().single()
-      await db.businessExpenses.add({ ...newData, supabaseId: row?.id })
-      if (row?.id) logBusinessExpense(newData, row.id)
+    if (expense.isRecurring) {
+      await createNextRecurringExpense(expense)
     }
     load()
   }

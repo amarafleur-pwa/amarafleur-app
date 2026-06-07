@@ -6,23 +6,21 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
+function canShowInstallPrompt() {
+  if (localStorage.getItem('install-dismissed')) return false
+  // Already installed
+  if (window.matchMedia('(display-mode: standalone)').matches) return false
+  if ((navigator as { standalone?: boolean }).standalone) return false
+  return true
+}
+
 export default function InstallBanner() {
   const [prompt, setPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [showIos, setShowIos] = useState(false)
-  const [visible, setVisible] = useState(false)
+  const [showIos] = useState(() => canShowInstallPrompt() && /iphone|ipad|ipod/i.test(navigator.userAgent))
+  const [visible, setVisible] = useState(() => showIos)
 
   useEffect(() => {
-    if (localStorage.getItem('install-dismissed')) return
-    // Already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) return
-    if ((navigator as { standalone?: boolean }).standalone) return
-
-    const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent)
-    if (isIos) {
-      setShowIos(true)
-      setVisible(true)
-      return
-    }
+    if (showIos || !canShowInstallPrompt()) return
 
     function handler(e: Event) {
       e.preventDefault()
@@ -31,7 +29,7 @@ export default function InstallBanner() {
     }
     window.addEventListener('beforeinstallprompt', handler)
     return () => window.removeEventListener('beforeinstallprompt', handler)
-  }, [])
+  }, [showIos])
 
   if (!visible) return null
 

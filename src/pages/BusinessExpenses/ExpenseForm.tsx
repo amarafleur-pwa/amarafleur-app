@@ -5,6 +5,7 @@ import type { BusinessExpense } from '../../db/db'
 import { logBusinessExpense, updateBusinessExpense, deleteSheetRow } from '../../lib/sheets'
 import { supabase } from '../../lib/supabase'
 import { getCurrentUser } from '../../lib/currentUser'
+import { createNextRecurringExpense } from './recurring'
 
 const CATEGORIES = ['Supplies', 'Utilities', 'Rent', 'Delivery', 'Other']
 const MODES = ['Cash', 'GCash', 'Bank Transfer', 'Credit Card', 'Cheque']
@@ -174,24 +175,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     const nowPaid = !isPaid
     setIsPaid(nowPaid)
     if (nowPaid && expense.isRecurring) {
-      const next = new Date(expense.dueDate + 'T00:00:00')
-      next.setMonth(next.getMonth() + 1)
-      const newData = {
-        name: expense.name, amount: expense.amount,
-        dueDate: next.toISOString().split('T')[0],
-        category: expense.category, notes: expense.notes,
-        isRecurring: true, isPaid: false,
-        modeOfPayment: expense.modeOfPayment,
-        expenseType: 'monthly' as ExpenseType,
-      }
-      const { data: row } = await supabase.from('business_expenses').insert({
-        name: newData.name, amount: newData.amount, due_date: newData.dueDate,
-        category: newData.category, notes: newData.notes ?? null,
-        is_paid: false, is_recurring: true,
-        mode_of_payment: newData.modeOfPayment ?? null,
-        expense_type: 'monthly',
-      }).select().single()
-      await db.businessExpenses.add({ ...newData, supabaseId: row?.id })
+      await createNextRecurringExpense(expense)
     }
   }
 

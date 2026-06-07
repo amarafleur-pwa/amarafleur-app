@@ -29,7 +29,6 @@ export async function checkAndFireReminders(): Promise<void> {
   // Fire at most once per calendar day
   const lastCheck = localStorage.getItem('reminder-check-date')
   if (lastCheck === today) return
-  localStorage.setItem('reminder-check-date', today)
 
   try {
     const [expenses, orders] = await Promise.all([
@@ -38,6 +37,9 @@ export async function checkAndFireReminders(): Promise<void> {
     ])
 
     const reg = await navigator.serviceWorker.ready
+    // Only mark today as checked once the service worker is confirmed ready —
+    // a transient failure here shouldn't permanently skip reminders for the day
+    localStorage.setItem('reminder-check-date', today)
     const in3 = nDaysFromNow(3)
     const tomorrow = nDaysFromNow(1)
 

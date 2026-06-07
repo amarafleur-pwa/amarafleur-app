@@ -28,7 +28,7 @@ export default function SwipeableItem({ id, activeId, onActivate, onPaid, paidLa
 
   useEffect(() => {
     if (activeId !== id && isOpen) close()
-  }, [activeId, id])
+  }, [activeId, id, isOpen])
 
   function onTouchStart(e: React.TouchEvent) {
     onActivate(id)
