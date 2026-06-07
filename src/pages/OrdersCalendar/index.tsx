@@ -92,13 +92,7 @@ export default function OrdersCalendar() {
     return orders
       .filter(o => o.dueDate === logDate && o.isDone)
       .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
-      .map(o => {
-        const orderPayments = allPayments.filter(p => p.orderId === o.id)
-        const totalPaid = o.depositPaid + orderPayments.reduce((s, p) => s + p.amount, 0)
-        const balance = o.totalAmount - totalPaid
-        return { ...o, orderPayments, totalPaid, balance }
-      })
-  }, [orders, allPayments, logDate])
+  }, [orders, logDate])
 
   // Calendar: map dueDate → pending (undone) orders only
   const orderMap = useMemo(() => {
@@ -241,7 +235,6 @@ export default function OrdersCalendar() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {logItems.map(o => {
                 const fulfillment = o.fulfillmentType ?? 'pickup'
-                const isPartial = o.totalAmount > o.depositPaid
                 return (
                   <SwipeableItem
                     key={o.id}
@@ -281,21 +274,6 @@ export default function OrdersCalendar() {
                           )}
                         </div>
                       </div>
-
-                      {isPartial && (
-                        <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-around' }}>
-                            <div style={{ textAlign: 'center' }}>
-                              <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Paid</p>
-                              <p style={{ fontSize: '14px', fontWeight: 700, color: '#7A9E7E', margin: 0 }}>{fmt(o.totalPaid)}</p>
-                            </div>
-                            <div style={{ textAlign: 'center' }}>
-                              <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Balance</p>
-                              <p style={{ fontSize: '14px', fontWeight: 700, color: o.balance > 0 ? '#8B1A1A' : '#7A9E7E', margin: 0 }}>{fmt(Math.max(0, o.balance))}</p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </SwipeableItem>
                 )
