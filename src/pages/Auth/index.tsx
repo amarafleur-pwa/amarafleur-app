@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { KeyRound, User, LogIn } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { setCurrentUser } from '../../lib/currentUser'
@@ -18,6 +18,23 @@ const PETALS = Array.from({ length: 28 }, (_, i) => ({
   color: PETAL_COLORS[Math.floor(Math.random() * PETAL_COLORS.length)],
 }))
 
+const LOCK_KEY = 'af-login-locked-until'
+const FAILS_KEY = 'af-login-fails'
+const MAX_FAILS = 3
+const LOCK_DURATION_MS = 15 * 60 * 1000
+
+function readLockUntil(): number | null {
+  const until = parseInt(localStorage.getItem(LOCK_KEY) ?? '', 10)
+  return until > Date.now() ? until : null
+}
+
+function formatCountdown(ms: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
+  const mm = Math.floor(totalSeconds / 60)
+  const ss = totalSeconds % 60
+  return `${mm}:${ss.toString().padStart(2, '0')}`
+}
+
 const input: React.CSSProperties = {
   width: '100%',
   padding: '13px 16px',
@@ -36,6 +53,22 @@ export default function Auth({ onAuth }: Props) {
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [lockedUntil, setLockedUntil] = useState<number | null>(readLockUntil)
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (!lockedUntil) return
+    const id = setInterval(() => {
+      const t = Date.now()
+      setNow(t)
+      if (t >= lockedUntil) {
+        localStorage.removeItem(LOCK_KEY)
+        localStorage.removeItem(FAILS_KEY)
+        setLockedUntil(null)
+      }
+    }, 1000)
+    return () => clearInterval(id)
+  }, [lockedUntil])
 
   const ready = secret.trim() && name.trim()
 
@@ -71,6 +104,16 @@ export default function Auth({ onAuth }: Props) {
           .select('id', { count: 'exact', head: true })
 
         if ((count ?? 0) >= 3) {
+          const fails = parseInt(localStorage.getItem(FAILS_KEY) ?? '0', 10) + 1
+          if (fails >= MAX_FAILS) {
+            const until = Date.now() + LOCK_DURATION_MS
+            localStorage.setItem(LOCK_KEY, String(until))
+            localStorage.removeItem(FAILS_KEY)
+            setNow(Date.now())
+            setLockedUntil(until)
+          } else {
+            localStorage.setItem(FAILS_KEY, String(fails))
+          }
           setError('All 3 accounts are taken — ask one of the others to free a slot in Settings.')
           return
         }
@@ -82,6 +125,8 @@ export default function Auth({ onAuth }: Props) {
         }
       }
 
+      localStorage.removeItem(FAILS_KEY)
+      localStorage.removeItem(LOCK_KEY)
       setCurrentUser(loginName)
       localStorage.setItem('af-authed', '1')
       onAuth()
@@ -139,58 +184,71 @@ export default function Auth({ onAuth }: Props) {
 
       <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-        <p style={{ fontSize: '14px', color: '#6b7280', textAlign: 'center', marginBottom: '4px' }}>
-          Enter the shared code and your name to continue.
-        </p>
+        {lockedUntil ? (
+          <div style={{ textAlign: 'center', padding: '8px 0' }}>
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '10px' }}>
+              Too many attempts. Try again in
+            </p>
+            <p style={{ fontSize: '32px', fontWeight: 800, color: '#C9848A', letterSpacing: '1px', margin: 0 }}>
+              {formatCountdown(lockedUntil - now)}
+            </p>
+          </div>
+        ) : (
+          <>
+            <p style={{ fontSize: '14px', color: '#6b7280', textAlign: 'center', marginBottom: '4px' }}>
+              Enter the shared code and your name to continue.
+            </p>
 
-        <div style={{ position: 'relative' }}>
-          <KeyRound size={17} color="#9ca3af" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
-          <input
-            style={{ ...input, paddingLeft: '42px', textAlign: 'left' }}
-            type="password"
-            placeholder="Shared code"
-            value={secret}
-            onChange={e => setSecret(e.target.value)}
-            autoFocus
-          />
-        </div>
+            <div style={{ position: 'relative' }}>
+              <KeyRound size={17} color="#9ca3af" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
+              <input
+                style={{ ...input, paddingLeft: '42px', textAlign: 'left' }}
+                type="password"
+                placeholder="Shared code"
+                value={secret}
+                onChange={e => setSecret(e.target.value)}
+                autoFocus
+              />
+            </div>
 
-        <div style={{ position: 'relative' }}>
-          <User size={17} color="#9ca3af" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
-          <input
-            style={{ ...input, paddingLeft: '42px', textAlign: 'left' }}
-            placeholder="Your name (e.g. Maria)"
-            value={name}
-            onChange={e => setName(e.target.value)}
-          />
-        </div>
+            <div style={{ position: 'relative' }}>
+              <User size={17} color="#9ca3af" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
+              <input
+                style={{ ...input, paddingLeft: '42px', textAlign: 'left' }}
+                placeholder="Your name (e.g. Maria)"
+                value={name}
+                onChange={e => setName(e.target.value)}
+              />
+            </div>
 
-        <button
-          onClick={handleSubmit}
-          disabled={!ready || busy}
-          style={{
-            padding: '16px',
-            background: ready ? '#C9848A' : '#e5e0db',
-            color: ready ? '#fff' : '#9ca3af',
-            border: 'none', borderRadius: '14px',
-            fontSize: '16px', fontWeight: 700,
-            cursor: ready && !busy ? 'pointer' : 'default',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-            boxShadow: ready ? '0 4px 20px #C9848A44' : 'none',
-          }}
-        >
-          <LogIn size={20} />
-          {busy ? 'Checking…' : 'Continue'}
-        </button>
+            <button
+              onClick={handleSubmit}
+              disabled={!ready || busy}
+              style={{
+                padding: '16px',
+                background: ready ? '#C9848A' : '#e5e0db',
+                color: ready ? '#fff' : '#9ca3af',
+                border: 'none', borderRadius: '14px',
+                fontSize: '16px', fontWeight: 700,
+                cursor: ready && !busy ? 'pointer' : 'default',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                boxShadow: ready ? '0 4px 20px #C9848A44' : 'none',
+              }}
+            >
+              <LogIn size={20} />
+              {busy ? 'Checking…' : 'Continue'}
+            </button>
 
-        {/* Error */}
-        {error && (
-          <p style={{
-            fontSize: '13px', color: '#C9848A',
-            textAlign: 'center', fontWeight: 500,
-          }}>
-            {error}
-          </p>
+            {/* Error */}
+            {error && (
+              <p style={{
+                fontSize: '13px', color: '#C9848A',
+                textAlign: 'center', fontWeight: 500,
+              }}>
+                {error}
+              </p>
+            )}
+          </>
         )}
 
       </div>

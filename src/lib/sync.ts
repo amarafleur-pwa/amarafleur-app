@@ -13,7 +13,7 @@ export async function syncPendingItems(): Promise<void> {
       category: e.category ?? null, is_paid: e.isPaid,
       is_recurring: e.isRecurring, notes: e.notes ?? null,
       expense_type: e.expenseType ?? null, receipt_url: e.receiptUrl ?? null,
-      amount_paid: e.amountPaid ?? null,
+      amount_paid: e.amountPaid ?? null, logged_by: e.loggedBy ?? null,
     }
     if (!e.supabaseId) {
       const { data: row, error } = await supabase.from('personal_expenses').insert(payload).select().single()
@@ -35,7 +35,7 @@ export async function syncPendingItems(): Promise<void> {
       mode_of_payment: e.modeOfPayment ?? null, is_paid: e.isPaid,
       is_recurring: e.isRecurring ?? false, category: e.category, notes: e.notes ?? null,
       expense_type: e.expenseType ?? null, receipt_url: e.receiptUrl ?? null,
-      amount_paid: e.amountPaid ?? null,
+      amount_paid: e.amountPaid ?? null, logged_by: e.loggedBy ?? null,
     }
     if (!e.supabaseId) {
       const { data: row, error } = await supabase.from('business_expenses').insert(payload).select().single()
@@ -58,7 +58,7 @@ export async function syncPendingItems(): Promise<void> {
       quantity: o.quantity ?? null, time: o.time ?? null,
       order_date: o.orderDate, due_date: o.dueDate,
       total_amount: o.totalAmount, deposit_paid: o.depositPaid,
-      is_done: o.isDone, notes: o.notes ?? null,
+      is_done: o.isDone, notes: o.notes ?? null, logged_by: o.loggedBy ?? null,
     }
     if (!o.supabaseId) {
       const { data: row, error } = await supabase.from('orders').insert(payload).select().single()
@@ -79,7 +79,7 @@ export async function syncPendingItems(): Promise<void> {
     if (!order?.supabaseId) continue
     const payload = {
       order_id: order.supabaseId, amount: p.amount,
-      type: p.type, paid_at: p.paidAt, notes: p.notes ?? null,
+      type: p.type, paid_at: p.paidAt, notes: p.notes ?? null, logged_by: p.loggedBy ?? null,
     }
     if (!p.supabaseId) {
       const { data: row, error } = await supabase.from('payments').insert(payload).select().single()
@@ -127,7 +127,7 @@ export async function restoreFromSupabase(): Promise<void> {
         supabaseId: r.id, name: r.name, amount: r.amount, dueDate: r.due_date,
         category: r.category, isPaid: r.is_paid, isRecurring: r.is_recurring, notes: r.notes,
         expenseType: r.expense_type ?? undefined, receiptUrl: r.receipt_url ?? undefined,
-        amountPaid: r.amount_paid ?? undefined,
+        amountPaid: r.amount_paid ?? undefined, loggedBy: r.logged_by ?? undefined,
       }))
     )
 
@@ -137,7 +137,7 @@ export async function restoreFromSupabase(): Promise<void> {
         modeOfPayment: r.mode_of_payment, isPaid: r.is_paid, isRecurring: r.is_recurring ?? false,
         category: r.category, notes: r.notes,
         expenseType: r.expense_type ?? undefined, receiptUrl: r.receipt_url ?? undefined,
-        amountPaid: r.amount_paid ?? undefined,
+        amountPaid: r.amount_paid ?? undefined, loggedBy: r.logged_by ?? undefined,
       }))
     )
 
@@ -149,6 +149,7 @@ export async function restoreFromSupabase(): Promise<void> {
         fulfillmentType: r.fulfillment_type ?? 'pickup',
         quantity: r.quantity, time: r.time, orderDate: r.order_date, dueDate: r.due_date,
         totalAmount: r.total_amount, depositPaid: r.deposit_paid, isDone: r.is_done, notes: r.notes,
+        loggedBy: r.logged_by ?? undefined,
       })
       supabaseToLocalOrderId.set(r.id, localId as number)
     }
@@ -159,13 +160,14 @@ export async function restoreFromSupabase(): Promise<void> {
         orderId: supabaseToLocalOrderId.get(r.order_id) ?? 0,
         amount: r.amount, paidAt: r.paid_at,
         type: r.type as 'deposit' | 'balance' | 'full',
-        notes: r.notes,
+        notes: r.notes, loggedBy: r.logged_by ?? undefined,
       }))
     )
 
     await db.customers.bulkAdd(
       (cust.data ?? []).map(r => ({
         supabaseId: r.id, name: r.name, phone: r.phone, notes: r.notes,
+        loggedBy: r.logged_by ?? undefined,
       }))
     )
   })
