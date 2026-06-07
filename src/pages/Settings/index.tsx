@@ -103,9 +103,14 @@ export default function Settings() {
       if (!error) {
         const { data } = supabase.storage.from('receipts').getPublicUrl(path)
         const versionedUrl = `${data.publicUrl}?v=${Date.now()}`
-        await supabase.from('app_users').update({ photo_url: versionedUrl }).ilike('name', currentUser)
-        localStorage.setItem(photoCacheKey, versionedUrl)
-        setProfilePhoto(versionedUrl)
+        const { data: rows, error: updateError } = await supabase
+          .from('app_users').update({ photo_url: versionedUrl }).ilike('name', currentUser).select('id')
+        if (!updateError && rows && rows.length > 0) {
+          localStorage.setItem(photoCacheKey, versionedUrl)
+          setProfilePhoto(versionedUrl)
+        } else {
+          setPhotoError('Could not save photo — try again.')
+        }
       } else {
         console.error('[avatar upload] failed:', error)
         setPhotoError(error.message || 'Upload failed')
@@ -164,10 +169,16 @@ export default function Settings() {
 
   async function handleRemovePhoto() {
     if (!currentUser) return
-    await supabase.from('app_users').update({ photo_url: null }).ilike('name', currentUser)
-    localStorage.removeItem(photoCacheKey)
-    setProfilePhoto(null)
-    if (photoInputRef.current) photoInputRef.current.value = ''
+    setPhotoError(null)
+    const { data: rows, error: updateError } = await supabase
+      .from('app_users').update({ photo_url: null }).ilike('name', currentUser).select('id')
+    if (!updateError && rows && rows.length > 0) {
+      localStorage.removeItem(photoCacheKey)
+      setProfilePhoto(null)
+      if (photoInputRef.current) photoInputRef.current.value = ''
+    } else {
+      setPhotoError('Could not remove photo — try again.')
+    }
   }
 
   function load() {
