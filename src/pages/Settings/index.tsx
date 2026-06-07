@@ -44,7 +44,8 @@ export default function Settings() {
   const [accounts, setAccounts] = useState<AppUser[]>([])
   const [loading, setLoading] = useState(true)
   const [actionError, setActionError] = useState<string | null>(null)
-  const [confirmRelease, setConfirmRelease] = useState<string | null>(null)
+  const [releaseTarget, setReleaseTarget] = useState<AppUser | null>(null)
+  const [releaseConfirmText, setReleaseConfirmText] = useState('')
   const currentUser = getCurrentUser()
   const photoCacheKey = `af-profile-photo-${currentUser}`
   const [showDeleteAll, setShowDeleteAll] = useState(false)
@@ -194,18 +195,16 @@ export default function Settings() {
 
   useEffect(() => { load() }, [])
 
-  async function handleRelease(account: AppUser) {
-    if (confirmRelease !== account.id) {
-      setConfirmRelease(account.id)
-      return
-    }
+  async function handleRelease() {
+    if (!releaseTarget) return
     setActionError(null)
-    const { error } = await supabase.from('app_users').delete().eq('id', account.id)
+    const { error } = await supabase.from('app_users').delete().eq('id', releaseTarget.id)
     if (error) {
       setActionError('Could not free that slot. Try again.')
       return
     }
-    setConfirmRelease(null)
+    setReleaseTarget(null)
+    setReleaseConfirmText('')
     load()
   }
 
@@ -354,21 +353,20 @@ export default function Settings() {
                   </div>
                   {!isYou && (
                     <button
-                      onClick={() => handleRelease(a)}
+                      onClick={() => setReleaseTarget(a)}
                       style={{
-                        background: confirmRelease === a.id ? '#fee2e2' : 'none',
-                        border: '1.5px solid',
-                        borderColor: confirmRelease === a.id ? '#fca5a5' : '#e5e0db',
+                        background: 'none',
+                        border: '1.5px solid #e5e0db',
                         borderRadius: '8px',
                         padding: '6px 10px',
-                        color: confirmRelease === a.id ? '#dc2626' : '#9ca3af',
+                        color: '#9ca3af',
                         fontSize: '12px', fontWeight: 600,
                         cursor: 'pointer',
                         display: 'flex', alignItems: 'center', gap: '5px',
                       }}
                     >
                       <Trash2 size={13} />
-                      {confirmRelease === a.id ? 'Confirm' : 'Release'}
+                      Release
                     </button>
                   )}
                 </div>
@@ -488,6 +486,42 @@ export default function Settings() {
               style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', fontSize: '14px', fontWeight: 600, cursor: deleteConfirmText === 'delete' ? 'pointer' : 'not-allowed', background: deleteConfirmText === 'delete' ? '#E05C5C' : '#f3f0ed', color: deleteConfirmText === 'delete' ? '#fff' : '#9ca3af', boxShadow: deleteConfirmText === 'delete' ? '0 3px 10px #E05C5C44' : 'none', transition: 'all 0.15s' }}
             >
               Delete All
+            </button>
+          </div>
+        </div>
+      </div>
+      )}
+
+      {releaseTarget && (
+      <div
+        onClick={() => { setReleaseTarget(null); setReleaseConfirmText('') }}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+      >
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{ background: '#fff', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '320px', boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}
+        >
+          <p style={{ fontSize: '16px', fontWeight: 700, color: '#2D2D2D', marginBottom: '6px' }}>Release {releaseTarget.name}'s slot?</p>
+          <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '14px' }}>
+            This permanently removes the account and frees the slot for someone else to claim. This cannot be undone.
+          </p>
+          <input
+            type="text"
+            placeholder='Type "release" to confirm'
+            value={releaseConfirmText}
+            onChange={e => setReleaseConfirmText(e.target.value)}
+            style={{ width: '100%', padding: '11px 14px', border: '1.5px solid #e5e0db', borderRadius: '10px', fontSize: '14px', color: '#2D2D2D', outline: 'none', boxSizing: 'border-box', marginBottom: '16px' }}
+          />
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={() => { setReleaseTarget(null); setReleaseConfirmText('') }} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1.5px solid #e5e0db', background: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
+              Cancel
+            </button>
+            <button
+              onClick={handleRelease}
+              disabled={releaseConfirmText !== 'release'}
+              style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', fontSize: '14px', fontWeight: 600, cursor: releaseConfirmText === 'release' ? 'pointer' : 'not-allowed', background: releaseConfirmText === 'release' ? '#E05C5C' : '#f3f0ed', color: releaseConfirmText === 'release' ? '#fff' : '#9ca3af', boxShadow: releaseConfirmText === 'release' ? '0 3px 10px #E05C5C44' : 'none', transition: 'all 0.15s' }}
+            >
+              Release
             </button>
           </div>
         </div>
