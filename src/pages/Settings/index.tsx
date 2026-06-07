@@ -359,7 +359,7 @@ export default function Settings() {
             )}
 
             {/* Add device button */}
-            {!adding && passkeys.length < 2 && (
+            {!adding && passkeys.length < 3 && (
               <button
                 onClick={() => { setAdding(true); setConfirmDelete(null) }}
                 style={{

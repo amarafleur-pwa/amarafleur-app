@@ -48,8 +48,8 @@ export default function Auth({ onAuth }: Props) {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showRegister, setShowRegister] = useState(false)
   const [userName, setUserName] = useState('')
+  const [setupCode, setSetupCode] = useState('')
 
   const supported = typeof window !== 'undefined' && !!window.PublicKeyCredential
 
@@ -88,10 +88,22 @@ export default function Auth({ onAuth }: Props) {
   }
 
   async function handleRegister() {
-    if (!userName.trim()) return
+    if (!userName.trim() || !setupCode.trim()) return
     setBusy(true)
     setError(null)
     try {
+      const verifyRes = await fetch('/api/verify-setup-secret', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret: setupCode.trim() }),
+      })
+      const verifyData = await verifyRes.json() as { ok?: boolean }
+      if (!verifyData.ok) {
+        setError('Incorrect setup code.')
+        setBusy(false)
+        return
+      }
+
       const challenge = crypto.getRandomValues(new Uint8Array(32))
       const userId = crypto.getRandomValues(new Uint8Array(16))
 
@@ -139,7 +151,6 @@ export default function Auth({ onAuth }: Props) {
   }
 
   const isFirstTime = passkeys.length === 0
-  const canAddMore = passkeys.length < 2
 
   return (
     <>
@@ -203,8 +214,8 @@ export default function Auth({ onAuth }: Props) {
       {supported && !loading && (
         <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-          {/* Sign in — shown when passkeys exist and not registering */}
-          {!isFirstTime && !showRegister && (
+          {/* Sign in — the only option once a passkey exists */}
+          {!isFirstTime && (
             <button
               onClick={handleSignIn}
               disabled={busy}
@@ -225,78 +236,44 @@ export default function Auth({ onAuth }: Props) {
             </button>
           )}
 
-          {/* Registered users list */}
-          {!isFirstTime && !showRegister && (
-            <div style={{ textAlign: 'center' }}>
-              {passkeys.map(p => (
-                <p key={p.id} style={{ fontSize: '13px', color: '#9ca3af' }}>
-                  🔑 {p.userName}
-                </p>
-              ))}
-            </div>
-          )}
-
-          {/* Register form */}
-          {(isFirstTime || showRegister) && (
+          {/* First-time bootstrap registration — gated by setup code */}
+          {isFirstTime && (
             <>
               <p style={{ fontSize: '14px', color: '#6b7280', textAlign: 'center', marginBottom: '4px' }}>
-                {isFirstTime
-                  ? 'Register your device to get started.'
-                  : 'Register a second passkey for another user.'}
+                Enter the setup code to register the first device.
               </p>
+              <input
+                style={input}
+                type="password"
+                placeholder="Setup code"
+                value={setupCode}
+                onChange={e => setSetupCode(e.target.value)}
+                autoFocus
+              />
               <input
                 style={input}
                 placeholder="Your name (e.g. Owner 1)"
                 value={userName}
                 onChange={e => setUserName(e.target.value)}
-                autoFocus
               />
               <button
                 onClick={handleRegister}
-                disabled={!userName.trim() || busy}
+                disabled={!userName.trim() || !setupCode.trim() || busy}
                 style={{
                   padding: '16px',
-                  background: userName.trim() ? '#C9848A' : '#e5e0db',
-                  color: userName.trim() ? '#fff' : '#9ca3af',
+                  background: userName.trim() && setupCode.trim() ? '#C9848A' : '#e5e0db',
+                  color: userName.trim() && setupCode.trim() ? '#fff' : '#9ca3af',
                   border: 'none', borderRadius: '14px',
                   fontSize: '16px', fontWeight: 700,
-                  cursor: userName.trim() && !busy ? 'pointer' : 'default',
+                  cursor: userName.trim() && setupCode.trim() && !busy ? 'pointer' : 'default',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                  boxShadow: userName.trim() ? '0 4px 20px #C9848A44' : 'none',
+                  boxShadow: userName.trim() && setupCode.trim() ? '0 4px 20px #C9848A44' : 'none',
                 }}
               >
                 <KeyRound size={20} />
                 {busy ? 'Registering…' : 'Register Passkey'}
               </button>
-              {!isFirstTime && (
-                <button
-                  onClick={() => { setShowRegister(false); setError(null) }}
-                  style={{
-                    padding: '13px', background: 'transparent',
-                    color: '#9ca3af', border: '1.5px solid #e5e0db',
-                    borderRadius: '12px', fontSize: '14px', fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Cancel
-                </button>
-              )}
             </>
-          )}
-
-          {/* Add another passkey button */}
-          {!isFirstTime && !showRegister && canAddMore && (
-            <button
-              onClick={() => { setShowRegister(true); setUserName(''); setError(null) }}
-              style={{
-                padding: '12px', background: 'transparent',
-                color: '#9ca3af', border: '1.5px solid #e5e0db',
-                borderRadius: '12px', fontSize: '13px', fontWeight: 600,
-                cursor: 'pointer', marginTop: '4px',
-              }}
-            >
-              + Register Another Device
-            </button>
           )}
 
           {/* Error */}
