@@ -417,29 +417,31 @@ export default function OrdersCalendar() {
                               <div
                                 style={{ background: '#fff', padding: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', cursor: 'pointer' }}
                               >
-                                <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', margin: '0 0 2px' }}>
-                                  {o.customerName}
-                                </p>
-                                <p style={{ fontSize: '13px', color: '#6b7280', margin: o.loggedBy ? '0 0 2px' : '0 0 8px' }}>
-                                  {o.description}{o.quantity && o.quantity > 1 ? ` × ${o.quantity}` : ''}
-                                </p>
-                                {o.loggedBy && (
-                                  <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 8px' }}>👤 {o.loggedBy}</p>
-                                )}
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', flexWrap: 'wrap' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <span style={{
-                                      fontSize: '11px', fontWeight: 700, borderRadius: '5px', padding: '2px 8px',
-                                      color: advFulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
-                                      background: advFulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
-                                    }}>
-                                      {advFulfillment === 'delivery' ? '🚚 For Delivery' : '🌸 For Pickup'}
-                                    </span>
-                                    {o.time && <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 500 }}>{formatTime(o.time)}</span>}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                                  <div style={{ minWidth: 0 }}>
+                                    <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', margin: '0 0 2px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.customerName}</span>
+                                      {o.loggedBy && <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>· 👤 {o.loggedBy}</span>}
+                                    </p>
+                                    <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>
+                                      {o.description}{o.quantity && o.quantity > 1 ? ` × ${o.quantity}` : ''}
+                                    </p>
                                   </div>
-                                  {!advIsPartial && o.totalAmount > 0 && (
-                                    <p style={{ fontSize: '15px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{fmt(o.totalAmount)}</p>
-                                  )}
+                                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', marginBottom: '4px' }}>
+                                      <span style={{
+                                        fontSize: '10px', fontWeight: 700, borderRadius: '5px', padding: '2px 6px',
+                                        color: advFulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
+                                        background: advFulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
+                                      }}>
+                                        {advFulfillment === 'delivery' ? '🚚 For Delivery' : '🌸 For Pickup'}
+                                      </span>
+                                      {o.time && <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: 500 }}>{formatTime(o.time)}</span>}
+                                    </div>
+                                    {!advIsPartial && o.totalAmount > 0 && (
+                                      <p style={{ fontSize: '15px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{fmt(o.totalAmount)}</p>
+                                    )}
+                                  </div>
                                 </div>
 
                                 {o.totalAmount > 0 && advIsPartial && (
