@@ -380,13 +380,10 @@ export default function BusinessExpenses() {
                     opacity: fullyPaid ? 0.65 : 1,
                   }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
                         <p style={{ fontWeight: 600, fontSize: '14px', color: '#2D2D2D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: fullyPaid ? 'line-through' : 'none' }}>
                           {e.name}
                         </p>
-                        {type === 'monthly' && <RefreshCw size={12} color="#9ca3af" />}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px', flexWrap: 'wrap' }}>
                         {!isInstant && (
                           <span style={{ fontSize: '11px', fontWeight: 700, color: badge.color, background: badge.bg, borderRadius: '5px', padding: '1px 8px', minWidth: '44px', display: 'inline-block', textAlign: 'center' }}>
                             {badge.label}
@@ -397,6 +394,9 @@ export default function BusinessExpenses() {
                             Paid
                           </span>
                         )}
+                        {type === 'monthly' && <RefreshCw size={12} color="#9ca3af" />}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px', flexWrap: 'wrap' }}>
                         {!isInstant && <span style={{ fontSize: '11px', color: '#9ca3af' }}>{formatDate(e.dueDate)}</span>}
                         <span style={{ fontSize: '11px', color: '#9ca3af' }}>· {e.category}</span>
                         {e.modeOfPayment && <span style={{ fontSize: '11px', color: '#9ca3af' }}>· {e.modeOfPayment}</span>}

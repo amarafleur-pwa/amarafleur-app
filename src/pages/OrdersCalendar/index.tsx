@@ -255,15 +255,13 @@ export default function OrdersCalendar() {
                     <div style={{ background: '#fff', padding: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', cursor: 'pointer' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
                         <div style={{ minWidth: 0 }}>
-                          <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', margin: '0 0 2px' }}>
-                            {o.customerName}
+                          <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', margin: '0 0 2px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.customerName}</span>
+                            {o.loggedBy && <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>· 👤 {o.loggedBy}</span>}
                           </p>
                           <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>
                             {o.description}{o.quantity && o.quantity > 1 ? ` × ${o.quantity}` : ''}
                           </p>
-                          {o.loggedBy && (
-                            <p style={{ fontSize: '11px', color: '#9ca3af', margin: '2px 0 0' }}>👤 {o.loggedBy}</p>
-                          )}
                         </div>
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', marginBottom: '4px' }}>
