@@ -316,16 +316,18 @@ export default function CustomerPayments() {
                       <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {o.description}
                       </p>
-                      <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>{formatDate(o.dueDate)}</p>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '12px' }}>
-                      <span style={{
-                        display: 'inline-block', fontSize: '11px', fontWeight: 700,
-                        color: s.color, background: s.bg,
-                        borderRadius: '5px', padding: '3px 8px', marginBottom: '6px',
-                      }}>
-                        {s.label}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '11px', color: '#9ca3af' }}>{formatDate(o.dueDate)}</span>
+                        <span style={{
+                          display: 'inline-block', fontSize: '11px', fontWeight: 700,
+                          color: s.color, background: s.bg,
+                          borderRadius: '5px', padding: '3px 8px',
+                        }}>
+                          {s.label}
+                        </span>
+                      </div>
                       <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D' }}>{fmt(o.totalAmount)}</p>
                     </div>
                   </div>
