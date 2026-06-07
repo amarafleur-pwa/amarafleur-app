@@ -232,8 +232,8 @@ export default function Dashboard() {
           <NetworkPill />
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', marginTop: '4px' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#2D2D2D', letterSpacing: '-0.2px', fontStyle: 'italic', lineHeight: 1.2 }}>
-            Hello, Amara Fleur 🌸
+          <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#2D2D2D', letterSpacing: '-0.2px', lineHeight: 1.2 }}>
+            Hello, {currentUser} 🌸
           </h1>
           <div
             onClick={() => navigate('/settings')}
