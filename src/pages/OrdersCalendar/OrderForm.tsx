@@ -253,7 +253,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
                       boxShadow: fulfillmentType === t ? `0 2px 8px ${t === 'delivery' ? '#7A9E7E44' : '#C9848A44'}` : 'none',
                     }}
                   >
-                    {t === 'pickup' ? '🌸 Pick Up' : '🚚 Deliver'}
+                    {t === 'pickup' ? '🌸 Pick Up' : '🚚 Delivery'}
                   </button>
                 ))}
               </div>
