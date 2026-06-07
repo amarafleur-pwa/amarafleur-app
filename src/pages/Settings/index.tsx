@@ -102,9 +102,10 @@ export default function Settings() {
       const { error } = await supabase.storage.from('receipts').upload(path, blob, { contentType: 'image/jpeg', upsert: true })
       if (!error) {
         const { data } = supabase.storage.from('receipts').getPublicUrl(path)
-        await supabase.from('app_users').update({ photo_url: data.publicUrl }).ilike('name', currentUser)
-        localStorage.setItem(photoCacheKey, data.publicUrl)
-        setProfilePhoto(data.publicUrl)
+        const versionedUrl = `${data.publicUrl}?v=${Date.now()}`
+        await supabase.from('app_users').update({ photo_url: versionedUrl }).ilike('name', currentUser)
+        localStorage.setItem(photoCacheKey, versionedUrl)
+        setProfilePhoto(versionedUrl)
       } else {
         console.error('[avatar upload] failed:', error)
         setPhotoError(error.message || 'Upload failed')
