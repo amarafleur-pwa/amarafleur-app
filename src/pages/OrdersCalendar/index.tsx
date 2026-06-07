@@ -438,20 +438,25 @@ export default function OrdersCalendar() {
                                       </span>
                                       {o.time && <span style={{ fontSize: '10px', color: '#6b7280', fontWeight: 500 }}>{formatTime(o.time)}</span>}
                                     </div>
-                                    {!advIsPartial && o.totalAmount > 0 && (
+                                    {o.totalAmount > 0 && (
                                       <p style={{ fontSize: '15px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{fmt(o.totalAmount)}</p>
-                                    )}
-                                    {o.totalAmount > 0 && advIsPartial && (
-                                      <p style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', margin: 0 }}>
-                                        Total <span style={{ color: '#2D2D2D', fontWeight: 700 }}>{fmt(o.totalAmount)}</span>
-                                        {' · '}
-                                        Paid <span style={{ color: '#7A9E7E', fontWeight: 700 }}>{fmt(advTotalPaid)}</span>
-                                        {' · '}
-                                        Balance <span style={{ color: advBalance > 0 ? '#8B1A1A' : '#7A9E7E', fontWeight: 700 }}>{fmt(Math.max(0, advBalance))}</span>
-                                      </p>
                                     )}
                                   </div>
                                 </div>
+                                {advIsPartial && (
+                                  <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+                                      <div style={{ textAlign: 'center' }}>
+                                        <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Paid</p>
+                                        <p style={{ fontSize: '14px', fontWeight: 700, color: '#7A9E7E', margin: 0 }}>{fmt(advTotalPaid)}</p>
+                                      </div>
+                                      <div style={{ textAlign: 'center' }}>
+                                        <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>Balance</p>
+                                        <p style={{ fontSize: '14px', fontWeight: 700, color: advBalance > 0 ? '#8B1A1A' : '#7A9E7E', margin: 0 }}>{fmt(Math.max(0, advBalance))}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             )
                           })()}
