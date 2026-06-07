@@ -381,9 +381,6 @@ export default function BusinessExpenses() {
                   }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-                        <p style={{ fontWeight: 600, fontSize: '14px', color: '#2D2D2D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: fullyPaid ? 'line-through' : 'none' }}>
-                          {e.name}
-                        </p>
                         {!isInstant && (
                           <span style={{ fontSize: '11px', fontWeight: 700, color: badge.color, background: badge.bg, borderRadius: '5px', padding: '1px 8px', minWidth: '44px', display: 'inline-block', textAlign: 'center' }}>
                             {badge.label}
@@ -394,6 +391,9 @@ export default function BusinessExpenses() {
                             Paid
                           </span>
                         )}
+                        <p style={{ fontWeight: 600, fontSize: '14px', color: '#2D2D2D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: fullyPaid ? 'line-through' : 'none' }}>
+                          {e.name}
+                        </p>
                         {type === 'monthly' && <RefreshCw size={12} color="#9ca3af" />}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px', flexWrap: 'wrap' }}>
