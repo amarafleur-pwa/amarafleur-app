@@ -142,6 +142,24 @@ export default function Dashboard() {
           setProfilePhoto(null)
         }
       })
+
+    const channel = supabase
+      .channel(`app-users-photo-${currentUser}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'app_users' }, payload => {
+        const updatedName = payload.new.name
+        const updatedUrl = payload.new.photo_url
+        if (typeof updatedName !== 'string' || updatedName.toLowerCase() !== currentUser.toLowerCase()) return
+        if (updatedUrl) {
+          localStorage.setItem(photoCacheKey, updatedUrl)
+          setProfilePhoto(updatedUrl)
+        } else {
+          localStorage.removeItem(photoCacheKey)
+          setProfilePhoto(null)
+        }
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [currentUser])
 
   useEffect(() => {

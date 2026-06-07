@@ -51,6 +51,7 @@ export default function Settings() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [profilePhoto, setProfilePhoto] = useState<string | null>(() => localStorage.getItem(photoCacheKey))
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [photoError, setPhotoError] = useState<string | null>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -70,12 +71,31 @@ export default function Settings() {
           setProfilePhoto(null)
         }
       })
+
+    const channel = supabase
+      .channel(`app-users-photo-${currentUser}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'app_users' }, payload => {
+        const updatedName = payload.new.name
+        const updatedUrl = payload.new.photo_url
+        if (typeof updatedName !== 'string' || updatedName.toLowerCase() !== currentUser.toLowerCase()) return
+        if (updatedUrl) {
+          localStorage.setItem(photoCacheKey, updatedUrl)
+          setProfilePhoto(updatedUrl)
+        } else {
+          localStorage.removeItem(photoCacheKey)
+          setProfilePhoto(null)
+        }
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !currentUser) return
     setUploadingPhoto(true)
+    setPhotoError(null)
     try {
       const blob = await compressImage(file)
       const path = `avatars/${slugifyName(currentUser)}.jpg`
@@ -85,6 +105,9 @@ export default function Settings() {
         await supabase.from('app_users').update({ photo_url: data.publicUrl }).ilike('name', currentUser)
         localStorage.setItem(photoCacheKey, data.publicUrl)
         setProfilePhoto(data.publicUrl)
+      } else {
+        console.error('[avatar upload] failed:', error)
+        setPhotoError(error.message || 'Upload failed')
       }
     } finally {
       setUploadingPhoto(false)
@@ -272,6 +295,9 @@ export default function Settings() {
               </button>
             )}
           </div>
+          {photoError && (
+            <p style={{ fontSize: '12px', color: '#C9848A', fontWeight: 500, margin: 0, textAlign: 'center' }}>{photoError}</p>
+          )}
         </div>
       </div>
 
