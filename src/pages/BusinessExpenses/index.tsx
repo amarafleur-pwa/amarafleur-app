@@ -400,6 +400,7 @@ export default function BusinessExpenses() {
                         {!isInstant && <span style={{ fontSize: '11px', color: '#9ca3af' }}>{formatDate(e.dueDate)}</span>}
                         <span style={{ fontSize: '11px', color: '#9ca3af' }}>· {e.category}</span>
                         {e.modeOfPayment && <span style={{ fontSize: '11px', color: '#9ca3af' }}>· {e.modeOfPayment}</span>}
+                        {e.loggedBy && <span style={{ fontSize: '11px', color: '#9ca3af' }}>· 👤 {e.loggedBy}</span>}
                       </div>
                       {partial && (
                         <p style={{ fontSize: '11px', fontWeight: 600, marginTop: '2px' }}>

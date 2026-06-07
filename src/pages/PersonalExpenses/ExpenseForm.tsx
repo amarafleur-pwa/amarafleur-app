@@ -4,6 +4,7 @@ import { db } from '../../db/db'
 import type { PersonalExpense } from '../../db/db'
 import { logPersonalExpense, updatePersonalExpense, deleteSheetRow } from '../../lib/sheets'
 import { supabase } from '../../lib/supabase'
+import { getCurrentUser } from '../../lib/currentUser'
 
 const CATEGORIES = ['Bills', 'Rent', 'Food & Groceries', 'Transportation', 'Health', 'Savings', 'Other']
 type ExpenseType = 'one-time' | 'monthly' | 'instant'
@@ -119,13 +120,14 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
       amountPaid: paidAmt,
       expenseType,
       receiptUrl: receiptUrl || undefined,
+      loggedBy: isEdit ? expense!.loggedBy : getCurrentUser(),
     }
     const supabasePayload = {
       name: data.name, amount: data.amount, due_date: data.dueDate,
       category: data.category ?? null, is_paid: data.isPaid,
       is_recurring: data.isRecurring, notes: data.notes ?? null,
       expense_type: data.expenseType ?? null, receipt_url: data.receiptUrl ?? null,
-      amount_paid: paidAmt,
+      amount_paid: paidAmt, logged_by: data.loggedBy ?? null,
     }
     if (isEdit) {
       await db.personalExpenses.update(expense!.id!, { ...data, pendingSync: true })

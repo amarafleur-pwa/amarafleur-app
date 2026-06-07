@@ -4,6 +4,7 @@ import { db } from '../../db/db'
 import type { Order, Payment, Customer } from '../../db/db'
 import PaymentForm from './PaymentForm'
 import { supabase } from '../../lib/supabase'
+import { getCurrentUser } from '../../lib/currentUser'
 import { logCustomer, deleteSheetRow } from '../../lib/sheets'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
@@ -107,6 +108,7 @@ export default function CustomerPayments() {
         name: cName.trim(),
         phone: cPhone.trim() || undefined,
         notes: cNotes.trim() || undefined,
+        loggedBy: editingCustomer?.id ? editingCustomer.loggedBy : getCurrentUser(),
       }
       if (editingCustomer?.id) {
         if (editingCustomer.supabaseId) {
@@ -119,6 +121,7 @@ export default function CustomerPayments() {
       } else {
         const { data: row, error } = await supabase.from('customers').insert({
           name: data.name, phone: data.phone ?? null, notes: data.notes ?? null,
+          logged_by: data.loggedBy ?? null,
         }).select().single()
         if (error) throw error
         await db.customers.add({ ...data, supabaseId: row.id })
@@ -381,6 +384,9 @@ export default function CustomerPayments() {
                       <FileText size={12} color="#9ca3af" />
                       <p style={{ fontSize: '13px', color: '#6b7280' }}>{c.notes}</p>
                     </div>
+                  )}
+                  {c.loggedBy && (
+                    <p style={{ fontSize: '11px', color: '#9ca3af', margin: '5px 0 0' }}>👤 {c.loggedBy}</p>
                   )}
                 </div>
               )

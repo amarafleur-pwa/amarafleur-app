@@ -4,6 +4,7 @@ import { db } from '../../db/db'
 import type { Order, Payment } from '../../db/db'
 import { logPayment, deleteSheetRow } from '../../lib/sheets'
 import { supabase } from '../../lib/supabase'
+import { getCurrentUser } from '../../lib/currentUser'
 
 interface Props {
   order: Order
@@ -71,9 +72,10 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
     const amt = parseFloat(amount)
     if (!amt || amt <= 0) return
     setSaving(true)
+    const loggedBy = getCurrentUser()
     const localId = await db.payments.add({
       orderId: order.id!, amount: amt, type, paidAt,
-      notes: notes.trim() || undefined, pendingSync: true,
+      notes: notes.trim() || undefined, pendingSync: true, loggedBy,
     })
     setAmount('')
     setNotes('')
@@ -84,13 +86,13 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
       const { data: row, error } = await supabase.from('payments').insert({
         order_id: order.supabaseId,
         amount: amt, type, paid_at: paidAt,
-        notes: notes.trim() || null,
+        notes: notes.trim() || null, logged_by: loggedBy || null,
       }).select().single()
       if (!error) {
         await db.payments.update(localId as number, { supabaseId: row.id, pendingSync: false })
         logPayment({
           customerName: order.customerName, orderDesc: order.description,
-          amount: amt, type, paidAt, notes: notes.trim() || undefined,
+          amount: amt, type, paidAt, notes: notes.trim() || undefined, loggedBy,
         }, row.id)
       }
     }
@@ -195,7 +197,7 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
             >
               <div>
                 <p style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>{TYPE_LABELS[p.type]}</p>
-                <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>{formatDate(p.paidAt)}{p.notes ? ` · ${p.notes}` : ''}</p>
+                <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>{formatDate(p.paidAt)}{p.notes ? ` · ${p.notes}` : ''}{p.loggedBy ? ` · 👤 ${p.loggedBy}` : ''}</p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <p style={{ fontWeight: 700, fontSize: '14px', color: '#7A9E7E' }}>{fmt(p.amount)}</p>

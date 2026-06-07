@@ -14,6 +14,7 @@ export interface PersonalExpense {
   expenseType?: 'one-time' | 'monthly' | 'instant'
   receiptUrl?: string
   amountPaid?: number
+  loggedBy?: string
 }
 
 export interface BusinessExpense {
@@ -31,6 +32,7 @@ export interface BusinessExpense {
   expenseType?: 'one-time' | 'monthly' | 'instant'
   receiptUrl?: string
   amountPaid?: number
+  loggedBy?: string
 }
 
 export interface Order {
@@ -48,6 +50,7 @@ export interface Order {
   isDone: boolean
   notes?: string
   fulfillmentType?: 'delivery' | 'pickup'
+  loggedBy?: string
 }
 
 export interface Payment {
@@ -59,6 +62,7 @@ export interface Payment {
   paidAt: string
   type: 'deposit' | 'balance' | 'full'
   notes?: string
+  loggedBy?: string
 }
 
 export interface Customer {
@@ -67,6 +71,7 @@ export interface Customer {
   name: string
   phone?: string
   notes?: string
+  loggedBy?: string
 }
 
 export interface InventoryItem {
@@ -80,20 +85,12 @@ export interface InventoryItem {
   updatedAt: string
 }
 
-export interface Passkey {
-  id?: number
-  credentialId: string
-  userName: string
-  registeredAt: string
-}
-
 class FlowerShopDB extends Dexie {
   personalExpenses!: EntityTable<PersonalExpense, 'id'>
   businessExpenses!: EntityTable<BusinessExpense, 'id'>
   orders!: EntityTable<Order, 'id'>
   payments!: EntityTable<Payment, 'id'>
   customers!: EntityTable<Customer, 'id'>
-  passkeys!: EntityTable<Passkey, 'id'>
   inventory!: EntityTable<InventoryItem, 'id'>
 
   constructor() {
@@ -129,6 +126,9 @@ class FlowerShopDB extends Dexie {
     this.version(7).stores({
       personalExpenses: '++id, dueDate, isPaid, isRecurring, supabaseId, pendingSync, expenseType',
       businessExpenses: '++id, dueDate, isPaid, isRecurring, category, supabaseId, pendingSync, expenseType',
+    })
+    this.version(8).stores({
+      passkeys: null,
     })
   }
 }

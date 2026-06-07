@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
-import { Fingerprint, KeyRound } from 'lucide-react'
-import { db } from '../../db/db'
-import type { Passkey } from '../../db/db'
+import { useState } from 'react'
+import { KeyRound, User, LogIn } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
+import { setCurrentUser } from '../../lib/currentUser'
 
 interface Props {
   onAuth: () => void
@@ -18,18 +18,6 @@ const PETALS = Array.from({ length: 28 }, (_, i) => ({
   color: PETAL_COLORS[Math.floor(Math.random() * PETAL_COLORS.length)],
 }))
 
-function bufferToBase64(buf: ArrayBuffer): string {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)))
-}
-
-function base64ToBuffer(b64: string): ArrayBuffer {
-  const binary = atob(b64)
-  const buf = new ArrayBuffer(binary.length)
-  const view = new Uint8Array(buf)
-  for (let i = 0; i < binary.length; i++) view[i] = binary.charCodeAt(i)
-  return buf
-}
-
 const input: React.CSSProperties = {
   width: '100%',
   padding: '13px 16px',
@@ -44,113 +32,65 @@ const input: React.CSSProperties = {
 }
 
 export default function Auth({ onAuth }: Props) {
-  const [passkeys, setPasskeys] = useState<Passkey[]>([])
-  const [loading, setLoading] = useState(true)
+  const [secret, setSecret] = useState('')
+  const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [userName, setUserName] = useState('')
-  const [setupCode, setSetupCode] = useState('')
 
-  const supported = typeof window !== 'undefined' && !!window.PublicKeyCredential
+  const ready = secret.trim() && name.trim()
 
-  function loadPasskeys() {
-    db.passkeys.toArray().then(setPasskeys).finally(() => setLoading(false))
-  }
-
-  useEffect(() => { loadPasskeys() }, [])
-
-  async function handleSignIn() {
-    setBusy(true)
-    setError(null)
-    try {
-      const challenge = crypto.getRandomValues(new Uint8Array(32))
-      await navigator.credentials.get({
-        publicKey: {
-          challenge,
-          allowCredentials: passkeys.map(p => ({
-            type: 'public-key' as const,
-            id: base64ToBuffer(p.credentialId),
-          })),
-          userVerification: 'required',
-          timeout: 60000,
-        },
-      })
-      localStorage.setItem('af-authed', '1')
-      onAuth()
-    } catch (e: unknown) {
-      const name = e instanceof Error ? e.name : ''
-      if (name !== 'NotAllowedError') {
-        setError('Sign-in failed. Try again.')
-      }
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function handleRegister() {
-    if (!userName.trim() || !setupCode.trim()) return
+  async function handleSubmit() {
+    if (!ready) return
     setBusy(true)
     setError(null)
     try {
       const verifyRes = await fetch('/api/verify-setup-secret', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret: setupCode.trim() }),
+        body: JSON.stringify({ secret: secret.trim() }),
       })
       const verifyData = await verifyRes.json() as { ok?: boolean }
       if (!verifyData.ok) {
-        setError('Incorrect setup code.')
-        setBusy(false)
+        setError('Incorrect code.')
         return
       }
 
-      const challenge = crypto.getRandomValues(new Uint8Array(32))
-      const userId = crypto.getRandomValues(new Uint8Array(16))
+      const trimmedName = name.trim()
+      const { data: existing } = await supabase
+        .from('app_users')
+        .select('name')
+        .ilike('name', trimmedName)
+        .maybeSingle()
 
-      const credential = (await navigator.credentials.create({
-        publicKey: {
-          challenge,
-          rp: { name: 'Amara Fleur', id: window.location.hostname },
-          user: {
-            id: userId,
-            name: userName.trim(),
-            displayName: userName.trim(),
-          },
-          pubKeyCredParams: [
-            { type: 'public-key', alg: -7 },
-            { type: 'public-key', alg: -257 },
-          ],
-          authenticatorSelection: {
-            authenticatorAttachment: 'platform',
-            userVerification: 'required',
-            residentKey: 'preferred',
-          },
-          timeout: 60000,
-        },
-      })) as PublicKeyCredential | null
+      let loginName = trimmedName
+      if (existing) {
+        loginName = existing.name
+      } else {
+        const { count } = await supabase
+          .from('app_users')
+          .select('id', { count: 'exact', head: true })
 
-      if (!credential) throw new Error('No credential returned')
+        if ((count ?? 0) >= 3) {
+          setError('All 3 accounts are taken — ask one of the others to free a slot in Settings.')
+          return
+        }
 
-      await db.passkeys.add({
-        credentialId: bufferToBase64(credential.rawId),
-        userName: userName.trim(),
-        registeredAt: new Date().toISOString(),
-      })
+        const { error: insertError } = await supabase.from('app_users').insert({ name: trimmedName })
+        if (insertError) {
+          setError('That name was just taken — try a different one.')
+          return
+        }
+      }
 
+      setCurrentUser(loginName)
       localStorage.setItem('af-authed', '1')
       onAuth()
-    } catch (e: unknown) {
-      const name = e instanceof Error ? e.name : ''
-      const msg = e instanceof Error ? e.message : ''
-      if (name !== 'NotAllowedError') {
-        setError(msg || 'Registration failed. Try again.')
-      }
+    } catch {
+      setError('Something went wrong. Try again.')
     } finally {
       setBusy(false)
     }
   }
-
-  const isFirstTime = passkeys.length === 0
 
   return (
     <>
@@ -197,100 +137,66 @@ export default function Auth({ onAuth }: Props) {
         Flower Shop Manager
       </p>
 
-      {!supported && (
-        <div style={{
-          background: '#fee2e2', color: '#991b1b',
-          borderRadius: '12px', padding: '16px',
-          fontSize: '14px', textAlign: 'center', maxWidth: '320px',
-        }}>
-          Passkeys are not supported on this browser. Please use Chrome or Safari on a modern device.
+      <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+        <p style={{ fontSize: '14px', color: '#6b7280', textAlign: 'center', marginBottom: '4px' }}>
+          Enter the shared code and your name to continue.
+        </p>
+
+        <div style={{ position: 'relative' }}>
+          <KeyRound size={17} color="#9ca3af" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
+          <input
+            style={{ ...input, paddingLeft: '42px', textAlign: 'left' }}
+            type="password"
+            placeholder="Shared code"
+            value={secret}
+            onChange={e => setSecret(e.target.value)}
+            autoFocus
+          />
         </div>
-      )}
 
-      {supported && loading && (
-        <p style={{ color: '#9ca3af', fontSize: '14px' }}>Loading...</p>
-      )}
-
-      {supported && !loading && (
-        <div style={{ width: '100%', maxWidth: '320px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-
-          {/* Sign in — the only option once a passkey exists */}
-          {!isFirstTime && (
-            <button
-              onClick={handleSignIn}
-              disabled={busy}
-              style={{
-                padding: '16px',
-                background: '#C9848A',
-                color: '#fff',
-                border: 'none', borderRadius: '14px',
-                fontSize: '16px', fontWeight: 700,
-                cursor: busy ? 'default' : 'pointer',
-                opacity: busy ? 0.7 : 1,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                boxShadow: '0 4px 20px #C9848A44',
-              }}
-            >
-              <Fingerprint size={22} />
-              {busy ? 'Verifying…' : 'Sign In with Passkey'}
-            </button>
-          )}
-
-          {/* First-time bootstrap registration — gated by setup code */}
-          {isFirstTime && (
-            <>
-              <p style={{ fontSize: '14px', color: '#6b7280', textAlign: 'center', marginBottom: '4px' }}>
-                Enter the setup code to register the first device.
-              </p>
-              <input
-                style={input}
-                type="password"
-                placeholder="Setup code"
-                value={setupCode}
-                onChange={e => setSetupCode(e.target.value)}
-                autoFocus
-              />
-              <input
-                style={input}
-                placeholder="Your name (e.g. Owner 1)"
-                value={userName}
-                onChange={e => setUserName(e.target.value)}
-              />
-              <button
-                onClick={handleRegister}
-                disabled={!userName.trim() || !setupCode.trim() || busy}
-                style={{
-                  padding: '16px',
-                  background: userName.trim() && setupCode.trim() ? '#C9848A' : '#e5e0db',
-                  color: userName.trim() && setupCode.trim() ? '#fff' : '#9ca3af',
-                  border: 'none', borderRadius: '14px',
-                  fontSize: '16px', fontWeight: 700,
-                  cursor: userName.trim() && setupCode.trim() && !busy ? 'pointer' : 'default',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                  boxShadow: userName.trim() && setupCode.trim() ? '0 4px 20px #C9848A44' : 'none',
-                }}
-              >
-                <KeyRound size={20} />
-                {busy ? 'Registering…' : 'Register Passkey'}
-              </button>
-            </>
-          )}
-
-          {/* Error */}
-          {error && (
-            <p style={{
-              fontSize: '13px', color: '#C9848A',
-              textAlign: 'center', fontWeight: 500,
-            }}>
-              {error}
-            </p>
-          )}
-
+        <div style={{ position: 'relative' }}>
+          <User size={17} color="#9ca3af" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
+          <input
+            style={{ ...input, paddingLeft: '42px', textAlign: 'left' }}
+            placeholder="Your name (e.g. Maria)"
+            value={name}
+            onChange={e => setName(e.target.value)}
+          />
         </div>
-      )}
+
+        <button
+          onClick={handleSubmit}
+          disabled={!ready || busy}
+          style={{
+            padding: '16px',
+            background: ready ? '#C9848A' : '#e5e0db',
+            color: ready ? '#fff' : '#9ca3af',
+            border: 'none', borderRadius: '14px',
+            fontSize: '16px', fontWeight: 700,
+            cursor: ready && !busy ? 'pointer' : 'default',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+            boxShadow: ready ? '0 4px 20px #C9848A44' : 'none',
+          }}
+        >
+          <LogIn size={20} />
+          {busy ? 'Checking…' : 'Continue'}
+        </button>
+
+        {/* Error */}
+        {error && (
+          <p style={{
+            fontSize: '13px', color: '#C9848A',
+            textAlign: 'center', fontWeight: 500,
+          }}>
+            {error}
+          </p>
+        )}
+
+      </div>
 
       <p style={{ fontSize: '11px', color: '#d1ccc8', marginTop: '48px', textAlign: 'center' }}>
-        Protected by device passkey · no password needed
+        Restricted to 3 known accounts
       </p>
     </div>
     </>

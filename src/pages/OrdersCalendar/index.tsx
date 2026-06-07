@@ -261,6 +261,9 @@ export default function OrdersCalendar() {
                           <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>
                             {o.description}{o.quantity && o.quantity > 1 ? ` × ${o.quantity}` : ''}
                           </p>
+                          {o.loggedBy && (
+                            <p style={{ fontSize: '11px', color: '#9ca3af', margin: '2px 0 0' }}>👤 {o.loggedBy}</p>
+                          )}
                         </div>
                         <div style={{ textAlign: 'right', flexShrink: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', marginBottom: '4px' }}>
@@ -419,9 +422,12 @@ export default function OrdersCalendar() {
                                 <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', margin: '0 0 2px' }}>
                                   {o.customerName}
                                 </p>
-                                <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 8px' }}>
+                                <p style={{ fontSize: '13px', color: '#6b7280', margin: o.loggedBy ? '0 0 2px' : '0 0 8px' }}>
                                   {o.description}{o.quantity && o.quantity > 1 ? ` × ${o.quantity}` : ''}
                                 </p>
+                                {o.loggedBy && (
+                                  <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 8px' }}>👤 {o.loggedBy}</p>
+                                )}
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', flexWrap: 'wrap' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <span style={{

@@ -382,6 +382,7 @@ export default function PersonalExpenses() {
                         )}
                         {!isInstant && <span style={{ fontSize: '11px', color: '#9ca3af' }}>{formatDate(e.dueDate)}</span>}
                         {e.category && <span style={{ fontSize: '11px', color: '#9ca3af' }}>· {e.category}</span>}
+                        {e.loggedBy && <span style={{ fontSize: '11px', color: '#9ca3af' }}>· 👤 {e.loggedBy}</span>}
                       </div>
                       {partial && (
                         <p style={{ fontSize: '11px', fontWeight: 600, marginTop: '2px' }}>

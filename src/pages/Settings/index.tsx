@@ -1,37 +1,25 @@
 import { useEffect, useRef, useState } from 'react'
-import { KeyRound, Trash2, Lock, Plus, RefreshCw, Camera } from 'lucide-react'
+import { Users, Trash2, Lock, RefreshCw, Camera } from 'lucide-react'
 import { db } from '../../db/db'
-import type { Passkey } from '../../db/db'
 import { NetworkPill } from '../../components/OfflineBanner'
 import { useSyncActions } from '../../lib/SyncContext'
 import { supabase } from '../../lib/supabase'
 import { deleteSheetRow } from '../../lib/sheets'
+import { getCurrentUser } from '../../lib/currentUser'
 
-function bufferToBase64(buf: ArrayBuffer): string {
-  return btoa(String.fromCharCode(...new Uint8Array(buf)))
-}
-
-const input: React.CSSProperties = {
-  width: '100%',
-  padding: '13px 16px',
-  border: '1.5px solid #e5e0db',
-  borderRadius: '12px',
-  fontSize: '15px',
-  color: '#2D2D2D',
-  background: '#fff',
-  outline: 'none',
-  boxSizing: 'border-box',
+interface AppUser {
+  id: string
+  name: string
+  claimed_at: string
 }
 
 export default function Settings() {
   const { forceSync, isSyncing, lastSyncedAt } = useSyncActions()
-  const [passkeys, setPasskeys] = useState<Passkey[]>([])
+  const [accounts, setAccounts] = useState<AppUser[]>([])
   const [loading, setLoading] = useState(true)
-  const [adding, setAdding] = useState(false)
-  const [userName, setUserName] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [confirmRelease, setConfirmRelease] = useState<string | null>(null)
+  const currentUser = getCurrentUser()
   const [showDeleteAll, setShowDeleteAll] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [profilePhoto, setProfilePhoto] = useState<string | null>(() => localStorage.getItem('af-profile-photo'))
@@ -102,60 +90,30 @@ export default function Settings() {
   }
 
   function load() {
-    db.passkeys.toArray().then(setPasskeys).finally(() => setLoading(false))
+    supabase
+      .from('app_users')
+      .select('id, name, claimed_at')
+      .order('claimed_at', { ascending: true })
+      .then(({ data }) => {
+        setAccounts(data ?? [])
+        setLoading(false)
+      })
   }
 
   useEffect(() => { load() }, [])
 
-  async function handleRegister() {
-    if (!userName.trim()) return
-    setBusy(true)
-    setError(null)
-    try {
-      const challenge = crypto.getRandomValues(new Uint8Array(32))
-      const userId = crypto.getRandomValues(new Uint8Array(16))
-      const credential = (await navigator.credentials.create({
-        publicKey: {
-          challenge,
-          rp: { name: 'Amara Fleur', id: window.location.hostname },
-          user: { id: userId, name: userName.trim(), displayName: userName.trim() },
-          pubKeyCredParams: [
-            { type: 'public-key', alg: -7 },
-            { type: 'public-key', alg: -257 },
-          ],
-          authenticatorSelection: {
-            authenticatorAttachment: 'platform',
-            userVerification: 'required',
-            residentKey: 'preferred',
-          },
-          timeout: 60000,
-        },
-      })) as PublicKeyCredential | null
-      if (!credential) throw new Error('No credential returned')
-      await db.passkeys.add({
-        credentialId: bufferToBase64(credential.rawId),
-        userName: userName.trim(),
-        registeredAt: new Date().toISOString(),
-      })
-      setAdding(false)
-      setUserName('')
-      load()
-    } catch (e: unknown) {
-      const name = e instanceof Error ? e.name : ''
-      const msg = e instanceof Error ? e.message : ''
-      if (name !== 'NotAllowedError') setError(msg || 'Registration failed. Try again.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function handleDelete(id: number) {
-    if (confirmDelete !== id) {
-      setConfirmDelete(id)
+  async function handleRelease(account: AppUser) {
+    if (confirmRelease !== account.id) {
+      setConfirmRelease(account.id)
       return
     }
-    await db.passkeys.delete(id)
-    setConfirmDelete(null)
+    setActionError(null)
+    const { error } = await supabase.from('app_users').delete().eq('id', account.id)
+    if (error) {
+      setActionError('Could not free that slot. Try again.')
+      return
+    }
+    setConfirmRelease(null)
     load()
   }
 
@@ -256,7 +214,7 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Security section */}
+      {/* Accounts section */}
       <div style={{
         background: '#fff', borderRadius: '16px',
         border: '1px solid #e5e0db',
@@ -264,7 +222,7 @@ export default function Settings() {
       }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f0ed' }}>
           <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
-            Security
+            Accounts
           </p>
         </div>
 
@@ -272,108 +230,63 @@ export default function Settings() {
           <p style={{ padding: '20px', fontSize: '14px', color: '#9ca3af' }}>Loading…</p>
         ) : (
           <>
-            {passkeys.map((p, i) => (
-              <div key={p.id} style={{
-                display: 'flex', alignItems: 'center',
-                padding: '14px 20px',
-                borderBottom: i < passkeys.length - 1 || adding ? '1px solid #f3f0ed' : 'none',
-              }}>
-                <div style={{
-                  width: '36px', height: '36px', borderRadius: '10px',
-                  background: '#C9848A12', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  marginRight: '12px', flexShrink: 0,
+            {accounts.map((a, i) => {
+              const isYou = a.name.toLowerCase() === currentUser.toLowerCase()
+              return (
+                <div key={a.id} style={{
+                  display: 'flex', alignItems: 'center',
+                  padding: '14px 20px',
+                  borderBottom: i < accounts.length - 1 ? '1px solid #f3f0ed' : 'none',
                 }}>
-                  <KeyRound size={17} color="#C9848A" />
+                  <div style={{
+                    width: '36px', height: '36px', borderRadius: '10px',
+                    background: '#C9848A12', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    marginRight: '12px', flexShrink: 0,
+                  }}>
+                    <Users size={17} color="#C9848A" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '14px', fontWeight: 600, color: '#2D2D2D', margin: 0 }}>
+                      {a.name}{isYou ? ' (You)' : ''}
+                    </p>
+                    <p style={{ fontSize: '12px', color: '#9ca3af', margin: '2px 0 0' }}>
+                      Joined {formatDate(a.claimed_at)}
+                    </p>
+                  </div>
+                  {!isYou && (
+                    <button
+                      onClick={() => handleRelease(a)}
+                      style={{
+                        background: confirmRelease === a.id ? '#fee2e2' : 'none',
+                        border: '1.5px solid',
+                        borderColor: confirmRelease === a.id ? '#fca5a5' : '#e5e0db',
+                        borderRadius: '8px',
+                        padding: '6px 10px',
+                        color: confirmRelease === a.id ? '#dc2626' : '#9ca3af',
+                        fontSize: '12px', fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: '5px',
+                      }}
+                    >
+                      <Trash2 size={13} />
+                      {confirmRelease === a.id ? 'Confirm' : 'Release'}
+                    </button>
+                  )}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: '14px', fontWeight: 600, color: '#2D2D2D', margin: 0 }}>{p.userName}</p>
-                  <p style={{ fontSize: '12px', color: '#9ca3af', margin: '2px 0 0' }}>
-                    Registered {formatDate(p.registeredAt)}
-                  </p>
-                </div>
-                {passkeys.length > 1 && (
-                  <button
-                    onClick={() => handleDelete(p.id!)}
-                    style={{
-                      background: confirmDelete === p.id ? '#fee2e2' : 'none',
-                      border: '1.5px solid',
-                      borderColor: confirmDelete === p.id ? '#fca5a5' : '#e5e0db',
-                      borderRadius: '8px',
-                      padding: '6px 10px',
-                      color: confirmDelete === p.id ? '#dc2626' : '#9ca3af',
-                      fontSize: '12px', fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: '5px',
-                    }}
-                  >
-                    <Trash2 size={13} />
-                    {confirmDelete === p.id ? 'Confirm' : 'Remove'}
-                  </button>
-                )}
-              </div>
-            ))}
+              )
+            })}
 
-            {/* Add passkey form */}
-            {adding && (
-              <div style={{ padding: '16px 20px', borderTop: '1px solid #f3f0ed', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <input
-                  style={input}
-                  placeholder="Device name (e.g. Owner 2)"
-                  value={userName}
-                  onChange={e => setUserName(e.target.value)}
-                  autoFocus
-                />
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={() => { setAdding(false); setUserName(''); setError(null) }}
-                    style={{
-                      flex: 1, padding: '12px', background: 'transparent',
-                      color: '#9ca3af', border: '1.5px solid #e5e0db',
-                      borderRadius: '10px', fontSize: '14px', fontWeight: 600, cursor: 'pointer',
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleRegister}
-                    disabled={!userName.trim() || busy}
-                    style={{
-                      flex: 2, padding: '12px',
-                      background: userName.trim() ? '#C9848A' : '#e5e0db',
-                      color: userName.trim() ? '#fff' : '#9ca3af',
-                      border: 'none', borderRadius: '10px',
-                      fontSize: '14px', fontWeight: 700,
-                      cursor: userName.trim() && !busy ? 'pointer' : 'default',
-                      boxShadow: userName.trim() ? '0 3px 12px #C9848A44' : 'none',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                    }}
-                  >
-                    <KeyRound size={16} />
-                    {busy ? 'Registering…' : 'Register Passkey'}
-                  </button>
-                </div>
-                {error && (
-                  <p style={{ fontSize: '13px', color: '#C9848A', fontWeight: 500, margin: 0 }}>{error}</p>
-                )}
-              </div>
+            {accounts.length < 3 && (
+              <p style={{
+                padding: '14px 20px', fontSize: '13px', color: '#9ca3af', margin: 0,
+                borderTop: accounts.length > 0 ? '1px solid #f3f0ed' : 'none',
+              }}>
+                {3 - accounts.length} slot{accounts.length === 2 ? '' : 's'} open — sign in with a new name on the login screen to claim {accounts.length === 2 ? 'it' : 'one'}.
+              </p>
             )}
 
-            {/* Add device button */}
-            {!adding && passkeys.length < 3 && (
-              <button
-                onClick={() => { setAdding(true); setConfirmDelete(null) }}
-                style={{
-                  width: '100%', padding: '14px 20px',
-                  background: 'none', border: 'none',
-                  borderTop: passkeys.length > 0 ? '1px solid #f3f0ed' : 'none',
-                  color: '#C9848A', fontSize: '14px', fontWeight: 600,
-                  cursor: 'pointer', textAlign: 'left',
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                }}
-              >
-                <Plus size={16} />
-                Add Another Device
-              </button>
+            {actionError && (
+              <p style={{ padding: '0 20px 16px', fontSize: '13px', color: '#C9848A', fontWeight: 500, margin: 0 }}>{actionError}</p>
             )}
           </>
         )}

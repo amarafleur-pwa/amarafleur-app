@@ -4,6 +4,7 @@ import { db } from '../../db/db'
 import type { Order } from '../../db/db'
 import { logOrder, updateOrder, deleteSheetRow } from '../../lib/sheets'
 import { supabase } from '../../lib/supabase'
+import { getCurrentUser } from '../../lib/currentUser'
 
 interface Props {
   order?: Order
@@ -93,6 +94,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
       depositPaid: depositAmt,
       isDone: mode === 'log' ? true : (order?.isDone ?? false),
       notes: notes.trim() || undefined,
+      loggedBy: isEdit ? order!.loggedBy : getCurrentUser(),
     }
     const supabasePayload = {
       customer_name: data.customerName, description: data.description,
@@ -101,6 +103,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
       order_date: data.orderDate, due_date: data.dueDate,
       total_amount: data.totalAmount, deposit_paid: data.depositPaid,
       is_done: data.isDone, notes: data.notes ?? null,
+      logged_by: data.loggedBy ?? null,
     }
     if (isEdit) {
       await db.orders.update(order!.id!, { ...data, pendingSync: true })

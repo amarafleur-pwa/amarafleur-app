@@ -35,82 +35,82 @@ export function deleteSheetRow(sheet: string, appId: string) {
 
 export function logPersonalExpense(e: {
   name: string; amount: number; amountPaid?: number; dueDate: string; category?: string;
-  isRecurring: boolean; notes?: string
+  isRecurring: boolean; notes?: string; loggedBy?: string
 }, appId: string) {
   void appendRow('Personal Expenses', [
     e.name, e.amount, e.amountPaid ?? 0, e.dueDate, e.category ?? '',
-    e.isRecurring ? 'Yes' : 'No', e.notes ?? '', now(), appId,
+    e.isRecurring ? 'Yes' : 'No', e.notes ?? '', e.loggedBy ?? '', now(), appId,
   ])
 }
 
 export function logBusinessExpense(e: {
   name: string; amount: number; amountPaid?: number; dueDate: string; category: string;
-  isRecurring?: boolean; notes?: string
+  isRecurring?: boolean; notes?: string; loggedBy?: string
 }, appId: string) {
   void appendRow('Business Expenses', [
     e.name, e.amount, e.amountPaid ?? 0, e.dueDate, e.category,
-    e.isRecurring ? 'Yes' : 'No', e.notes ?? '', now(), appId,
+    e.isRecurring ? 'Yes' : 'No', e.notes ?? '', e.loggedBy ?? '', now(), appId,
   ])
 }
 
 export function logOrder(o: {
   customerName: string; description: string; quantity?: number;
   dueDate: string; time?: string; totalAmount: number; depositPaid: number;
-  notes?: string; fulfillmentType?: 'delivery' | 'pickup'
+  notes?: string; fulfillmentType?: 'delivery' | 'pickup'; loggedBy?: string
 }, appId: string) {
   void appendRow('Orders', [
     o.customerName, o.description, o.quantity ?? 1,
     o.dueDate, o.time ?? '', o.totalAmount, o.depositPaid,
-    o.notes ?? '', o.fulfillmentType ?? '', now(), appId,
+    o.notes ?? '', o.fulfillmentType ?? '', o.loggedBy ?? '', now(), appId,
   ])
 }
 
 export function logPayment(p: {
   customerName: string; orderDesc: string; amount: number;
-  type: string; paidAt: string; notes?: string
+  type: string; paidAt: string; notes?: string; loggedBy?: string
 }, appId: string) {
   void appendRow('Payments', [
     p.customerName, p.orderDesc, p.amount,
-    p.type, p.paidAt, p.notes ?? '', now(), appId,
+    p.type, p.paidAt, p.notes ?? '', p.loggedBy ?? '', now(), appId,
   ])
 }
 
 export function logCustomer(c: {
-  name: string; phone?: string; notes?: string
+  name: string; phone?: string; notes?: string; loggedBy?: string
 }, appId: string) {
   void appendRow('Customers', [
-    c.name, c.phone ?? '', c.notes ?? '', now(), appId,
+    c.name, c.phone ?? '', c.notes ?? '', c.loggedBy ?? '', now(), appId,
   ])
 }
 
 export function updatePersonalExpense(e: {
   name: string; amount: number; amountPaid?: number; dueDate: string; category?: string;
-  isRecurring: boolean; notes?: string
+  isRecurring: boolean; notes?: string; loggedBy?: string
 }, appId: string) {
   void updateRow('Personal Expenses', [
     e.name, e.amount, e.amountPaid ?? 0, e.dueDate, e.category ?? '',
-    e.isRecurring ? 'Yes' : 'No', e.notes ?? '', now(), appId,
+    e.isRecurring ? 'Yes' : 'No', e.notes ?? '', e.loggedBy ?? '', now(), appId,
   ], appId)
 }
 
 export function updateBusinessExpense(e: {
   name: string; amount: number; amountPaid?: number; dueDate: string; category: string;
-  isRecurring?: boolean; notes?: string
+  isRecurring?: boolean; notes?: string; loggedBy?: string
 }, appId: string) {
   void updateRow('Business Expenses', [
     e.name, e.amount, e.amountPaid ?? 0, e.dueDate, e.category,
-    e.isRecurring ? 'Yes' : 'No', e.notes ?? '', now(), appId,
+    e.isRecurring ? 'Yes' : 'No', e.notes ?? '', e.loggedBy ?? '', now(), appId,
   ], appId)
 }
 
 export function updateOrder(o: {
   customerName: string; description: string; quantity?: number;
   dueDate: string; time?: string; totalAmount: number; depositPaid: number;
-  notes?: string; fulfillmentType?: 'delivery' | 'pickup'
+  notes?: string; fulfillmentType?: 'delivery' | 'pickup'; loggedBy?: string
 }, appId: string) {
   void updateRow('Orders', [
     o.customerName, o.description, o.quantity ?? 1,
     o.dueDate, o.time ?? '', o.totalAmount, o.depositPaid,
-    o.notes ?? '', o.fulfillmentType ?? '', now(), appId,
+    o.notes ?? '', o.fulfillmentType ?? '', o.loggedBy ?? '', now(), appId,
   ], appId)
 }
