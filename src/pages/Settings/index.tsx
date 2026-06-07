@@ -11,6 +11,32 @@ interface AppUser {
   id: string
   name: string
   claimed_at: string
+  photo_url?: string | null
+}
+
+function slugifyName(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+}
+
+async function compressImage(file: File): Promise<Blob> {
+  return new Promise(resolve => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const max = 1200
+      let { width, height } = img
+      if (width > max || height > max) {
+        if (width > height) { height = Math.round(height * max / width); width = max }
+        else { width = Math.round(width * max / height); height = max }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width; canvas.height = height
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
+      canvas.toBlob(b => resolve(b!), 'image/jpeg', 0.72)
+      URL.revokeObjectURL(url)
+    }
+    img.src = url
+  })
 }
 
 export default function Settings() {
@@ -20,21 +46,50 @@ export default function Settings() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [confirmRelease, setConfirmRelease] = useState<string | null>(null)
   const currentUser = getCurrentUser()
+  const photoCacheKey = `af-profile-photo-${currentUser}`
   const [showDeleteAll, setShowDeleteAll] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
-  const [profilePhoto, setProfilePhoto] = useState<string | null>(() => localStorage.getItem('af-profile-photo'))
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(() => localStorage.getItem(photoCacheKey))
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
-  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+  useEffect(() => {
+    if (!currentUser) return
+    supabase
+      .from('app_users')
+      .select('photo_url')
+      .ilike('name', currentUser)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return
+        if (data.photo_url) {
+          localStorage.setItem(photoCacheKey, data.photo_url)
+          setProfilePhoto(data.photo_url)
+        } else {
+          localStorage.removeItem(photoCacheKey)
+          setProfilePhoto(null)
+        }
+      })
+  }, [])
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = reader.result as string
-      localStorage.setItem('af-profile-photo', dataUrl)
-      setProfilePhoto(dataUrl)
+    if (!file || !currentUser) return
+    setUploadingPhoto(true)
+    try {
+      const blob = await compressImage(file)
+      const path = `avatars/${slugifyName(currentUser)}.jpg`
+      const { error } = await supabase.storage.from('receipts').upload(path, blob, { contentType: 'image/jpeg', upsert: true })
+      if (!error) {
+        const { data } = supabase.storage.from('receipts').getPublicUrl(path)
+        await supabase.from('app_users').update({ photo_url: data.publicUrl }).ilike('name', currentUser)
+        localStorage.setItem(photoCacheKey, data.publicUrl)
+        setProfilePhoto(data.publicUrl)
+      }
+    } finally {
+      setUploadingPhoto(false)
+      e.target.value = ''
     }
-    reader.readAsDataURL(file)
   }
 
   async function handleDeleteAll() {
@@ -83,8 +138,10 @@ export default function Settings() {
     setDeleteConfirmText('')
   }
 
-  function handleRemovePhoto() {
-    localStorage.removeItem('af-profile-photo')
+  async function handleRemovePhoto() {
+    if (!currentUser) return
+    await supabase.from('app_users').update({ photo_url: null }).ilike('name', currentUser)
+    localStorage.removeItem(photoCacheKey)
     setProfilePhoto(null)
     if (photoInputRef.current) photoInputRef.current.value = ''
   }
@@ -173,12 +230,14 @@ export default function Settings() {
             </div>
             <button
               onClick={() => photoInputRef.current?.click()}
+              disabled={uploadingPhoto}
               style={{
                 position: 'absolute', bottom: 0, right: 0,
                 width: 28, height: 28, borderRadius: '50%',
                 background: '#C9848A', border: '2px solid #fff',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', boxShadow: '0 2px 6px rgba(201,132,138,0.4)',
+                cursor: uploadingPhoto ? 'default' : 'pointer', boxShadow: '0 2px 6px rgba(201,132,138,0.4)',
+                opacity: uploadingPhoto ? 0.6 : 1,
               }}
             >
               <Camera size={13} color="#fff" />
@@ -188,16 +247,18 @@ export default function Settings() {
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
               onClick={() => photoInputRef.current?.click()}
+              disabled={uploadingPhoto}
               style={{
                 padding: '9px 18px', borderRadius: '10px',
                 background: '#C9848A', color: '#fff',
                 border: 'none', fontSize: '13px', fontWeight: 600,
-                cursor: 'pointer', boxShadow: '0 2px 8px rgba(201,132,138,0.35)',
+                cursor: uploadingPhoto ? 'default' : 'pointer', boxShadow: '0 2px 8px rgba(201,132,138,0.35)',
+                opacity: uploadingPhoto ? 0.6 : 1,
               }}
             >
-              Change Photo
+              {uploadingPhoto ? 'Uploading…' : 'Change Photo'}
             </button>
-            {profilePhoto && (
+            {profilePhoto && !uploadingPhoto && (
               <button
                 onClick={handleRemovePhoto}
                 style={{

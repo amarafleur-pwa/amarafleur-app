@@ -6,6 +6,8 @@ import { db } from '../../db/db'
 import type { Order } from '../../db/db'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
+import { supabase } from '../../lib/supabase'
+import { getCurrentUser } from '../../lib/currentUser'
 
 function todayStr() {
   return new Date().toISOString().split('T')[0]
@@ -110,16 +112,37 @@ export default function Dashboard() {
   const [dueItems, setDueItems] = useState<DueItem[]>([])
   const [unpaidTotal, setUnpaidTotal] = useState(0)
   const [unpaidCount, setUnpaidCount] = useState(0)
-  const [profilePhoto, setProfilePhoto] = useState<string | null>(() => localStorage.getItem('af-profile-photo'))
+  const currentUser = getCurrentUser()
+  const photoCacheKey = `af-profile-photo-${currentUser}`
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(() => localStorage.getItem(photoCacheKey))
   const dailyVerse = useDailyVerse()
 
   useEffect(() => {
     const handler = (e: StorageEvent) => {
-      if (e.key === 'af-profile-photo') setProfilePhoto(e.newValue)
+      if (e.key === photoCacheKey) setProfilePhoto(e.newValue)
     }
     window.addEventListener('storage', handler)
     return () => window.removeEventListener('storage', handler)
-  }, [])
+  }, [photoCacheKey])
+
+  useEffect(() => {
+    if (!currentUser) return
+    supabase
+      .from('app_users')
+      .select('photo_url')
+      .ilike('name', currentUser)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return
+        if (data.photo_url) {
+          localStorage.setItem(photoCacheKey, data.photo_url)
+          setProfilePhoto(data.photo_url)
+        } else {
+          localStorage.removeItem(photoCacheKey)
+          setProfilePhoto(null)
+        }
+      })
+  }, [currentUser])
 
   useEffect(() => {
     const t = todayStr()
