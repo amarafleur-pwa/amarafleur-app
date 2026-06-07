@@ -106,7 +106,7 @@ function useDailyVerse(): BibleVerse | null {
 export default function Dashboard() {
   const navigate = useNavigate()
   const syncVersion = useSyncVersion()
-  const [todayOrders, setTodayOrders] = useState<Order[]>([])
+  const [advanceOrders, setAdvanceOrders] = useState<Order[]>([])
   const [dueItems, setDueItems] = useState<DueItem[]>([])
   const [unpaidTotal, setUnpaidTotal] = useState(0)
   const [unpaidCount, setUnpaidCount] = useState(0)
@@ -126,12 +126,12 @@ export default function Dashboard() {
     const in7 = daysFromNow(7)
 
     Promise.all([
-      db.orders.filter(o => o.dueDate === t && !o.isDone).toArray(),
+      db.orders.filter(o => o.dueDate > t && !o.isDone).toArray(),
       db.personalExpenses.where('dueDate').belowOrEqual(in7).filter(e => !e.isPaid && e.expenseType !== 'instant').toArray(),
       db.businessExpenses.where('dueDate').belowOrEqual(in7).filter(e => !e.isPaid && e.expenseType !== 'instant').toArray(),
       db.orders.filter(o => !o.isDone).toArray(),
     ]).then(([orders, personal, business, active]) => {
-      setTodayOrders(orders)
+      setAdvanceOrders(orders)
 
       const items: DueItem[] = [
         ...personal.map(e => ({
@@ -240,11 +240,11 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Today's Orders */}
+      {/* Advance Orders */}
       <div style={{ ...card }}>
         <div style={cardHeader}>
           <CalendarCheck2 size={18} color="#C9848A" />
-          <span style={cardTitle}>Today's Orders</span>
+          <span style={cardTitle}>Advance Orders</span>
           <span style={{
             marginLeft: 'auto',
             background: '#C9848A',
@@ -254,15 +254,15 @@ export default function Dashboard() {
             fontSize: '13px',
             fontWeight: 700,
           }}>
-            {todayOrders.length}
+            {advanceOrders.length}
           </span>
         </div>
 
-        {todayOrders.length === 0 ? (
-          <p style={emptyText}>No orders due today</p>
+        {advanceOrders.length === 0 ? (
+          <p style={emptyText}>No advance orders booked</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px' }}>
-            {todayOrders.map(o => (
+            {advanceOrders.map(o => (
               <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <p style={{ fontWeight: 600, fontSize: '14px', color: '#2D2D2D' }}>{o.customerName}</p>
