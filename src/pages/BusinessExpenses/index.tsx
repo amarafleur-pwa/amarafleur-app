@@ -361,7 +361,6 @@ export default function BusinessExpenses() {
                     background: '#fff', padding: '10px 12px',
                     boxShadow: '0 1px 6px rgba(0,0,0,0.06)',
                     display: 'flex', alignItems: 'center', gap: '10px',
-                    opacity: fullyPaid ? 0.65 : 1,
                   }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
@@ -375,7 +374,7 @@ export default function BusinessExpenses() {
                             Paid
                           </span>
                         )}
-                        <p style={{ fontWeight: 600, fontSize: '14px', color: '#2D2D2D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: fullyPaid ? 'line-through' : 'none' }}>
+                        <p style={{ fontWeight: 600, fontSize: '14px', color: '#2D2D2D', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {e.name}
                         </p>
                         {type === 'monthly' && <RefreshCw size={12} color="#9ca3af" />}
