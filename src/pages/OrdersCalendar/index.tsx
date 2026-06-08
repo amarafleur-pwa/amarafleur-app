@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment } from '../../db/db'
@@ -53,6 +53,7 @@ export default function OrdersCalendar() {
   const [showLogPicker, setShowLogPicker] = useState(false)
   const [closingLogPicker, setClosingLogPicker] = useState(false)
   const [pickerViewDate, setPickerViewDate] = useState(() => new Date(logDate + 'T00:00:00'))
+  const lastTapRef = useRef<number>(0)
 
   // Advance (calendar) tab
   const [viewDate, setViewDate] = useState(() => {
@@ -146,9 +147,15 @@ export default function OrdersCalendar() {
     })
   }
 
-  function openLogPicker() {
-    setPickerViewDate(new Date(logDate + 'T00:00:00'))
-    setShowLogPicker(true)
+  function handleDateTap() {
+    const now = Date.now()
+    if (now - lastTapRef.current < 350) {
+      lastTapRef.current = 0
+      setPickerViewDate(new Date(logDate + 'T00:00:00'))
+      setShowLogPicker(true)
+    } else {
+      lastTapRef.current = now
+    }
   }
   function closeLogPicker() {
     setClosingLogPicker(true)
@@ -228,7 +235,7 @@ export default function OrdersCalendar() {
             <button onClick={() => stepLogDate(-1)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex' }}>
               <ChevronLeft size={18} color="#6b7280" />
             </button>
-            <div onDoubleClick={openLogPicker} style={{ textAlign: 'center', cursor: 'pointer' }}>
+            <div onClick={handleDateTap} style={{ textAlign: 'center', cursor: 'pointer', userSelect: 'none', WebkitUserSelect: 'none' } as React.CSSProperties}>
               <p style={{ fontSize: '15px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{logDateLabel}</p>
               {logDate !== today && (
                 <button onClick={() => setLogDate(today)} style={{ fontSize: '11px', color: '#C9848A', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0 0', fontWeight: 600 }}>
