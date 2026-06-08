@@ -50,6 +50,9 @@ export default function OrdersCalendar() {
 
   // Log tab
   const [logDate, setLogDate] = useState(todayStr())
+  const [showLogPicker, setShowLogPicker] = useState(false)
+  const [closingLogPicker, setClosingLogPicker] = useState(false)
+  const [pickerViewDate, setPickerViewDate] = useState(() => new Date(logDate + 'T00:00:00'))
 
   // Advance (calendar) tab
   const [viewDate, setViewDate] = useState(() => {
@@ -112,6 +115,10 @@ export default function OrdersCalendar() {
     ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-PH', { weekday: 'short', month: 'long', day: 'numeric' })
     : null
   const logDateLabel = new Date(logDate + 'T00:00:00').toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric' })
+  const pickerYear = pickerViewDate.getFullYear()
+  const pickerMonth = pickerViewDate.getMonth()
+  const pickerCells = useMemo(() => buildCells(pickerYear, pickerMonth), [pickerYear, pickerMonth])
+  const pickerMonthLabel = pickerViewDate.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })
 
   async function toggleDone(order: Order) {
     if (order.supabaseId) {
@@ -137,6 +144,24 @@ export default function OrdersCalendar() {
       const dt = new Date(y, mo - 1, dy + days)
       return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
     })
+  }
+
+  function openLogPicker() {
+    setPickerViewDate(new Date(logDate + 'T00:00:00'))
+    setShowLogPicker(true)
+  }
+  function closeLogPicker() {
+    setClosingLogPicker(true)
+  }
+  function pickLogDate(ds: string) {
+    setLogDate(ds)
+    closeLogPicker()
+  }
+  function prevPickerMonth() {
+    setPickerViewDate(d => { const nd = new Date(d); nd.setMonth(nd.getMonth() - 1); return nd })
+  }
+  function nextPickerMonth() {
+    setPickerViewDate(d => { const nd = new Date(d); nd.setMonth(nd.getMonth() + 1); return nd })
   }
 
   function openAdd() {
@@ -203,7 +228,7 @@ export default function OrdersCalendar() {
             <button onClick={() => stepLogDate(-1)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex' }}>
               <ChevronLeft size={18} color="#6b7280" />
             </button>
-            <div style={{ textAlign: 'center' }}>
+            <div onDoubleClick={openLogPicker} style={{ textAlign: 'center', cursor: 'pointer' }}>
               <p style={{ fontSize: '15px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{logDateLabel}</p>
               {logDate !== today && (
                 <button onClick={() => setLogDate(today)} style={{ fontSize: '11px', color: '#C9848A', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0 0', fontWeight: 600 }}>
@@ -586,6 +611,59 @@ export default function OrdersCalendar() {
               >
                 Delete
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLogPicker && (
+        <div onClick={closeLogPicker} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 100, display: 'flex', alignItems: 'flex-end' }}>
+          <div
+            onClick={e => e.stopPropagation()}
+            className={closingLogPicker ? 'sheet-exit' : 'sheet-enter'}
+            onAnimationEnd={e => { if (closingLogPicker && e.animationName === 'sheet-down') { setShowLogPicker(false); setClosingLogPicker(false) } }}
+            style={{ width: '100%', background: '#F9F3EE', borderRadius: '20px 20px 0 0', maxHeight: '85svh', overflow: 'hidden' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 0' }}>
+              <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: '#d1ccc8' }} />
+            </div>
+            <div style={{ padding: '12px 20px 24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <button onClick={prevPickerMonth} style={{ background: '#f3f4f6', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex' }}>
+                  <ChevronLeft size={18} color="#6b7280" />
+                </button>
+                <span style={{ fontSize: '16px', fontWeight: 700, color: '#2D2D2D' }}>{pickerMonthLabel}</span>
+                <button onClick={nextPickerMonth} style={{ background: '#f3f4f6', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex' }}>
+                  <ChevronRight size={18} color="#6b7280" />
+                </button>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+                {DAY_LABELS.map(d => (
+                  <div key={d} style={{ textAlign: 'center', fontSize: '11px', fontWeight: 700, color: '#9ca3af', padding: '4px 0' }}>{d}</div>
+                ))}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+                {pickerCells.map((day, i) => {
+                  if (day === null) return <div key={`e-${i}`} />
+                  const ds = dateStr(pickerYear, pickerMonth, day)
+                  const isToday = ds === today
+                  const isPicked = ds === logDate
+                  return (
+                    <div key={ds} onClick={() => pickLogDate(ds)} style={{ display: 'flex', justifyContent: 'center', padding: '4px 2px', cursor: 'pointer' }}>
+                      <div style={{
+                        width: '34px', height: '34px', borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: isPicked ? '#C9848A' : isToday ? '#C9848A18' : 'transparent',
+                        border: isToday && !isPicked ? '1.5px solid #C9848A' : 'none',
+                      }}>
+                        <span style={{ fontSize: '14px', fontWeight: isToday || isPicked ? 700 : 400, color: isPicked ? '#fff' : isToday ? '#C9848A' : '#2D2D2D' }}>
+                          {day}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>
