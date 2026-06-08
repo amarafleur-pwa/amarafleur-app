@@ -203,6 +203,17 @@ export default function Auth({ onAuth }: Props) {
             </p>
 
             <div style={{ position: 'relative' }}>
+              <User size={17} color="#9ca3af" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
+              <input
+                style={{ ...input, paddingLeft: '42px', textAlign: 'left' }}
+                placeholder="Your name (e.g. Maria)"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div style={{ position: 'relative' }}>
               <KeyRound size={17} color="#9ca3af" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 style={{ ...input, paddingLeft: '42px', textAlign: 'left' }}
@@ -210,17 +221,6 @@ export default function Auth({ onAuth }: Props) {
                 placeholder="Shared code"
                 value={secret}
                 onChange={e => setSecret(e.target.value)}
-                autoFocus
-              />
-            </div>
-
-            <div style={{ position: 'relative' }}>
-              <User size={17} color="#9ca3af" style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input
-                style={{ ...input, paddingLeft: '42px', textAlign: 'left' }}
-                placeholder="Your name (e.g. Maria)"
-                value={name}
-                onChange={e => setName(e.target.value)}
               />
             </div>
 
