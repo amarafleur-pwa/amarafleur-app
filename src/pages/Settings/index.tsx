@@ -6,6 +6,8 @@ import { useSyncActions } from '../../lib/SyncContext'
 import { supabase } from '../../lib/supabase'
 import { deleteSheetRow } from '../../lib/sheets'
 import { getCurrentUser } from '../../lib/currentUser'
+import { clearSetupSecret } from '../../lib/setupSecret'
+import { dbWrite, uploadReceipt } from '../../lib/dbGateway'
 
 interface AppUser {
   id: string
@@ -100,12 +102,12 @@ export default function Settings() {
     try {
       const blob = await compressImage(file)
       const path = `avatars/${slugifyName(currentUser)}.jpg`
-      const { error } = await supabase.storage.from('receipts').upload(path, blob, { contentType: 'image/jpeg', upsert: true })
-      if (!error) {
-        const { data } = supabase.storage.from('receipts').getPublicUrl(path)
-        const versionedUrl = `${data.publicUrl}?v=${Date.now()}`
-        const { data: rows, error: updateError } = await supabase
-          .from('app_users').update({ photo_url: versionedUrl }).ilike('name', currentUser).select('id')
+      const { publicUrl, error } = await uploadReceipt(path, blob, 'image/jpeg')
+      if (!error && publicUrl) {
+        const versionedUrl = `${publicUrl}?v=${Date.now()}`
+        const { data: rows, error: updateError } = await dbWrite<{ id: string }[]>('app_users', 'update', {
+          payload: { photo_url: versionedUrl }, ilike: { name: currentUser }, select: 'id',
+        })
         if (!updateError && rows && rows.length > 0) {
           localStorage.setItem(photoCacheKey, versionedUrl)
           setProfilePhoto(versionedUrl)
@@ -114,7 +116,7 @@ export default function Settings() {
         }
       } else {
         console.error('[avatar upload] failed:', error)
-        setPhotoError(error.message || 'Upload failed')
+        setPhotoError(error?.message || 'Upload failed')
       }
     } finally {
       setUploadingPhoto(false)
@@ -146,12 +148,12 @@ export default function Settings() {
     const customerIds = customers.map(c => c.supabaseId).filter(Boolean) as string[]
 
     // payments MUST go before orders (FK: payments.order_id → orders.id)
-    if (paymentIds.length) await supabase.from('payments').delete().in('id', paymentIds)
-    if (orderIds.length) await supabase.from('orders').delete().in('id', orderIds)
+    if (paymentIds.length) await dbWrite('payments', 'delete', { inFilter: { column: 'id', values: paymentIds } })
+    if (orderIds.length) await dbWrite('orders', 'delete', { inFilter: { column: 'id', values: orderIds } })
     await Promise.all([
-      personalIds.length ? supabase.from('personal_expenses').delete().in('id', personalIds) : Promise.resolve(),
-      businessIds.length ? supabase.from('business_expenses').delete().in('id', businessIds) : Promise.resolve(),
-      customerIds.length ? supabase.from('customers').delete().in('id', customerIds) : Promise.resolve(),
+      personalIds.length ? dbWrite('personal_expenses', 'delete', { inFilter: { column: 'id', values: personalIds } }) : Promise.resolve(),
+      businessIds.length ? dbWrite('business_expenses', 'delete', { inFilter: { column: 'id', values: businessIds } }) : Promise.resolve(),
+      customerIds.length ? dbWrite('customers', 'delete', { inFilter: { column: 'id', values: customerIds } }) : Promise.resolve(),
     ])
 
     // Clear IndexedDB
@@ -171,8 +173,9 @@ export default function Settings() {
   async function handleRemovePhoto() {
     if (!currentUser) return
     setPhotoError(null)
-    const { data: rows, error: updateError } = await supabase
-      .from('app_users').update({ photo_url: null }).ilike('name', currentUser).select('id')
+    const { data: rows, error: updateError } = await dbWrite<{ id: string }[]>('app_users', 'update', {
+      payload: { photo_url: null }, ilike: { name: currentUser }, select: 'id',
+    })
     if (!updateError && rows && rows.length > 0) {
       localStorage.removeItem(photoCacheKey)
       setProfilePhoto(null)
@@ -198,7 +201,7 @@ export default function Settings() {
   async function handleRelease() {
     if (!releaseTarget) return
     setActionError(null)
-    const { error } = await supabase.from('app_users').delete().eq('id', releaseTarget.id)
+    const { error } = await dbWrite('app_users', 'delete', { eq: { id: releaseTarget.id } })
     if (error) {
       setActionError('Could not free that slot. Try again.')
       return
@@ -222,7 +225,7 @@ export default function Settings() {
           <NetworkPill />
         </div>
         <button
-          onClick={() => { localStorage.removeItem('af-authed'); window.location.reload() }}
+          onClick={() => { localStorage.removeItem('af-authed'); clearSetupSecret(); window.location.reload() }}
           title="Lock app"
           style={{
             background: 'none', border: '1.5px solid #e5e0db',

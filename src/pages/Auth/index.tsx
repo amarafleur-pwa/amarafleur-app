@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { KeyRound, User, LogIn } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { setCurrentUser } from '../../lib/currentUser'
+import { setSetupSecret } from '../../lib/setupSecret'
+import { dbWrite } from '../../lib/dbGateway'
 
 interface Props {
   onAuth: () => void
@@ -87,6 +89,7 @@ export default function Auth({ onAuth }: Props) {
         setError('Incorrect code.')
         return
       }
+      setSetupSecret(secret.trim())
 
       const trimmedName = name.trim()
       const { data: existing } = await supabase
@@ -118,7 +121,7 @@ export default function Auth({ onAuth }: Props) {
           return
         }
 
-        const { error: insertError } = await supabase.from('app_users').insert({ name: trimmedName })
+        const { error: insertError } = await dbWrite('app_users', 'insert', { payload: { name: trimmedName } })
         if (insertError) {
           setError('That name was just taken — try a different one.')
           return

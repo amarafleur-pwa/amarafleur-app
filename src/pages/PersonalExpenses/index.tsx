@@ -4,7 +4,7 @@ import receiptIcon from '../../assets/receipt.svg'
 import { db } from '../../db/db'
 import type { PersonalExpense } from '../../db/db'
 import ExpenseForm from './ExpenseForm'
-import { supabase } from '../../lib/supabase'
+import { dbWrite } from '../../lib/dbGateway'
 import { logPersonalExpense, deleteSheetRow } from '../../lib/sheets'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
@@ -92,7 +92,7 @@ export default function PersonalExpenses() {
   async function markPaid(expense: PersonalExpense) {
     const paidAmt = expense.amount
     if (expense.supabaseId) {
-      await supabase.from('personal_expenses').update({ is_paid: true, amount_paid: paidAmt }).eq('id', expense.supabaseId)
+      await dbWrite('personal_expenses', 'update', { payload: { is_paid: true, amount_paid: paidAmt }, eq: { id: expense.supabaseId } })
     }
     await db.personalExpenses.update(expense.id!, { isPaid: true, amountPaid: paidAmt })
 
@@ -105,11 +105,14 @@ export default function PersonalExpenses() {
         category: expense.category, notes: expense.notes,
         isRecurring: true, isPaid: false, expenseType: 'monthly' as const,
       }
-      const { data: row } = await supabase.from('personal_expenses').insert({
-        name: newData.name, amount: newData.amount, due_date: newData.dueDate,
-        category: newData.category ?? null, notes: newData.notes ?? null,
-        is_paid: false, is_recurring: true, expense_type: 'monthly',
-      }).select().single()
+      const { data: row } = await dbWrite<{ id: string }>('personal_expenses', 'insert', {
+        payload: {
+          name: newData.name, amount: newData.amount, due_date: newData.dueDate,
+          category: newData.category ?? null, notes: newData.notes ?? null,
+          is_paid: false, is_recurring: true, expense_type: 'monthly',
+        },
+        select: true, single: true,
+      })
       await db.personalExpenses.add({ ...newData, supabaseId: row?.id })
       if (row?.id) logPersonalExpense(newData, row.id)
     }
@@ -122,7 +125,7 @@ export default function PersonalExpenses() {
     setPendingDelete(null)
     if (e.supabaseId) {
       deleteSheetRow('Personal Expenses', e.supabaseId)
-      await supabase.from('personal_expenses').delete().eq('id', e.supabaseId)
+      await dbWrite('personal_expenses', 'delete', { eq: { id: e.supabaseId } })
     }
     await db.personalExpenses.delete(e.id!)
     load()
@@ -135,9 +138,9 @@ export default function PersonalExpenses() {
     const nowPaid = newPaid >= logPayEntry.amount
     await db.personalExpenses.update(logPayEntry.id!, { amountPaid: newPaid, isPaid: nowPaid, pendingSync: true })
     if (navigator.onLine && logPayEntry.supabaseId) {
-      const { error } = await supabase.from('personal_expenses')
-        .update({ amount_paid: newPaid, is_paid: nowPaid })
-        .eq('id', logPayEntry.supabaseId)
+      const { error } = await dbWrite('personal_expenses', 'update', {
+        payload: { amount_paid: newPaid, is_paid: nowPaid }, eq: { id: logPayEntry.supabaseId },
+      })
       if (!error) {
         await db.personalExpenses.update(logPayEntry.id!, { pendingSync: false })
         deleteSheetRow('Personal Expenses', logPayEntry.supabaseId)
@@ -156,9 +159,9 @@ export default function PersonalExpenses() {
     setConfirmPayAll(null)
     await db.personalExpenses.update(entry.id!, { amountPaid: entry.amount, isPaid: true, pendingSync: true })
     if (navigator.onLine && entry.supabaseId) {
-      const { error } = await supabase.from('personal_expenses')
-        .update({ amount_paid: entry.amount, is_paid: true })
-        .eq('id', entry.supabaseId)
+      const { error } = await dbWrite('personal_expenses', 'update', {
+        payload: { amount_paid: entry.amount, is_paid: true }, eq: { id: entry.supabaseId },
+      })
       if (!error) {
         await db.personalExpenses.update(entry.id!, { pendingSync: false })
         deleteSheetRow('Personal Expenses', entry.supabaseId)

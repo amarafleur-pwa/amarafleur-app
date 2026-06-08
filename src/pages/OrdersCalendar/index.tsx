@@ -4,7 +4,7 @@ import { db } from '../../db/db'
 import type { Order, Payment } from '../../db/db'
 import OrderForm from './OrderForm'
 import PaymentForm from '../CustomerPayments/PaymentForm'
-import { supabase } from '../../lib/supabase'
+import { dbWrite } from '../../lib/dbGateway'
 import { deleteSheetRow } from '../../lib/sheets'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
@@ -115,7 +115,7 @@ export default function OrdersCalendar() {
 
   async function toggleDone(order: Order) {
     if (order.supabaseId) {
-      await supabase.from('orders').update({ is_done: !order.isDone }).eq('id', order.supabaseId)
+      await dbWrite('orders', 'update', { payload: { is_done: !order.isDone }, eq: { id: order.supabaseId } })
     }
     await db.orders.update(order.id!, { isDone: !order.isDone })
     load()
@@ -124,7 +124,7 @@ export default function OrdersCalendar() {
   async function handleDeleteAdvanceOrder(order: Order) {
     if (order.supabaseId) {
       deleteSheetRow('Orders', order.supabaseId)
-      await supabase.from('orders').delete().eq('id', order.supabaseId)
+      await dbWrite('orders', 'delete', { eq: { id: order.supabaseId } })
     }
     await db.payments.where('orderId').equals(order.id!).delete()
     await db.orders.delete(order.id!)

@@ -1,6 +1,6 @@
 import { db } from '../../db/db'
 import type { BusinessExpense } from '../../db/db'
-import { supabase } from '../../lib/supabase'
+import { dbWrite } from '../../lib/dbGateway'
 import { logBusinessExpense } from '../../lib/sheets'
 
 // When a monthly bill is marked paid, auto-create next month's entry —
@@ -16,12 +16,15 @@ export async function createNextRecurringExpense(expense: BusinessExpense) {
     isRecurring: true, isPaid: false, modeOfPayment: expense.modeOfPayment,
     expenseType: 'monthly' as const,
   }
-  const { data: row } = await supabase.from('business_expenses').insert({
-    name: newData.name, amount: newData.amount, due_date: newData.dueDate,
-    category: newData.category, notes: newData.notes ?? null,
-    is_paid: false, is_recurring: true, mode_of_payment: newData.modeOfPayment ?? null,
-    expense_type: 'monthly',
-  }).select().single()
+  const { data: row } = await dbWrite<{ id: string }>('business_expenses', 'insert', {
+    payload: {
+      name: newData.name, amount: newData.amount, due_date: newData.dueDate,
+      category: newData.category, notes: newData.notes ?? null,
+      is_paid: false, is_recurring: true, mode_of_payment: newData.modeOfPayment ?? null,
+      expense_type: 'monthly',
+    },
+    select: true, single: true,
+  })
   await db.businessExpenses.add({ ...newData, supabaseId: row?.id })
   if (row?.id) logBusinessExpense(newData, row.id)
 }

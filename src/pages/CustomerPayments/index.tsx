@@ -3,7 +3,7 @@ import { Plus, X, Phone, FileText, Search } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment, Customer } from '../../db/db'
 import PaymentForm from './PaymentForm'
-import { supabase } from '../../lib/supabase'
+import { dbWrite } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
 import { logCustomer, deleteSheetRow } from '../../lib/sheets'
 import { useSyncVersion } from '../../lib/SyncContext'
@@ -112,18 +112,22 @@ export default function CustomerPayments() {
       }
       if (editingCustomer?.id) {
         if (editingCustomer.supabaseId) {
-          const { error } = await supabase.from('customers').update({
-            name: data.name, phone: data.phone ?? null, notes: data.notes ?? null,
-          }).eq('id', editingCustomer.supabaseId)
+          const { error } = await dbWrite('customers', 'update', {
+            payload: { name: data.name, phone: data.phone ?? null, notes: data.notes ?? null },
+            eq: { id: editingCustomer.supabaseId },
+          })
           if (error) throw error
         }
         await db.customers.update(editingCustomer.id, data)
       } else {
-        const { data: row, error } = await supabase.from('customers').insert({
-          name: data.name, phone: data.phone ?? null, notes: data.notes ?? null,
-          logged_by: data.loggedBy ?? null,
-        }).select().single()
-        if (error) throw error
+        const { data: row, error } = await dbWrite<{ id: string }>('customers', 'insert', {
+          payload: {
+            name: data.name, phone: data.phone ?? null, notes: data.notes ?? null,
+            logged_by: data.loggedBy ?? null,
+          },
+          select: true, single: true,
+        })
+        if (error || !row) throw error ?? new Error('Insert failed')
         await db.customers.add({ ...data, supabaseId: row.id })
         logCustomer(data, row.id)
       }
@@ -138,7 +142,7 @@ export default function CustomerPayments() {
     if (!editingCustomer?.id) return
     if (editingCustomer.supabaseId) {
       deleteSheetRow('Customers', editingCustomer.supabaseId)
-      await supabase.from('customers').delete().eq('id', editingCustomer.supabaseId)
+      await dbWrite('customers', 'delete', { eq: { id: editingCustomer.supabaseId } })
     }
     await db.customers.delete(editingCustomer.id)
     handleCloseCustomerForm()

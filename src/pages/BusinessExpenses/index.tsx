@@ -4,7 +4,7 @@ import receiptIcon from '../../assets/receipt.svg'
 import { db } from '../../db/db'
 import type { BusinessExpense } from '../../db/db'
 import ExpenseForm from './ExpenseForm'
-import { supabase } from '../../lib/supabase'
+import { dbWrite } from '../../lib/dbGateway'
 import { deleteSheetRow, logBusinessExpense } from '../../lib/sheets'
 import { createNextRecurringExpense } from './recurring'
 import { useSyncVersion } from '../../lib/SyncContext'
@@ -92,7 +92,7 @@ export default function BusinessExpenses() {
   async function markPaid(expense: BusinessExpense) {
     const paidAmt = expense.amount
     if (expense.supabaseId) {
-      await supabase.from('business_expenses').update({ is_paid: true, amount_paid: paidAmt }).eq('id', expense.supabaseId)
+      await dbWrite('business_expenses', 'update', { payload: { is_paid: true, amount_paid: paidAmt }, eq: { id: expense.supabaseId } })
     }
     await db.businessExpenses.update(expense.id!, { isPaid: true, amountPaid: paidAmt })
 
@@ -108,7 +108,7 @@ export default function BusinessExpenses() {
     setPendingDelete(null)
     if (e.supabaseId) {
       deleteSheetRow('Business Expenses', e.supabaseId)
-      await supabase.from('business_expenses').delete().eq('id', e.supabaseId)
+      await dbWrite('business_expenses', 'delete', { eq: { id: e.supabaseId } })
     }
     await db.businessExpenses.delete(e.id!)
     load()
@@ -121,9 +121,9 @@ export default function BusinessExpenses() {
     const nowPaid = newPaid >= logPayEntry.amount
     await db.businessExpenses.update(logPayEntry.id!, { amountPaid: newPaid, isPaid: nowPaid, pendingSync: true })
     if (navigator.onLine && logPayEntry.supabaseId) {
-      const { error } = await supabase.from('business_expenses')
-        .update({ amount_paid: newPaid, is_paid: nowPaid })
-        .eq('id', logPayEntry.supabaseId)
+      const { error } = await dbWrite('business_expenses', 'update', {
+        payload: { amount_paid: newPaid, is_paid: nowPaid }, eq: { id: logPayEntry.supabaseId },
+      })
       if (!error) {
         await db.businessExpenses.update(logPayEntry.id!, { pendingSync: false })
         deleteSheetRow('Business Expenses', logPayEntry.supabaseId)
@@ -142,9 +142,9 @@ export default function BusinessExpenses() {
     setConfirmPayAll(null)
     await db.businessExpenses.update(entry.id!, { amountPaid: entry.amount, isPaid: true, pendingSync: true })
     if (navigator.onLine && entry.supabaseId) {
-      const { error } = await supabase.from('business_expenses')
-        .update({ amount_paid: entry.amount, is_paid: true })
-        .eq('id', entry.supabaseId)
+      const { error } = await dbWrite('business_expenses', 'update', {
+        payload: { amount_paid: entry.amount, is_paid: true }, eq: { id: entry.supabaseId },
+      })
       if (!error) {
         await db.businessExpenses.update(entry.id!, { pendingSync: false })
         deleteSheetRow('Business Expenses', entry.supabaseId)

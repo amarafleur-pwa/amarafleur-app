@@ -3,7 +3,7 @@ import { X, Trash2 } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order } from '../../db/db'
 import { logOrder, updateOrder, deleteSheetRow } from '../../lib/sheets'
-import { supabase } from '../../lib/supabase'
+import { dbWrite } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
 
 interface Props {
@@ -110,7 +110,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
       onSaved()
       handleClose()
       if (navigator.onLine && order!.supabaseId) {
-        const { error } = await supabase.from('orders').update(supabasePayload).eq('id', order!.supabaseId)
+        const { error } = await dbWrite('orders', 'update', { payload: supabasePayload, eq: { id: order!.supabaseId } })
         if (!error) {
           await db.orders.update(order!.id!, { pendingSync: false })
           updateOrder(data, order!.supabaseId)
@@ -121,8 +121,8 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
       onSaved()
       handleClose()
       if (navigator.onLine) {
-        const { data: row, error } = await supabase.from('orders').insert(supabasePayload).select().single()
-        if (!error) {
+        const { data: row, error } = await dbWrite<{ id: string }>('orders', 'insert', { payload: supabasePayload, select: true, single: true })
+        if (!error && row) {
           await db.orders.update(localId as number, { supabaseId: row.id, pendingSync: false })
           logOrder(data, row.id)
         }
@@ -135,7 +135,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
     if (!order?.id) return
     if (order.supabaseId) {
       deleteSheetRow('Orders', order.supabaseId)
-      await supabase.from('orders').delete().eq('id', order.supabaseId)
+      await dbWrite('orders', 'delete', { eq: { id: order.supabaseId } })
     }
     await db.payments.where('orderId').equals(order.id).delete()
     await db.orders.delete(order.id)

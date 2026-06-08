@@ -3,7 +3,7 @@ import { X, Trash2, Camera, RefreshCw } from 'lucide-react'
 import { db } from '../../db/db'
 import type { PersonalExpense } from '../../db/db'
 import { logPersonalExpense, updatePersonalExpense, deleteSheetRow } from '../../lib/sheets'
-import { supabase } from '../../lib/supabase'
+import { dbWrite, uploadReceipt } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
 
 const CATEGORIES = ['Bills', 'Rent', 'Food & Groceries', 'Transportation', 'Health', 'Savings', 'Other']
@@ -88,11 +88,8 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     try {
       const blob = await compressImage(file)
       const path = `personal/${crypto.randomUUID()}.jpg`
-      const { error } = await supabase.storage.from('receipts').upload(path, blob, { contentType: 'image/jpeg' })
-      if (!error) {
-        const { data } = supabase.storage.from('receipts').getPublicUrl(path)
-        setReceiptUrl(data.publicUrl)
-      }
+      const { publicUrl, error } = await uploadReceipt(path, blob, 'image/jpeg')
+      if (!error && publicUrl) setReceiptUrl(publicUrl)
     } finally {
       setUploading(false)
       e.target.value = ''
@@ -133,7 +130,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
       await db.personalExpenses.update(expense!.id!, { ...data, pendingSync: true })
       onSaved(); handleClose()
       if (navigator.onLine && expense!.supabaseId) {
-        const { error } = await supabase.from('personal_expenses').update(supabasePayload).eq('id', expense!.supabaseId)
+        const { error } = await dbWrite('personal_expenses', 'update', { payload: supabasePayload, eq: { id: expense!.supabaseId } })
         if (!error) {
           await db.personalExpenses.update(expense!.id!, { pendingSync: false })
           updatePersonalExpense(data, expense!.supabaseId)
@@ -143,8 +140,8 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
       const localId = await db.personalExpenses.add({ ...data, pendingSync: true })
       onSaved(); handleClose()
       if (navigator.onLine) {
-        const { data: row, error } = await supabase.from('personal_expenses').insert(supabasePayload).select().single()
-        if (!error) {
+        const { data: row, error } = await dbWrite<{ id: string }>('personal_expenses', 'insert', { payload: supabasePayload, select: true, single: true })
+        if (!error && row) {
           await db.personalExpenses.update(localId as number, { supabaseId: row.id, pendingSync: false })
           logPersonalExpense(data, row.id)
         }
@@ -157,7 +154,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     if (!expense?.id) return
     if (expense.supabaseId) {
       deleteSheetRow('Personal Expenses', expense.supabaseId)
-      await supabase.from('personal_expenses').delete().eq('id', expense.supabaseId)
+      await dbWrite('personal_expenses', 'delete', { eq: { id: expense.supabaseId } })
     }
     await db.personalExpenses.delete(expense.id)
     onSaved(); handleClose()

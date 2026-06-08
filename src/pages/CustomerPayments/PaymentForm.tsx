@@ -3,7 +3,7 @@ import { X, Plus } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment } from '../../db/db'
 import { logPayment, deleteSheetRow } from '../../lib/sheets'
-import { supabase } from '../../lib/supabase'
+import { dbWrite } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
 
 interface Props {
@@ -83,12 +83,15 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
     loadPayments()
     onSaved()
     if (navigator.onLine && order.supabaseId) {
-      const { data: row, error } = await supabase.from('payments').insert({
-        order_id: order.supabaseId,
-        amount: amt, type, paid_at: paidAt,
-        notes: notes.trim() || null, logged_by: loggedBy || null,
-      }).select().single()
-      if (!error) {
+      const { data: row, error } = await dbWrite<{ id: string }>('payments', 'insert', {
+        payload: {
+          order_id: order.supabaseId,
+          amount: amt, type, paid_at: paidAt,
+          notes: notes.trim() || null, logged_by: loggedBy || null,
+        },
+        select: true, single: true,
+      })
+      if (!error && row) {
         await db.payments.update(localId as number, { supabaseId: row.id, pendingSync: false })
         logPayment({
           customerName: order.customerName, orderDesc: order.description,
@@ -103,7 +106,7 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
     const p = await db.payments.get(id)
     if (p?.supabaseId) {
       deleteSheetRow('Payments', p.supabaseId)
-      await supabase.from('payments').delete().eq('id', p.supabaseId)
+      await dbWrite('payments', 'delete', { eq: { id: p.supabaseId } })
     }
     await db.payments.delete(id)
     loadPayments()

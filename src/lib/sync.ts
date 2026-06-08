@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { dbWrite } from './dbGateway'
 import { db } from '../db/db'
 import { logPersonalExpense, logBusinessExpense, logOrder, logPayment } from './sheets'
 
@@ -16,15 +17,15 @@ export async function syncPendingItems(): Promise<void> {
       amount_paid: e.amountPaid ?? null, logged_by: e.loggedBy ?? null,
     }
     if (!e.supabaseId) {
-      const { data: row, error } = await supabase.from('personal_expenses').insert(payload).select().single()
-      if (!error) {
+      const { data: row, error } = await dbWrite<{ id: string }>('personal_expenses', 'insert', { payload, select: true, single: true })
+      if (!error && row) {
         await db.personalExpenses.update(e.id!, { supabaseId: row.id, pendingSync: false })
         logPersonalExpense(e, row.id)
       } else {
-        console.warn('[sync] personal_expenses insert failed', e.id, error.message)
+        console.warn('[sync] personal_expenses insert failed', e.id, error?.message)
       }
     } else {
-      const { error } = await supabase.from('personal_expenses').update(payload).eq('id', e.supabaseId)
+      const { error } = await dbWrite('personal_expenses', 'update', { payload, eq: { id: e.supabaseId } })
       if (!error) await db.personalExpenses.update(e.id!, { pendingSync: false })
       else console.warn('[sync] personal_expenses update failed', e.id, error.message)
     }
@@ -41,15 +42,15 @@ export async function syncPendingItems(): Promise<void> {
       amount_paid: e.amountPaid ?? null, logged_by: e.loggedBy ?? null,
     }
     if (!e.supabaseId) {
-      const { data: row, error } = await supabase.from('business_expenses').insert(payload).select().single()
-      if (!error) {
+      const { data: row, error } = await dbWrite<{ id: string }>('business_expenses', 'insert', { payload, select: true, single: true })
+      if (!error && row) {
         await db.businessExpenses.update(e.id!, { supabaseId: row.id, pendingSync: false })
         logBusinessExpense(e, row.id)
       } else {
-        console.warn('[sync] business_expenses insert failed', e.id, error.message)
+        console.warn('[sync] business_expenses insert failed', e.id, error?.message)
       }
     } else {
-      const { error } = await supabase.from('business_expenses').update(payload).eq('id', e.supabaseId)
+      const { error } = await dbWrite('business_expenses', 'update', { payload, eq: { id: e.supabaseId } })
       if (!error) await db.businessExpenses.update(e.id!, { pendingSync: false })
       else console.warn('[sync] business_expenses update failed', e.id, error.message)
     }
@@ -67,15 +68,15 @@ export async function syncPendingItems(): Promise<void> {
       is_done: o.isDone, notes: o.notes ?? null, logged_by: o.loggedBy ?? null,
     }
     if (!o.supabaseId) {
-      const { data: row, error } = await supabase.from('orders').insert(payload).select().single()
-      if (!error) {
+      const { data: row, error } = await dbWrite<{ id: string }>('orders', 'insert', { payload, select: true, single: true })
+      if (!error && row) {
         await db.orders.update(o.id!, { supabaseId: row.id, pendingSync: false })
         logOrder(o, row.id)
       } else {
-        console.warn('[sync] orders insert failed', o.id, error.message)
+        console.warn('[sync] orders insert failed', o.id, error?.message)
       }
     } else {
-      const { error } = await supabase.from('orders').update(payload).eq('id', o.supabaseId)
+      const { error } = await dbWrite('orders', 'update', { payload, eq: { id: o.supabaseId } })
       if (!error) await db.orders.update(o.id!, { pendingSync: false })
       else console.warn('[sync] orders update failed', o.id, error.message)
     }
@@ -91,18 +92,18 @@ export async function syncPendingItems(): Promise<void> {
       type: p.type, paid_at: p.paidAt, notes: p.notes ?? null, logged_by: p.loggedBy ?? null,
     }
     if (!p.supabaseId) {
-      const { data: row, error } = await supabase.from('payments').insert(payload).select().single()
-      if (!error) {
+      const { data: row, error } = await dbWrite<{ id: string }>('payments', 'insert', { payload, select: true, single: true })
+      if (!error && row) {
         await db.payments.update(p.id!, { supabaseId: row.id, pendingSync: false })
         logPayment({
           customerName: order.customerName, orderDesc: order.description,
           amount: p.amount, type: p.type, paidAt: p.paidAt, notes: p.notes,
         }, row.id)
       } else {
-        console.warn('[sync] payments insert failed', p.id, error.message)
+        console.warn('[sync] payments insert failed', p.id, error?.message)
       }
     } else {
-      const { error } = await supabase.from('payments').update(payload).eq('id', p.supabaseId)
+      const { error } = await dbWrite('payments', 'update', { payload, eq: { id: p.supabaseId } })
       if (!error) await db.payments.update(p.id!, { pendingSync: false })
       else console.warn('[sync] payments update failed', p.id, error.message)
     }
