@@ -71,7 +71,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
   const variantRequired = arrangementType === 'Bouquet' || arrangementType === 'Fresh Flowers'
   const canSave = customerName.trim() && arrangementType && (!variantRequired || arrangementVariant) && dueDate &&
     totalAmount && parseFloat(totalAmount) > 0 &&
-    (mode === 'log' || paymentType === 'full' || (depositPaid && parseFloat(depositPaid) > 0))
+    (mode === 'log' || paymentType === 'full' || (depositPaid !== '' && parseFloat(depositPaid) >= 0))
 
   async function handleSave() {
     if (!canSave) return

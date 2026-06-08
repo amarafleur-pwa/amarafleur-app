@@ -82,7 +82,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
 
   const needsDate = expenseType !== 'instant'
   const canSave = name.trim() && amount && parseFloat(amount) > 0 && (!needsDate || dueDate) &&
-    (!needsDate || paymentType === 'full' || (amountPaid && parseFloat(amountPaid) > 0))
+    (!needsDate || paymentType === 'full' || (amountPaid !== '' && parseFloat(amountPaid) >= 0))
 
   async function handleReceiptPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
