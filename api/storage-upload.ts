@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './_lib/supabaseAdmin'
+import { supabaseAdmin } from './_lib/supabaseAdmin.js'
 
 const BUCKET = 'receipts'
 
@@ -28,6 +28,6 @@ export default async function handler(req: any, res: any) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error('[storage-upload]', message)
-    return res.status(500).json({ error: 'Upload failed' })
+    return res.status(500).json({ error: `Upload failed: ${message}` })
   }
 }

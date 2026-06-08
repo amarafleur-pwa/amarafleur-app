@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './_lib/supabaseAdmin'
+import { supabaseAdmin } from './_lib/supabaseAdmin.js'
 
 const TABLES = ['personal_expenses', 'business_expenses', 'orders', 'payments', 'customers', 'app_users'] as const
 const OPERATIONS = ['insert', 'update', 'delete'] as const
@@ -55,6 +55,6 @@ export default async function handler(req: any, res: any) {
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error('[db-write]', message)
-    return res.status(500).json({ error: 'Write failed' })
+    return res.status(500).json({ error: `Write failed: ${message}` })
   }
 }
