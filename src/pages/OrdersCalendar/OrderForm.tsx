@@ -68,7 +68,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
   const [closing, setClosing] = useState(false)
   const handleClose = () => setClosing(true)
 
-  const variantRequired = arrangementType === 'Bouquet' || arrangementType === 'Fresh Flowers'
+  const variantRequired = arrangementType === 'Fresh flower bouquet' || arrangementType === 'Limited Edition (Seasonal)'
   const canSave = customerName.trim() && arrangementType && (!variantRequired || arrangementVariant) && dueDate &&
     totalAmount && parseFloat(totalAmount) > 0 &&
     (mode === 'log' || paymentType === 'full' || (depositPaid !== '' && parseFloat(depositPaid) >= 0))
@@ -215,12 +215,12 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
                 onChange={e => { setArrangementType(e.target.value); setArrangementVariant('') }}
               >
                 <option value="">Select type…</option>
-                {['Custom', 'Bouquet', 'Fresh Flowers', 'Vase', 'Kraft Box', 'Single Rose', 'Flower Dome', 'Money Cake']
+                {['Fresh flower bouquet', 'Dried flower bouquet', 'Flower dome', 'Kraft box', 'Balloon', 'Vase arrangement', 'Kraft box arrangement', 'Sympathy flowers', 'Money cake', 'Money bouquet', 'Limited Edition (Seasonal)', 'Custom Made']
                   .map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
 
-            {(arrangementType === 'Bouquet' || arrangementType === 'Fresh Flowers') && (
+            {(arrangementType === 'Fresh flower bouquet' || arrangementType === 'Limited Edition (Seasonal)') && (
               <div>
                 <span style={lbl}>Variant *</span>
                 <select
@@ -229,9 +229,9 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
                   onChange={e => setArrangementVariant(e.target.value)}
                 >
                   <option value="">Select variant…</option>
-                  {(arrangementType === 'Bouquet'
-                    ? ['Mini', 'Small', 'Simple', 'Deluxe', 'Premium', 'Bridal', 'Money Bouquet']
-                    : ['Tulips', 'Ecuadorian Roses']
+                  {(arrangementType === 'Fresh flower bouquet'
+                    ? ['Korean style', 'Tulips', 'Ecuadorian roses', 'China roses', 'Gerbera daisy', 'Carnation', 'Stargazer', 'Mix flowers', 'Sympathy flowers', 'Custom made']
+                    : ["Valentine's Day", "Mother's Day", "Father's Day", "All Saints' Day and All Souls' Day"]
                   ).map(v => <option key={v} value={v}>{v}</option>)}
                 </select>
               </div>
