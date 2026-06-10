@@ -7,6 +7,7 @@ export interface PersonalExpense {
   name: string
   amount: number
   dueDate: string
+  modeOfPayment?: string
   category?: string
   isPaid: boolean
   isRecurring: boolean

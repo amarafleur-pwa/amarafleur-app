@@ -7,6 +7,7 @@ import { dbWrite, uploadReceipt } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
 
 const CATEGORIES = ['Bills', 'Rent', 'Food & Groceries', 'Transportation', 'Health', 'Savings', 'Other']
+const MODES = ['Cash', 'GCash', 'Bank Transfer', 'Credit Card', 'Cheque']
 type ExpenseType = 'one-time' | 'monthly' | 'instant'
 
 interface Props {
@@ -69,6 +70,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     expense?.amountPaid && expense.amountPaid > 0 && expense.amountPaid < expense.amount ? 'partial' : 'full'
   )
   const [dueDate, setDueDate] = useState(expense?.dueDate ?? '')
+  const [mode, setMode] = useState(expense?.modeOfPayment ?? 'Cash')
   const [category, setCategory] = useState(expense?.category ?? 'Bills')
   const [notes, setNotes] = useState(expense?.notes ?? '')
   const [receiptUrl, setReceiptUrl] = useState(expense?.receiptUrl ?? '')
@@ -110,6 +112,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
       name: name.trim(),
       amount: totalAmt,
       dueDate: isInstant ? new Date().toISOString().split('T')[0] : dueDate,
+      modeOfPayment: mode,
       category,
       notes: notes.trim() || undefined,
       isRecurring: isMonthly,
@@ -121,6 +124,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     }
     const supabasePayload = {
       name: data.name, amount: data.amount, due_date: data.dueDate,
+      mode_of_payment: data.modeOfPayment ?? null,
       category: data.category ?? null, is_paid: data.isPaid,
       is_recurring: data.isRecurring, notes: data.notes ?? null,
       expense_type: data.expenseType ?? null, receipt_url: data.receiptUrl ?? null,
@@ -290,6 +294,13 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
                 <input style={inp} type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
               </div>
             )}
+
+            <div>
+              <span style={lbl}>Mode of Payment</span>
+              <select style={{ ...inp, appearance: 'none' }} value={mode} onChange={e => setMode(e.target.value)}>
+                {MODES.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
 
             <div>
               <span style={lbl}>Category</span>

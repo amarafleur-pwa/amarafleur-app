@@ -383,6 +383,7 @@ export default function PersonalExpenses() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px', flexWrap: 'wrap' }}>
                         {!isInstant && <span style={{ fontSize: '11px', color: '#9ca3af' }}>{formatDate(e.dueDate)}</span>}
                         {e.category && <span style={{ fontSize: '11px', color: '#9ca3af' }}>· {e.category}</span>}
+                        {e.modeOfPayment && <span style={{ fontSize: '11px', color: '#9ca3af' }}>· {e.modeOfPayment}</span>}
                         {e.loggedBy && <span style={{ fontSize: '11px', color: '#9ca3af' }}>· 👤 {e.loggedBy}</span>}
                       </div>
                       {partial && (
@@ -510,6 +511,12 @@ export default function PersonalExpenses() {
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: '13px', color: '#9ca3af' }}>Due date</span>
                     <span style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>{formatDate(previewEntry.dueDate)}</span>
+                  </div>
+                )}
+                {previewEntry.modeOfPayment && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '13px', color: '#9ca3af' }}>Payment mode</span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>{previewEntry.modeOfPayment}</span>
                   </div>
                 )}
                 {previewEntry.notes && (

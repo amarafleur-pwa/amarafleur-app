@@ -11,6 +11,7 @@ export async function syncPendingItems(): Promise<void> {
   for (const e of pendingPE) {
     const payload = {
       name: e.name, amount: e.amount, due_date: e.dueDate,
+      mode_of_payment: e.modeOfPayment ?? null,
       category: e.category ?? null, is_paid: e.isPaid,
       is_recurring: e.isRecurring, notes: e.notes ?? null,
       expense_type: e.expenseType ?? null, receipt_url: e.receiptUrl ?? null,
@@ -138,6 +139,7 @@ export async function restoreFromSupabase(): Promise<void> {
     await db.personalExpenses.bulkAdd(
       (pe.data ?? []).map(r => ({
         supabaseId: r.id, name: r.name, amount: r.amount, dueDate: r.due_date,
+        modeOfPayment: r.mode_of_payment ?? undefined,
         category: r.category, isPaid: r.is_paid, isRecurring: r.is_recurring, notes: r.notes,
         expenseType: r.expense_type ?? undefined, receiptUrl: r.receipt_url ?? undefined,
         amountPaid: r.amount_paid ?? undefined, loggedBy: r.logged_by ?? undefined,
