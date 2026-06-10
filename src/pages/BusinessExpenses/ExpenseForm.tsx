@@ -7,7 +7,7 @@ import { dbWrite, uploadReceipt } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
 import { createNextRecurringExpense } from './recurring'
 
-const CATEGORIES = ['Supplies', 'Utilities', 'Rent', 'Delivery', 'Other']
+const CATEGORIES = ['Rent', 'Utilities', 'Salary', 'Supplies', 'Ads', 'Staff bonus', 'Dried flowers', 'Fresh flowers', 'Others']
 const MODES = ['Cash', 'GCash', 'Bank Transfer', 'Credit Card', 'Cheque']
 type ExpenseType = 'one-time' | 'monthly' | 'instant'
 
@@ -71,7 +71,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   )
   const [dueDate, setDueDate] = useState(expense?.dueDate ?? '')
   const [mode, setMode] = useState(expense?.modeOfPayment ?? 'Cash')
-  const [category, setCategory] = useState(expense?.category ?? 'Supplies')
+  const [category, setCategory] = useState(expense?.category ?? 'Rent')
   const [isPaid, setIsPaid] = useState(expense?.isPaid ?? false)
   const [notes, setNotes] = useState(expense?.notes ?? '')
   const [receiptUrl, setReceiptUrl] = useState(expense?.receiptUrl ?? '')

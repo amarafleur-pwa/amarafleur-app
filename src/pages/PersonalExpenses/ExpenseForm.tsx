@@ -6,7 +6,7 @@ import { logPersonalExpense, updatePersonalExpense, deleteSheetRow } from '../..
 import { dbWrite, uploadReceipt } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
 
-const CATEGORIES = ['Bills', 'Rent', 'Food & Groceries', 'Transportation', 'Health', 'Savings', 'Other']
+const CATEGORIES = ['Food', 'Gas/RFID', "Aki's needs", 'Leisure', 'Tithes/Donation', 'Tiktok & Shopee', 'Insurance', 'Utilities', 'Others']
 const MODES = ['Cash', 'GCash', 'Bank Transfer', 'Credit Card', 'Cheque']
 type ExpenseType = 'one-time' | 'monthly' | 'instant'
 
@@ -71,7 +71,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   )
   const [dueDate, setDueDate] = useState(expense?.dueDate ?? '')
   const [mode, setMode] = useState(expense?.modeOfPayment ?? 'Cash')
-  const [category, setCategory] = useState(expense?.category ?? 'Bills')
+  const [category, setCategory] = useState(expense?.category ?? 'Food')
   const [notes, setNotes] = useState(expense?.notes ?? '')
   const [receiptUrl, setReceiptUrl] = useState(expense?.receiptUrl ?? '')
   const [uploading, setUploading] = useState(false)
