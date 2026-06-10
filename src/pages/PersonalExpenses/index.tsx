@@ -24,7 +24,7 @@ function diffDays(dueDate: string): number {
 }
 
 function urgency(dueDate: string, isPaid: boolean) {
-  if (isPaid) return { color: '#9ca3af', bg: '#f3f4f6', label: 'Paid' }
+  if (isPaid) return { color: '#7A9E7E', bg: '#7A9E7E18', label: 'Paid' }
   const diff = diffDays(dueDate)
   if (diff < 0) return { color: '#C9848A', bg: '#C9848A18', label: 'Overdue' }
   if (diff === 0) return { color: '#E8A838', bg: '#E8A83818', label: 'Today' }
@@ -103,12 +103,14 @@ export default function PersonalExpenses() {
         name: expense.name, amount: expense.amount,
         dueDate: next.toISOString().split('T')[0],
         category: expense.category, notes: expense.notes,
+        modeOfPayment: expense.modeOfPayment,
         isRecurring: true, isPaid: false, expenseType: 'monthly' as const,
       }
       const { data: row } = await dbWrite<{ id: string }>('personal_expenses', 'insert', {
         payload: {
           name: newData.name, amount: newData.amount, due_date: newData.dueDate,
           category: newData.category ?? null, notes: newData.notes ?? null,
+          mode_of_payment: newData.modeOfPayment ?? null,
           is_paid: false, is_recurring: true, expense_type: 'monthly',
         },
         select: true, single: true,
@@ -381,7 +383,7 @@ export default function PersonalExpenses() {
                         {type === 'monthly' && <RefreshCw size={12} color="#9ca3af" />}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px', flexWrap: 'wrap' }}>
-                        {!isInstant && <span style={{ fontSize: '11px', color: '#9ca3af' }}>{formatDate(e.dueDate)}</span>}
+                        {(tab === 'history' || !isInstant) && <span style={{ fontSize: '11px', color: '#9ca3af' }}>{formatDate(e.dueDate)}</span>}
                         {e.category && <span style={{ fontSize: '11px', color: '#9ca3af' }}>· {e.category}</span>}
                         {e.modeOfPayment && <span style={{ fontSize: '11px', color: '#9ca3af' }}>· {e.modeOfPayment}</span>}
                         {e.loggedBy && <span style={{ fontSize: '11px', color: '#9ca3af' }}>· 👤 {e.loggedBy}</span>}

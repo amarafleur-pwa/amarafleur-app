@@ -42,20 +42,20 @@ export function deleteSheetRow(sheet: string, appId: string) {
 
 export function logPersonalExpense(e: {
   name: string; amount: number; amountPaid?: number; dueDate: string; category?: string;
-  isRecurring: boolean; notes?: string; loggedBy?: string
+  modeOfPayment?: string; isRecurring: boolean; notes?: string; loggedBy?: string
 }, appId: string) {
   void appendRow('Personal Expenses', [
-    e.name, e.amount, e.amountPaid ?? 0, e.dueDate, e.category ?? '',
+    e.name, e.amount, e.amountPaid ?? 0, e.dueDate, e.category ?? '', e.modeOfPayment ?? '',
     e.isRecurring ? 'Yes' : 'No', e.notes ?? '', e.loggedBy ?? '', now(), appId,
   ])
 }
 
 export function logBusinessExpense(e: {
   name: string; amount: number; amountPaid?: number; dueDate: string; category: string;
-  isRecurring?: boolean; notes?: string; loggedBy?: string
+  modeOfPayment?: string; isRecurring?: boolean; notes?: string; loggedBy?: string
 }, appId: string) {
   void appendRow('Business Expenses', [
-    e.name, e.amount, e.amountPaid ?? 0, e.dueDate, e.category,
+    e.name, e.amount, e.amountPaid ?? 0, e.dueDate, e.category, e.modeOfPayment ?? '',
     e.isRecurring ? 'Yes' : 'No', e.notes ?? '', e.loggedBy ?? '', now(), appId,
   ])
 }
@@ -92,20 +92,20 @@ export function logCustomer(c: {
 
 export function updatePersonalExpense(e: {
   name: string; amount: number; amountPaid?: number; dueDate: string; category?: string;
-  isRecurring: boolean; notes?: string; loggedBy?: string
+  modeOfPayment?: string; isRecurring: boolean; notes?: string; loggedBy?: string
 }, appId: string) {
   void updateRow('Personal Expenses', [
-    e.name, e.amount, e.amountPaid ?? 0, e.dueDate, e.category ?? '',
+    e.name, e.amount, e.amountPaid ?? 0, e.dueDate, e.category ?? '', e.modeOfPayment ?? '',
     e.isRecurring ? 'Yes' : 'No', e.notes ?? '', e.loggedBy ?? '', now(), appId,
   ], appId)
 }
 
 export function updateBusinessExpense(e: {
   name: string; amount: number; amountPaid?: number; dueDate: string; category: string;
-  isRecurring?: boolean; notes?: string; loggedBy?: string
+  modeOfPayment?: string; isRecurring?: boolean; notes?: string; loggedBy?: string
 }, appId: string) {
   void updateRow('Business Expenses', [
-    e.name, e.amount, e.amountPaid ?? 0, e.dueDate, e.category,
+    e.name, e.amount, e.amountPaid ?? 0, e.dueDate, e.category, e.modeOfPayment ?? '',
     e.isRecurring ? 'Yes' : 'No', e.notes ?? '', e.loggedBy ?? '', now(), appId,
   ], appId)
 }

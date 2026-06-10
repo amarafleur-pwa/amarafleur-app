@@ -29,7 +29,7 @@ function diffDays(dueDate: string): number {
 }
 
 function urgency(dueDate: string, isPaid: boolean) {
-  if (isPaid) return { color: '#9ca3af', bg: '#f3f4f6', label: 'Paid' }
+  if (isPaid) return { color: '#7A9E7E', bg: '#7A9E7E18', label: 'Paid' }
   const diff = diffDays(dueDate)
   if (diff < 0) return { color: '#C9848A', bg: '#C9848A18', label: 'Overdue' }
   if (diff === 0) return { color: '#E8A838', bg: '#E8A83818', label: 'Today' }
@@ -380,7 +380,7 @@ export default function BusinessExpenses() {
                         {type === 'monthly' && <RefreshCw size={12} color="#9ca3af" />}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px', flexWrap: 'wrap' }}>
-                        {!isInstant && <span style={{ fontSize: '11px', color: '#9ca3af' }}>{formatDate(e.dueDate)}</span>}
+                        {(tab === 'history' || !isInstant) && <span style={{ fontSize: '11px', color: '#9ca3af' }}>{formatDate(e.dueDate)}</span>}
                         <span style={{ fontSize: '11px', color: '#9ca3af' }}>· {e.category}</span>
                         {e.modeOfPayment && <span style={{ fontSize: '11px', color: '#9ca3af' }}>· {e.modeOfPayment}</span>}
                         {e.loggedBy && <span style={{ fontSize: '11px', color: '#9ca3af' }}>· 👤 {e.loggedBy}</span>}
