@@ -62,24 +62,24 @@ export function logBusinessExpense(e: {
 
 export function logOrder(o: {
   customerName: string; description: string; quantity?: number;
-  dueDate: string; time?: string; totalAmount: number; depositPaid: number;
+  dueDate: string; totalAmount: number; depositPaid: number;
   notes?: string; fulfillmentType?: 'delivery' | 'pickup'; loggedBy?: string
 }, appId: string) {
   void appendRow('Orders', [
     o.customerName, o.description, o.quantity ?? 1,
-    o.dueDate, o.time ?? '', o.totalAmount, o.depositPaid,
+    o.dueDate, o.totalAmount, o.depositPaid,
     o.notes ?? '', o.fulfillmentType ?? '', o.loggedBy ?? '', now(), appId,
   ])
 }
 
 export function logAdvanceOrder(o: {
   customerName: string; description: string; quantity?: number;
-  dueDate: string; time?: string; totalAmount: number; depositPaid: number;
+  dueDate: string; totalAmount: number; depositPaid: number;
   modeOfPayment?: string; notes?: string; fulfillmentType?: 'delivery' | 'pickup'; loggedBy?: string
 }, appId: string) {
   void appendRow('Advance Orders', [
     o.customerName, o.description, o.quantity ?? 1,
-    o.dueDate, o.time ?? '', o.totalAmount, o.depositPaid,
+    o.dueDate, o.totalAmount, o.depositPaid,
     o.modeOfPayment ?? '', o.notes ?? '', o.fulfillmentType ?? '', o.loggedBy ?? '', now(), appId,
   ])
 }
@@ -124,24 +124,24 @@ export function updateBusinessExpense(e: {
 
 export function updateOrder(o: {
   customerName: string; description: string; quantity?: number;
-  dueDate: string; time?: string; totalAmount: number; depositPaid: number;
+  dueDate: string; totalAmount: number; depositPaid: number;
   notes?: string; fulfillmentType?: 'delivery' | 'pickup'; loggedBy?: string
 }, appId: string) {
   void updateRow('Orders', [
     o.customerName, o.description, o.quantity ?? 1,
-    o.dueDate, o.time ?? '', o.totalAmount, o.depositPaid,
+    o.dueDate, o.totalAmount, o.depositPaid,
     o.notes ?? '', o.fulfillmentType ?? '', o.loggedBy ?? '', now(), appId,
   ], appId)
 }
 
 export function updateAdvanceOrder(o: {
   customerName: string; description: string; quantity?: number;
-  dueDate: string; time?: string; totalAmount: number; depositPaid: number;
+  dueDate: string; totalAmount: number; depositPaid: number;
   modeOfPayment?: string; notes?: string; fulfillmentType?: 'delivery' | 'pickup'; loggedBy?: string
 }, appId: string) {
   void updateRow('Advance Orders', [
     o.customerName, o.description, o.quantity ?? 1,
-    o.dueDate, o.time ?? '', o.totalAmount, o.depositPaid,
+    o.dueDate, o.totalAmount, o.depositPaid,
     o.modeOfPayment ?? '', o.notes ?? '', o.fulfillmentType ?? '', o.loggedBy ?? '', now(), appId,
   ], appId)
 }

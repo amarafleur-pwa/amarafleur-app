@@ -63,7 +63,7 @@ export async function syncPendingItems(): Promise<void> {
     const payload = {
       customer_name: o.customerName, description: o.description,
       fulfillment_type: o.fulfillmentType ?? 'pickup',
-      quantity: o.quantity ?? null, time: o.time ?? null,
+      quantity: o.quantity ?? null,
       order_date: o.orderDate, due_date: o.dueDate,
       total_amount: o.totalAmount, deposit_paid: o.depositPaid,
       is_done: o.isDone, notes: o.notes ?? null,

@@ -54,7 +54,6 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
   const [fulfillmentType, setFulfillmentType] = useState<'pickup' | 'delivery'>(order?.fulfillmentType ?? 'pickup')
   const [quantity, setQuantity] = useState(order?.quantity?.toString() ?? '1')
   const [dueDate, setDueDate] = useState(order?.dueDate ?? defaultDate ?? '')
-  const [time, setTime] = useState(order?.time ?? '')
   const [totalAmount, setTotalAmount] = useState(order?.totalAmount ? order.totalAmount.toString() : '')
   const [depositPaid, setDepositPaid] = useState(order?.depositPaid?.toString() ?? '')
   const [paymentType, setPaymentType] = useState<'full' | 'partial'>(() => {
@@ -88,7 +87,6 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
       description: description.trim(),
       fulfillmentType,
       quantity: quantity ? parseInt(quantity) : 1,
-      time: time || undefined,
       orderDate: order?.orderDate ?? new Date().toISOString().split('T')[0],
       dueDate,
       totalAmount: totalAmt,
@@ -101,7 +99,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
     const supabasePayload = {
       customer_name: data.customerName, description: data.description,
       fulfillment_type: data.fulfillmentType ?? 'pickup',
-      quantity: data.quantity ?? null, time: data.time ?? null,
+      quantity: data.quantity ?? null,
       order_date: data.orderDate, due_date: data.dueDate,
       total_amount: data.totalAmount, deposit_paid: data.depositPaid,
       is_done: data.isDone, notes: data.notes ?? null,
@@ -269,16 +267,6 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
                 type="date"
                 value={dueDate}
                 onChange={e => setDueDate(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <span style={lbl}>Time</span>
-              <input
-                style={input}
-                type="time"
-                value={time}
-                onChange={e => setTime(e.target.value)}
               />
             </div>
 
