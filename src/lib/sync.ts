@@ -102,7 +102,7 @@ export async function syncPendingItems(): Promise<void> {
         if (totalPaid >= order.totalAmount) {
           logPayment({
             customerName: order.customerName, orderDesc: order.description,
-            amount: p.amount, type: p.type, paidAt: p.paidAt, notes: p.notes,
+            amount: order.totalAmount, type: p.type, paidAt: p.paidAt, notes: p.notes,
           }, row.id)
         }
       } else {

@@ -211,7 +211,7 @@ export default function CustomerPayments() {
           })
           logPayment({
             customerName: order.customerName, orderDesc: order.description,
-            amount: s.balance, type: 'balance', paidAt: today, loggedBy,
+            amount: order.totalAmount, type: 'balance', paidAt: today, loggedBy,
           }, row.id)
         } else {
           await db.payments.add({

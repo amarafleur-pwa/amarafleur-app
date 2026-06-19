@@ -106,7 +106,7 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
         if (newBalance <= 0) {
           logPayment({
             customerName: order.customerName, orderDesc: order.description,
-            amount: amt, type: capturedType, paidAt: capturedPaidAt, notes: capturedNotes, loggedBy,
+            amount: order.totalAmount, type: capturedType, paidAt: capturedPaidAt, notes: capturedNotes, loggedBy,
           }, row.id)
         }
       } else {
