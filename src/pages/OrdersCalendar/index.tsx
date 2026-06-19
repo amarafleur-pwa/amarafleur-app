@@ -70,6 +70,7 @@ export default function OrdersCalendar() {
   })
   const [selectedDate, setSelectedDate] = useState<string | null>(todayStr())
   const [previewOrder, setPreviewOrder] = useState<Order | null>(null)
+  const [previewIsLog, setPreviewIsLog] = useState(false)
   const [closingPreview, setClosingPreview] = useState(false)
   const [showPayForm, setShowPayForm] = useState(false)
 
@@ -312,7 +313,7 @@ export default function OrdersCalendar() {
                     id={o.id!}
                     activeId={activeLogSwipeId}
                     onActivate={setActiveLogSwipeId}
-                    onPreview={() => setPreviewOrder(o)}
+                    onPreview={() => { setPreviewIsLog(true); setPreviewOrder(o) }}
                     onEdit={() => openEdit(o)}
                     onDelete={() => setPendingDeleteOrder(o)}
                   >
@@ -452,7 +453,7 @@ export default function OrdersCalendar() {
                           onActivate={setActiveSwipeId}
                           onPaid={() => toggleDone(o)}
                           paidLabel={o.fulfillmentType === 'delivery' ? 'Delivered' : 'Picked up'}
-                          onPreview={() => setPreviewOrder(o)}
+                          onPreview={() => { setPreviewIsLog(false); setPreviewOrder(o) }}
                           onEdit={() => openEdit(o)}
                           onDelete={() => setPendingDeleteOrder(o)}
                         >
@@ -577,13 +578,13 @@ export default function OrdersCalendar() {
                   const balance = previewOrder.totalAmount - totalPaid
                   return (
                     <>
-                      {previewOrder.depositPaid > 0 && (
+                      {!previewIsLog && previewOrder.depositPaid > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ fontSize: '13px', color: '#9ca3af' }}>Deposit paid</span>
                           <span style={{ fontSize: '13px', fontWeight: 600, color: '#7A9E7E' }}>{fmt(previewOrder.depositPaid)}</span>
                         </div>
                       )}
-                      {orderPayments.length > 0 && (
+                      {!previewIsLog && orderPayments.length > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ fontSize: '13px', color: '#9ca3af' }}>Total paid</span>
                           <span style={{ fontSize: '13px', fontWeight: 600, color: '#7A9E7E' }}>{fmt(totalPaid)}</span>
@@ -608,11 +609,11 @@ export default function OrdersCalendar() {
 
               {(() => {
                 const orderPayments = allPayments.filter(p => p.orderId === previewOrder.id)
-                const hasHistory = previewOrder.depositPaid > 0 || orderPayments.length > 0
+                const hasHistory = (!previewIsLog && previewOrder.depositPaid > 0) || orderPayments.length > 0
                 return hasHistory && (
                   <div style={{ background: '#fff', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px' }}>
                     <p style={{ fontSize: '13px', fontWeight: 700, color: '#6b7280', marginBottom: '8px' }}>Payment History</p>
-                    {previewOrder.depositPaid > 0 && (
+                    {!previewIsLog && previewOrder.depositPaid > 0 && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                         <div>
                           <p style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>{previewOrder.depositPaid >= previewOrder.totalAmount ? 'Fully Paid' : 'Initial Deposit'}</p>
