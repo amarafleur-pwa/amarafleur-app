@@ -55,8 +55,30 @@ export default async function handler(req: any, res: any) {
     ])
 
     const sheetMeta = meta.sheets?.find(s => s.properties?.title === sheet)
-    if (!sheetMeta) return res.status(200).json({ ok: true, skipped: 'sheet not found' })
-    const sheetId = sheetMeta.properties!.sheetId!
+    let sheetId: number
+
+    if (!sheetMeta) {
+      // Tab doesn't exist — create it, then write headers + data
+      await fetch(`${BASE}/${spreadsheetId}:batchUpdate`, {
+        method: 'POST',
+        headers: hdrs,
+        body: JSON.stringify({ requests: [{ addSheet: { properties: { title: sheet } } }] })
+      })
+      await fetch(`${BASE}/${spreadsheetId}/values:batchUpdate`, {
+        method: 'POST',
+        headers: hdrs,
+        body: JSON.stringify({
+          valueInputOption: 'USER_ENTERED',
+          data: [
+            { range: `${sheet}!A1`, values: [HEADERS[sheet] ?? []] },
+            { range: `${sheet}!A2`, values: [row] }
+          ]
+        })
+      })
+      return res.status(200).json({ ok: true, created: true })
+    }
+
+    sheetId = sheetMeta.properties!.sheetId!
 
     if (!checkData.values?.length) {
       // Sheet is empty: write headers to A1 and data to A2 in one call
