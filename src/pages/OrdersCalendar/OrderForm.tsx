@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order } from '../../db/db'
-import { logOrder, logAdvanceOrder, updateOrder, updateAdvanceOrder, deleteSheetRow } from '../../lib/sheets'
+import { logOrder, logAdvanceOrder, updateOrder, updateAdvanceOrder, deleteSheetRow, logPayment } from '../../lib/sheets'
 import { dbWrite } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
 
@@ -78,7 +78,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
     setSaving(true)
     const totalAmt = parseFloat(totalAmount) || 0
     const depositAmt = mode === 'log'
-      ? totalAmt
+      ? (isEdit ? totalAmt : 0)
       : paymentType === 'partial'
         ? (parseFloat(depositPaid) || 0)
         : (isEdit ? order!.depositPaid : totalAmt)
@@ -119,13 +119,34 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
       }
     } else {
       const localId = await db.orders.add({ ...data, pendingSync: true })
+      const payLocalId = mode === 'log'
+        ? await db.payments.add({
+            orderId: localId as number, amount: totalAmt,
+            type: 'full', paidAt: dueDate,
+            pendingSync: true, loggedBy: getCurrentUser(),
+          })
+        : undefined
       onSaved()
       handleClose()
       if (navigator.onLine) {
         const { data: row, error } = await dbWrite<{ id: string }>('orders', 'insert', { payload: supabasePayload, select: true, single: true })
         if (!error && row) {
           await db.orders.update(localId as number, { supabaseId: row.id, pendingSync: false })
-          mode === 'advance' ? logAdvanceOrder(data, row.id) : logOrder(data, row.id)
+          if (mode === 'advance') {
+            logAdvanceOrder(data, row.id)
+          } else {
+            logOrder(data, row.id)
+            if (payLocalId !== undefined) {
+              const { data: payRow, error: payErr } = await dbWrite<{ id: string }>('payments', 'insert', {
+                payload: { order_id: row.id, amount: totalAmt, type: 'full', paid_at: dueDate, notes: null, logged_by: getCurrentUser() },
+                select: true, single: true,
+              })
+              if (!payErr && payRow) {
+                await db.payments.update(payLocalId as number, { supabaseId: payRow.id, pendingSync: false })
+                logPayment({ customerName: data.customerName, orderDesc: data.description, amount: totalAmt, type: 'full', paidAt: dueDate, loggedBy: getCurrentUser() }, payRow.id)
+              }
+            }
+          }
         }
       }
     }
