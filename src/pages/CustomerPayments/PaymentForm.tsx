@@ -97,10 +97,13 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
           orderId: order.id!, amount: amt, type: capturedType, paidAt: capturedPaidAt,
           notes: capturedNotes, supabaseId: row.id, pendingSync: false, loggedBy,
         })
-        logPayment({
-          customerName: order.customerName, orderDesc: order.description,
-          amount: amt, type: capturedType, paidAt: capturedPaidAt, notes: capturedNotes, loggedBy,
-        }, row.id)
+        const newBalance = Math.max(0, order.totalAmount - totalPaid - amt)
+        if (newBalance <= 0) {
+          logPayment({
+            customerName: order.customerName, orderDesc: order.description,
+            amount: amt, type: capturedType, paidAt: capturedPaidAt, notes: capturedNotes, loggedBy,
+          }, row.id)
+        }
       } else {
         await db.payments.add({
           orderId: order.id!, amount: amt, type: capturedType, paidAt: capturedPaidAt,

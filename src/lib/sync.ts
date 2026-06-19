@@ -97,10 +97,14 @@ export async function syncPendingItems(): Promise<void> {
       const { data: row, error } = await dbWrite<{ id: string }>('payments', 'insert', { payload, select: true, single: true })
       if (!error && row) {
         await db.payments.update(p.id!, { supabaseId: row.id, pendingSync: false })
-        logPayment({
-          customerName: order.customerName, orderDesc: order.description,
-          amount: p.amount, type: p.type, paidAt: p.paidAt, notes: p.notes,
-        }, row.id)
+        const allPmts = await db.payments.where('orderId').equals(order.id!).toArray()
+        const totalPaid = order.depositPaid + allPmts.reduce((s, pp) => s + pp.amount, 0)
+        if (totalPaid >= order.totalAmount) {
+          logPayment({
+            customerName: order.customerName, orderDesc: order.description,
+            amount: p.amount, type: p.type, paidAt: p.paidAt, notes: p.notes,
+          }, row.id)
+        }
       } else {
         console.warn('[sync] payments insert failed', p.id, error?.message)
       }

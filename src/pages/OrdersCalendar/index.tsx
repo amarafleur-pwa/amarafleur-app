@@ -12,6 +12,14 @@ import SwipeableItem from '../../components/SwipeableItem'
 
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
+const TYPE_LABELS: Record<string, string> = {
+  deposit: 'Deposit', balance: 'Balance', full: 'Full Payment',
+}
+
+function formatDate(d: string) {
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 function todayStr() {
   return new Date().toISOString().split('T')[0]
 }
@@ -138,7 +146,12 @@ export default function OrdersCalendar() {
   const [searchQuery, setSearchQuery] = useState('')
 
   async function handleDeleteAdvanceOrder(order: Order) {
+    const linkedPayments = await db.payments.where('orderId').equals(order.id!).toArray()
+    for (const p of linkedPayments) {
+      if (p.supabaseId) deleteSheetRow('Payments', p.supabaseId)
+    }
     if (order.supabaseId) {
+      deleteSheetRow('Payments', order.supabaseId + ':deposit')
       deleteSheetRow('Advance Orders', order.supabaseId)
       await dbWrite('orders', 'delete', { eq: { id: order.supabaseId } })
     }
@@ -593,6 +606,35 @@ export default function OrdersCalendar() {
                 )}
               </div>
 
+              {(() => {
+                const orderPayments = allPayments.filter(p => p.orderId === previewOrder.id)
+                const hasHistory = previewOrder.depositPaid > 0 || orderPayments.length > 0
+                return hasHistory && (
+                  <div style={{ background: '#fff', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px' }}>
+                    <p style={{ fontSize: '13px', fontWeight: 700, color: '#6b7280', marginBottom: '8px' }}>Payment History</p>
+                    {previewOrder.depositPaid > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <div>
+                          <p style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>Initial Deposit</p>
+                          <p style={{ fontSize: '11px', color: '#9ca3af' }}>Recorded at order creation</p>
+                        </div>
+                        <p style={{ fontSize: '14px', fontWeight: 700, color: '#7A9E7E' }}>{fmt(previewOrder.depositPaid)}</p>
+                      </div>
+                    )}
+                    {orderPayments.map(p => (
+                      <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <div>
+                          <p style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>{TYPE_LABELS[p.type]}</p>
+                          <p style={{ fontSize: '11px', color: '#9ca3af' }}>
+                            {formatDate(p.paidAt)}{p.notes ? ` · ${p.notes}` : ''}{p.loggedBy ? ` · 👤 ${p.loggedBy}` : ''}
+                          </p>
+                        </div>
+                        <p style={{ fontSize: '14px', fontWeight: 700, color: '#7A9E7E' }}>{fmt(p.amount)}</p>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })()}
               {(() => {
                 const orderPayments = allPayments.filter(p => p.orderId === previewOrder.id)
                 const totalPaid = previewOrder.depositPaid + orderPayments.reduce((s, p) => s + p.amount, 0)

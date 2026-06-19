@@ -37,7 +37,9 @@ export function deleteSheetRow(sheet: string, appId: string) {
     method: 'POST',
     headers: API_HEADERS,
     body: JSON.stringify({ sheet, appId }),
-  }).catch(() => {})
+  }).then(async r => {
+    if (!r.ok) console.error('[sheets-delete]', sheet, appId, r.status, await r.text().catch(() => ''))
+  }).catch(err => console.error('[sheets-delete] network', sheet, appId, err))
 }
 
 export function logPersonalExpense(e: {
