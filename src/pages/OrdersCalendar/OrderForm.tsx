@@ -120,6 +120,14 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
       }
     } else {
       const localId = await db.orders.add({ ...data, pendingSync: true })
+      // Pre-add payment to Dexie before onSaved() so load() sees it immediately
+      let localPaymentId: number | undefined
+      if (mode === 'log') {
+        localPaymentId = await db.payments.add({
+          orderId: localId as number, amount: totalAmt, type: 'full', paidAt: dueDate,
+          pendingSync: true, loggedBy: getCurrentUser(),
+        }) as number
+      }
       onSaved()
       handleClose()
       if (navigator.onLine) {
@@ -153,30 +161,15 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
               select: true, single: true,
             })
             if (!payErr && payRow) {
-              await db.payments.add({
-                orderId: localId as number, amount: totalAmt, type: 'full', paidAt: dueDate,
-                supabaseId: payRow.id, pendingSync: false, loggedBy: getCurrentUser(),
-              })
+              await db.payments.update(localPaymentId!, { supabaseId: payRow.id, pendingSync: false })
               logPayment({ customerName: data.customerName, orderDesc: data.description, amount: totalAmt, type: 'full', paidAt: dueDate, loggedBy: getCurrentUser() }, payRow.id)
-            } else {
-              await db.payments.add({
-                orderId: localId as number, amount: totalAmt, type: 'full', paidAt: dueDate,
-                pendingSync: true, loggedBy: getCurrentUser(),
-              })
             }
+            // else: localPaymentId already in Dexie with pendingSync: true — no action needed
           }
-        } else if (mode === 'log') {
-          await db.payments.add({
-            orderId: localId as number, amount: totalAmt, type: 'full', paidAt: dueDate,
-            pendingSync: true, loggedBy: getCurrentUser(),
-          })
         }
-      } else if (mode === 'log') {
-        await db.payments.add({
-          orderId: localId as number, amount: totalAmt, type: 'full', paidAt: dueDate,
-          pendingSync: true, loggedBy: getCurrentUser(),
-        })
+        // else (order insert failed): localPaymentId already in Dexie with pendingSync: true
       }
+      // else (offline): localPaymentId already in Dexie with pendingSync: true
     }
     setSaving(false)
   }
