@@ -6,6 +6,7 @@ import PaymentForm from './PaymentForm'
 import { dbWrite } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
 import { logCustomer, deleteSheetRow, logPayment, exportPaymentsToSheet } from '../../lib/sheets'
+import { syncPendingItems } from '../../lib/sync'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
@@ -88,6 +89,7 @@ export default function CustomerPayments() {
   async function handleExportToSheet() {
     setExporting(true)
     try {
+      if (navigator.onLine) await syncPendingItems()
       const allPayments = await db.payments.toArray()
       const allOrders = await db.orders.toArray()
       const orderMap = new Map(allOrders.map(o => [o.id!, o]))
@@ -99,9 +101,8 @@ export default function CustomerPayments() {
           if (!order) return []
           return [{ customerName: order.customerName, orderDesc: order.description, amount: p.amount, type: p.type, paidAt: p.paidAt, notes: p.notes, loggedBy: p.loggedBy, appId: p.supabaseId! }]
         })
-      console.log('[export-payments] rows:', rows.length)
-      await exportPaymentsToSheet(rows)
-      alert(`Exported ${rows.length} payment${rows.length !== 1 ? 's' : ''} to sheet.`)
+      const { added, skipped, failed } = await exportPaymentsToSheet(rows)
+      alert(`Export done: ${added} added, ${skipped} already in sheet, ${failed} failed.`)
     } catch (err) {
       console.error('[export-payments]', err)
       alert('Export failed: ' + (err instanceof Error ? err.message : String(err)))
@@ -129,6 +130,13 @@ export default function CustomerPayments() {
   useEffect(() => { load() }, [syncVersion])
 
   async function handleDeleteOrder(order: Order) {
+    const linkedPayments = await db.payments.where('orderId').equals(order.id!).toArray()
+    for (const p of linkedPayments) {
+      if (p.supabaseId) {
+        deleteSheetRow('Payments', p.supabaseId)
+        await dbWrite('payments', 'delete', { eq: { id: p.supabaseId } })
+      }
+    }
     if (order.supabaseId) {
       deleteSheetRow('Orders', order.supabaseId)
       await dbWrite('orders', 'delete', { eq: { id: order.supabaseId } })

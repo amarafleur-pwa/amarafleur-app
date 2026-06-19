@@ -97,21 +97,30 @@ export function logPayment(p: {
 export async function exportPaymentsToSheet(rows: {
   customerName: string; orderDesc: string; amount: number;
   type: string; paidAt: string; notes?: string; loggedBy?: string; appId: string
-}[]) {
+}[]): Promise<{ added: number; skipped: number; failed: number }> {
+  let added = 0, skipped = 0, failed = 0
   for (const p of rows) {
-    const res = await fetch('/api/sheets-log', {
-      method: 'POST',
-      headers: API_HEADERS,
-      body: JSON.stringify({ sheet: 'Payments', row: [
-        p.customerName, p.orderDesc, p.amount,
-        p.type, p.paidAt, p.notes ?? '', p.loggedBy ?? '', now(), p.appId,
-      ]}),
-    })
-    if (!res.ok) {
-      const body = await res.text().catch(() => `HTTP ${res.status}`)
-      throw new Error(`Sheets API error ${res.status}: ${body}`)
+    try {
+      const res = await fetch('/api/sheets-log', {
+        method: 'POST',
+        headers: API_HEADERS,
+        body: JSON.stringify({ sheet: 'Payments', row: [
+          p.customerName, p.orderDesc, p.amount,
+          p.type, p.paidAt, p.notes ?? '', p.loggedBy ?? '', now(), p.appId,
+        ]}),
+      })
+      if (!res.ok) {
+        failed++
+        continue
+      }
+      const data = await res.json().catch(() => ({}))
+      if (data.skipped) skipped++
+      else added++
+    } catch {
+      failed++
     }
   }
+  return { added, skipped, failed }
 }
 
 export function logCustomer(c: {

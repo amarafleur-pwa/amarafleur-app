@@ -155,6 +155,13 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
 
   async function handleDelete() {
     if (!order?.id) return
+    const linkedPayments = await db.payments.where('orderId').equals(order.id).toArray()
+    for (const p of linkedPayments) {
+      if (p.supabaseId) {
+        deleteSheetRow('Payments', p.supabaseId)
+        await dbWrite('payments', 'delete', { eq: { id: p.supabaseId } })
+      }
+    }
     if (order.supabaseId) {
       deleteSheetRow(mode === 'log' ? 'Orders' : 'Advance Orders', order.supabaseId)
       await dbWrite('orders', 'delete', { eq: { id: order.supabaseId } })

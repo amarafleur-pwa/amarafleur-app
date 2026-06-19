@@ -122,6 +122,20 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
       await dbWrite('payments', 'delete', { eq: { id: p.supabaseId } })
     }
     await db.payments.delete(id)
+
+    // For Log Orders (isDone, depositPaid = 0, full payment): also delete the order
+    const remaining = await db.payments.where('orderId').equals(order.id!).count()
+    if (p?.type === 'full' && order.isDone && order.depositPaid === 0 && remaining === 0) {
+      if (order.supabaseId) {
+        deleteSheetRow('Orders', order.supabaseId)
+        await dbWrite('orders', 'delete', { eq: { id: order.supabaseId } })
+      }
+      await db.orders.delete(order.id!)
+      onSaved()
+      handleClose()
+      return
+    }
+
     loadPayments()
     onSaved()
   }
