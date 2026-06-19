@@ -105,7 +105,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     const isInstant = expenseType === 'instant'
     const totalAmt = parseFloat(amount)
     const today = new Date().toISOString().split('T')[0]
-    const autoMarkPaid = !isInstant && expenseType === 'one-time' && dueDate === today
+    const autoMarkPaid = !isEdit && !isInstant && expenseType === 'one-time' && dueDate === today
     const paidAmt = isInstant || autoMarkPaid ? totalAmt : (
       paymentType === 'partial' ? (parseFloat(amountPaid) || 0) :
       (isEdit ? (expense?.isPaid ? totalAmt : (expense?.amountPaid ?? 0)) : 0)
