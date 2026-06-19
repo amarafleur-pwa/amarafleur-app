@@ -5,7 +5,7 @@ import { db } from '../../db/db'
 import type { PersonalExpense } from '../../db/db'
 import ExpenseForm from './ExpenseForm'
 import { dbWrite } from '../../lib/dbGateway'
-import { logPersonalExpense, deleteSheetRow } from '../../lib/sheets'
+import { updatePersonalExpense, logPersonalExpense, deleteSheetRow } from '../../lib/sheets'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
@@ -94,8 +94,7 @@ export default function PersonalExpenses() {
     if (expense.supabaseId) {
       const { error } = await dbWrite('personal_expenses', 'update', { payload: { is_paid: true, amount_paid: paidAmt }, eq: { id: expense.supabaseId } })
       if (!error) {
-        deleteSheetRow('Personal Expenses', expense.supabaseId)
-        logPersonalExpense({ ...expense, amountPaid: paidAmt }, expense.supabaseId)
+        updatePersonalExpense({ ...expense, amountPaid: paidAmt }, expense.supabaseId)
       }
     }
     await db.personalExpenses.update(expense.id!, { isPaid: true, amountPaid: paidAmt })
@@ -149,8 +148,7 @@ export default function PersonalExpenses() {
       })
       if (!error) {
         await db.personalExpenses.update(logPayEntry.id!, { pendingSync: false })
-        deleteSheetRow('Personal Expenses', logPayEntry.supabaseId)
-        logPersonalExpense({ ...logPayEntry, amountPaid: newPaid }, logPayEntry.supabaseId)
+        updatePersonalExpense({ ...logPayEntry, amountPaid: newPaid }, logPayEntry.supabaseId)
       }
     }
     setLogPayEntry(null)
@@ -170,8 +168,7 @@ export default function PersonalExpenses() {
       })
       if (!error) {
         await db.personalExpenses.update(entry.id!, { pendingSync: false })
-        deleteSheetRow('Personal Expenses', entry.supabaseId)
-        logPersonalExpense({ ...entry, amountPaid: entry.amount }, entry.supabaseId)
+        updatePersonalExpense({ ...entry, amountPaid: entry.amount }, entry.supabaseId)
       }
     }
     load()

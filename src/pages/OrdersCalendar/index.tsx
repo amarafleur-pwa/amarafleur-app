@@ -5,7 +5,7 @@ import type { Order, Payment } from '../../db/db'
 import OrderForm from './OrderForm'
 import PaymentForm from '../CustomerPayments/PaymentForm'
 import { dbWrite } from '../../lib/dbGateway'
-import { deleteSheetRow, logOrder } from '../../lib/sheets'
+import { deleteSheetRow, updateOrder } from '../../lib/sheets'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
@@ -128,7 +128,7 @@ export default function OrdersCalendar() {
     }
     await db.orders.update(order.id!, { isDone: newIsDone })
     if (newIsDone && order.supabaseId) {
-      logOrder(order, order.supabaseId)
+      updateOrder(order, order.supabaseId)
     }
     load()
   }

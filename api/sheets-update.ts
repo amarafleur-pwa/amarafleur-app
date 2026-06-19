@@ -57,11 +57,23 @@ export default async function handler(req: any, res: any) {
         { method: 'PUT', headers: hdrs, body: JSON.stringify({ values: [row] }) }
       )
     } else {
-      // Fallback: row not found, append at bottom
-      await fetch(
-        `${BASE}/${spreadsheetId}/values/${encodeURIComponent(sheet + '!A1')}:append?valueInputOption=USER_ENTERED`,
-        { method: 'POST', headers: hdrs, body: JSON.stringify({ values: [row] }) }
-      )
+      // Fallback: row not found — insert at top (row 2) to stay consistent with append logic
+      const metaRes = await fetch(`${BASE}/${spreadsheetId}?fields=sheets.properties`, { headers: hdrs })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const meta = await metaRes.json() as { sheets?: { properties?: { title?: string; sheetId?: number } }[] }
+      const sheetMeta = meta.sheets?.find(s => s.properties?.title === sheet)
+      if (sheetMeta) {
+        const sheetId = sheetMeta.properties!.sheetId!
+        await fetch(`${BASE}/${spreadsheetId}:batchUpdate`, {
+          method: 'POST', headers: hdrs,
+          body: JSON.stringify({ requests: [{ insertDimension: { range: { sheetId, dimension: 'ROWS', startIndex: 1, endIndex: 2 }, inheritFromBefore: false } }] })
+        })
+        const endCol = colLetter(row.length)
+        await fetch(
+          `${BASE}/${spreadsheetId}/values/${encodeURIComponent(`${sheet}!A2:${endCol}2`)}?valueInputOption=USER_ENTERED`,
+          { method: 'PUT', headers: hdrs, body: JSON.stringify({ values: [row] }) }
+        )
+      }
     }
 
     return res.status(200).json({ ok: true })

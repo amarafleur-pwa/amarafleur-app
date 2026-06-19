@@ -5,7 +5,7 @@ import { db } from '../../db/db'
 import type { BusinessExpense } from '../../db/db'
 import ExpenseForm from './ExpenseForm'
 import { dbWrite } from '../../lib/dbGateway'
-import { deleteSheetRow, logBusinessExpense } from '../../lib/sheets'
+import { deleteSheetRow, updateBusinessExpense } from '../../lib/sheets'
 import { createNextRecurringExpense } from './recurring'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
@@ -92,7 +92,8 @@ export default function BusinessExpenses() {
   async function markPaid(expense: BusinessExpense) {
     const paidAmt = expense.amount
     if (expense.supabaseId) {
-      await dbWrite('business_expenses', 'update', { payload: { is_paid: true, amount_paid: paidAmt }, eq: { id: expense.supabaseId } })
+      const { error } = await dbWrite('business_expenses', 'update', { payload: { is_paid: true, amount_paid: paidAmt }, eq: { id: expense.supabaseId } })
+      if (!error) updateBusinessExpense({ ...expense, amountPaid: paidAmt }, expense.supabaseId)
     }
     await db.businessExpenses.update(expense.id!, { isPaid: true, amountPaid: paidAmt })
 
@@ -126,8 +127,7 @@ export default function BusinessExpenses() {
       })
       if (!error) {
         await db.businessExpenses.update(logPayEntry.id!, { pendingSync: false })
-        deleteSheetRow('Business Expenses', logPayEntry.supabaseId)
-        logBusinessExpense({ ...logPayEntry, amountPaid: newPaid }, logPayEntry.supabaseId)
+        updateBusinessExpense({ ...logPayEntry, amountPaid: newPaid }, logPayEntry.supabaseId)
       }
     }
     setLogPayEntry(null)
@@ -147,8 +147,7 @@ export default function BusinessExpenses() {
       })
       if (!error) {
         await db.businessExpenses.update(entry.id!, { pendingSync: false })
-        deleteSheetRow('Business Expenses', entry.supabaseId)
-        logBusinessExpense({ ...entry, amountPaid: entry.amount }, entry.supabaseId)
+        updateBusinessExpense({ ...entry, amountPaid: entry.amount }, entry.supabaseId)
       }
     }
     load()
