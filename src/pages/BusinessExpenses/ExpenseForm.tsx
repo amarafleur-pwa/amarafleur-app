@@ -6,6 +6,7 @@ import { logBusinessExpense, updateBusinessExpense, deleteSheetRow } from '../..
 import { dbWrite, uploadReceipt } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
 import { createNextRecurringExpense } from './recurring'
+import { todayPH } from '../../lib/dateUtils'
 
 const CATEGORIES = ['Rent', 'Utilities', 'Salary', 'Supplies', 'Ads', 'Staff bonus', 'Dried flowers', 'Fresh flowers', 'Others']
 const MODES = ['Cash', 'GCash', 'Bank Transfer', 'Credit Card', 'Cheque']
@@ -69,7 +70,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   const [paymentType, setPaymentType] = useState<'full' | 'partial'>(
     expense?.amountPaid && expense.amountPaid > 0 && expense.amountPaid < expense.amount ? 'partial' : 'full'
   )
-  const [dueDate, setDueDate] = useState(expense?.dueDate ?? new Date().toISOString().split('T')[0])
+  const [dueDate, setDueDate] = useState(expense?.dueDate ?? todayPH())
   const [mode, setMode] = useState(expense?.modeOfPayment ?? 'Cash')
   const [category, setCategory] = useState(expense?.category ?? 'Rent')
   const [isPaid, setIsPaid] = useState(expense?.isPaid ?? false)
@@ -226,7 +227,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
                   <button
                     key={t.key}
                     onClick={() => {
-                      if (t.key === 'instant' && !dueDate) setDueDate(new Date().toISOString().split('T')[0])
+                      if (t.key === 'instant' && !dueDate) setDueDate(todayPH())
                       setExpenseType(t.key)
                     }}
                     style={{

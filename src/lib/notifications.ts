@@ -1,10 +1,7 @@
 import { db } from '../db/db'
+import { todayPH, daysFromNowPH } from './dateUtils'
 
-function nDaysFromNow(n: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() + n)
-  return d.toISOString().split('T')[0]
-}
+function nDaysFromNow(n: number): string { return daysFromNowPH(n) }
 
 function shortDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
@@ -24,7 +21,7 @@ export async function checkAndFireReminders(): Promise<void> {
   if (!('serviceWorker' in navigator)) return
   if (Notification.permission !== 'granted') return
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = todayPH()
 
   // Fire at most once per calendar day
   const lastCheck = localStorage.getItem('reminder-check-date')

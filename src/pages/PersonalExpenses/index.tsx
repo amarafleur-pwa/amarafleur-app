@@ -9,13 +9,12 @@ import { updatePersonalExpense, logPersonalExpense, deleteSheetRow } from '../..
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
+import { todayPH, daysFromNowPH, toDateStrPH } from '../../lib/dateUtils'
 
 type ListTab = 'active' | 'monthly' | 'instant' | 'history'
 type HistoryFilter = 'today' | 'yesterday' | '7days' | 'range'
 
-function todayStr() {
-  return new Date().toISOString().split('T')[0]
-}
+function todayStr() { return todayPH() }
 
 function diffDays(dueDate: string): number {
   const due = new Date(dueDate + 'T00:00:00')
@@ -44,17 +43,8 @@ function resolveType(e: PersonalExpense): 'one-time' | 'monthly' | 'instant' {
   return 'one-time'
 }
 
-function yesterdayStr() {
-  const d = new Date()
-  d.setDate(d.getDate() - 1)
-  return d.toISOString().split('T')[0]
-}
-
-function daysAgoStr(n: number) {
-  const d = new Date()
-  d.setDate(d.getDate() - n)
-  return d.toISOString().split('T')[0]
-}
+function yesterdayStr() { return daysFromNowPH(-1) }
+function daysAgoStr(n: number) { return daysFromNowPH(-n) }
 
 export default function PersonalExpenses() {
   const syncVersion = useSyncVersion()
@@ -104,7 +94,7 @@ export default function PersonalExpenses() {
       next.setMonth(next.getMonth() + 1)
       const newData = {
         name: expense.name, amount: expense.amount,
-        dueDate: next.toISOString().split('T')[0],
+        dueDate: toDateStrPH(next),
         category: expense.category, notes: expense.notes,
         modeOfPayment: expense.modeOfPayment,
         isRecurring: true, isPaid: false, expenseType: 'monthly' as const,

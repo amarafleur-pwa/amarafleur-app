@@ -2,6 +2,7 @@ import { db } from '../../db/db'
 import type { BusinessExpense } from '../../db/db'
 import { dbWrite } from '../../lib/dbGateway'
 import { logBusinessExpense } from '../../lib/sheets'
+import { toDateStrPH } from '../../lib/dateUtils'
 
 // When a monthly bill is marked paid, auto-create next month's entry —
 // shared by the list view's quick-toggle and the edit form's toggle so
@@ -11,7 +12,7 @@ export async function createNextRecurringExpense(expense: BusinessExpense) {
   next.setMonth(next.getMonth() + 1)
   const newData = {
     name: expense.name, amount: expense.amount,
-    dueDate: next.toISOString().split('T')[0],
+    dueDate: toDateStrPH(next),
     category: expense.category, notes: expense.notes,
     isRecurring: true, isPaid: false, modeOfPayment: expense.modeOfPayment,
     expenseType: 'monthly' as const,

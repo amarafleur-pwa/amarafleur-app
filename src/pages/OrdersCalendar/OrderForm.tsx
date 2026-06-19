@@ -5,6 +5,7 @@ import type { Order } from '../../db/db'
 import { logOrder, logAdvanceOrder, updateOrder, updateAdvanceOrder, deleteSheetRow, logPayment } from '../../lib/sheets'
 import { dbWrite } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
+import { todayPH } from '../../lib/dateUtils'
 
 interface Props {
   order?: Order
@@ -87,7 +88,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
       description: description.trim(),
       fulfillmentType,
       quantity: quantity ? parseInt(quantity) : 1,
-      orderDate: order?.orderDate ?? new Date().toISOString().split('T')[0],
+      orderDate: order?.orderDate ?? todayPH(),
       dueDate,
       totalAmount: totalAmt,
       depositPaid: depositAmt,

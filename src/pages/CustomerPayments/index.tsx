@@ -9,6 +9,7 @@ import { logCustomer, deleteSheetRow, logPayment } from '../../lib/sheets'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
+import { todayPH } from '../../lib/dateUtils'
 
 type View = 'payments' | 'directory'
 type StatusFilter = 'all' | 'outstanding' | 'paid'
@@ -191,7 +192,7 @@ export default function CustomerPayments() {
       const s = getStatus(order, paymentMap.get(order.id!) ?? [])
       if (s.balance <= 0) return
       const loggedBy = getCurrentUser()
-      const today = new Date().toISOString().split('T')[0]
+      const today = todayPH()
       if (navigator.onLine && order.supabaseId) {
         const { data: row, error } = await dbWrite<{ id: string }>('payments', 'insert', {
           payload: {

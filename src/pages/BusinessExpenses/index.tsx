@@ -10,6 +10,7 @@ import { createNextRecurringExpense } from './recurring'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
+import { todayPH, daysFromNowPH } from '../../lib/dateUtils'
 
 type ListTab = 'active' | 'monthly' | 'instant' | 'history'
 type HistoryFilter = 'today' | 'yesterday' | '7days' | 'range'
@@ -20,7 +21,7 @@ function formatDate(d: string) {
 
 const fmt = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2 })
 
-function todayStr() { return new Date().toISOString().split('T')[0] }
+function todayStr() { return todayPH() }
 
 function diffDays(dueDate: string): number {
   const due = new Date(dueDate + 'T00:00:00')
@@ -43,17 +44,8 @@ function resolveType(e: BusinessExpense): 'one-time' | 'monthly' | 'instant' {
   return 'one-time'
 }
 
-function yesterdayStr() {
-  const d = new Date()
-  d.setDate(d.getDate() - 1)
-  return d.toISOString().split('T')[0]
-}
-
-function daysAgoStr(n: number) {
-  const d = new Date()
-  d.setDate(d.getDate() - n)
-  return d.toISOString().split('T')[0]
-}
+function yesterdayStr() { return daysFromNowPH(-1) }
+function daysAgoStr(n: number) { return daysFromNowPH(-n) }
 
 export default function BusinessExpenses() {
   const syncVersion = useSyncVersion()

@@ -5,6 +5,7 @@ import type { PersonalExpense } from '../../db/db'
 import { logPersonalExpense, updatePersonalExpense, deleteSheetRow } from '../../lib/sheets'
 import { dbWrite, uploadReceipt } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
+import { todayPH } from '../../lib/dateUtils'
 
 const CATEGORIES = ['Food', 'Gas/RFID', "Aki's needs", 'Leisure', 'Tithes/Donation', 'Tiktok & Shopee', 'Insurance', 'Utilities', 'Others']
 const MODES = ['Cash', 'GCash', 'Bank Transfer', 'Credit Card', 'Cheque']
@@ -69,7 +70,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   const [paymentType, setPaymentType] = useState<'full' | 'partial'>(
     expense?.amountPaid && expense.amountPaid > 0 && expense.amountPaid < expense.amount ? 'partial' : 'full'
   )
-  const [dueDate, setDueDate] = useState(expense?.dueDate ?? new Date().toISOString().split('T')[0])
+  const [dueDate, setDueDate] = useState(expense?.dueDate ?? todayPH())
   const [mode, setMode] = useState(expense?.modeOfPayment ?? 'Cash')
   const [category, setCategory] = useState(expense?.category ?? 'Food')
   const [notes, setNotes] = useState(expense?.notes ?? '')
@@ -104,7 +105,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     const isMonthly = expenseType === 'monthly'
     const isInstant = expenseType === 'instant'
     const totalAmt = parseFloat(amount)
-    const today = new Date().toISOString().split('T')[0]
+    const today = todayPH()
     const autoMarkPaid = !isEdit && !isInstant && expenseType === 'one-time' && dueDate === today
     const paidAmt = isInstant || autoMarkPaid ? totalAmt : (
       paymentType === 'partial' ? (parseFloat(amountPaid) || 0) :
@@ -214,7 +215,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
                 <button
                   key={t.key}
                   onClick={() => {
-                    if (t.key === 'instant' && !dueDate) setDueDate(new Date().toISOString().split('T')[0])
+                    if (t.key === 'instant' && !dueDate) setDueDate(todayPH())
                     setExpenseType(t.key)
                   }}
                   style={{

@@ -4,12 +4,11 @@ import { db } from '../../db/db'
 import type { Order, Payment, BusinessExpense } from '../../db/db'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
+import { todayPH, toDateStrPH } from '../../lib/dateUtils'
 
 type Period = 'daily' | 'weekly' | 'monthly'
 
-function todayStr() {
-  return new Date().toISOString().split('T')[0]
-}
+function todayStr() { return todayPH() }
 
 function getPeriodRange(period: Period): { start: string; end: string } {
   const today = new Date()
@@ -25,8 +24,8 @@ function getPeriodRange(period: Period): { start: string; end: string } {
   }
 
   return {
-    start: start.toISOString().split('T')[0],
-    end: end.toISOString().split('T')[0],
+    start: toDateStrPH(start),
+    end: toDateStrPH(end),
   }
 }
 
@@ -53,8 +52,8 @@ function getLast6Months() {
   const now = new Date()
   return Array.from({ length: 6 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1)
-    const start = d.toISOString().split('T')[0]
-    const end = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0]
+    const start = toDateStrPH(d)
+    const end = toDateStrPH(new Date(d.getFullYear(), d.getMonth() + 1, 0))
     return { label: d.toLocaleDateString('en-PH', { month: 'short' }), start, end }
   })
 }

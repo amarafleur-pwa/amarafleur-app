@@ -5,6 +5,7 @@ import type { Order, Payment } from '../../db/db'
 import { logPayment, deleteSheetRow } from '../../lib/sheets'
 import { dbWrite } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
+import { todayPH } from '../../lib/dateUtils'
 
 interface Props {
   order: Order
@@ -53,7 +54,7 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
   const [showForm, setShowForm] = useState(false)
   const [amount, setAmount] = useState('')
   const [type, setType] = useState<Payment['type']>('balance')
-  const [paidAt, setPaidAt] = useState(new Date().toISOString().split('T')[0])
+  const [paidAt, setPaidAt] = useState(todayPH())
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const savingRef = useRef(false)

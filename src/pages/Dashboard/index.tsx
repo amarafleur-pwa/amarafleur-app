@@ -8,16 +8,10 @@ import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import { supabase } from '../../lib/supabase'
 import { getCurrentUser } from '../../lib/currentUser'
+import { todayPH, daysFromNowPH } from '../../lib/dateUtils'
 
-function todayStr() {
-  return new Date().toISOString().split('T')[0]
-}
-
-function daysFromNow(n: number) {
-  const d = new Date()
-  d.setDate(d.getDate() + n)
-  return d.toISOString().split('T')[0]
-}
+function todayStr() { return todayPH() }
+function daysFromNow(n: number) { return daysFromNowPH(n) }
 
 function diffDays(dueDate: string): number {
   const due = new Date(dueDate + 'T00:00:00')
@@ -79,7 +73,7 @@ function useDailyVerse(): BibleVerse | null {
       const cached = localStorage.getItem('af-bible-verse')
       if (cached) {
         const parsed = JSON.parse(cached)
-        if (parsed.date === new Date().toISOString().split('T')[0]) {
+        if (parsed.date === todayPH()) {
           return { text: parsed.text, ref: parsed.ref }
         }
       }
@@ -97,7 +91,7 @@ function useDailyVerse(): BibleVerse | null {
         const v = data[0]
         const text = v.text.replace(/<[^>]+>/g, '').trim()
         const ref = `${v.bookname} ${v.chapter}:${v.verse}`
-        const today = new Date().toISOString().split('T')[0]
+        const today = todayPH()
         localStorage.setItem('af-bible-verse', JSON.stringify({ date: today, text, ref }))
         setVerse({ text, ref })
       })

@@ -9,6 +9,7 @@ import { deleteSheetRow, updateOrder } from '../../lib/sheets'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
+import { todayPH } from '../../lib/dateUtils'
 
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
@@ -20,9 +21,7 @@ function formatDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function todayStr() {
-  return new Date().toISOString().split('T')[0]
-}
+function todayStr() { return todayPH() }
 
 function dateStr(year: number, month: number, day: number) {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
