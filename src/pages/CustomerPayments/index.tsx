@@ -110,7 +110,8 @@ export default function CustomerPayments() {
     }
     if (order.supabaseId) {
       deleteSheetRow('Payments', order.supabaseId + ':deposit')
-      deleteSheetRow(order.isDone ? 'Orders' : 'Advance Orders', order.supabaseId)
+      deleteSheetRow('Orders', order.supabaseId)
+      deleteSheetRow('Advance Orders', order.supabaseId)
       const { error } = await dbWrite('orders', 'delete', { eq: { id: order.supabaseId } })
       if (error) console.error('[delete-order]', error.message)
     }
