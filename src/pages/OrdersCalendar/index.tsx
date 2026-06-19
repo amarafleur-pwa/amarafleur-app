@@ -151,8 +151,8 @@ export default function OrdersCalendar() {
       if (p.supabaseId) deleteSheetRow('Payments', p.supabaseId)
     }
     if (order.supabaseId) {
-      deleteSheetRow('Payments', order.supabaseId + ':deposit')
-      deleteSheetRow('Advance Orders', order.supabaseId)
+      if (!order.isDone) deleteSheetRow('Payments', order.supabaseId + ':deposit')
+      deleteSheetRow(order.isDone ? 'Orders' : 'Advance Orders', order.supabaseId)
       await dbWrite('orders', 'delete', { eq: { id: order.supabaseId } })
     }
     await db.payments.where('orderId').equals(order.id!).delete()
