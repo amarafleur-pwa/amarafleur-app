@@ -147,7 +147,7 @@ export default function OrdersCalendar() {
 
   async function handleDeleteAdvanceOrder(order: Order) {
     if (order.supabaseId) {
-      deleteSheetRow('Orders', order.supabaseId)
+      deleteSheetRow('Advance Orders', order.supabaseId)
       await dbWrite('orders', 'delete', { eq: { id: order.supabaseId } })
     }
     await db.payments.where('orderId').equals(order.id!).delete()
