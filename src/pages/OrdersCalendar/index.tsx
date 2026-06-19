@@ -133,17 +133,9 @@ export default function OrdersCalendar() {
     load()
   }
 
-  // TEMP: remove after sheet seed
-  const [exporting, setExporting] = useState(false)
-  async function handleExportToSheet() {
-    setExporting(true)
-    const doneOrders = orders.filter(o => o.isDone && o.supabaseId)
-    for (const o of doneOrders) {
-      logOrder(o, o.supabaseId!)
-    }
-    setExporting(false)
-    alert(`Exported ${doneOrders.length} orders to sheet.`)
-  }
+  // Search
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   async function handleDeleteAdvanceOrder(order: Order) {
     if (order.supabaseId) {
@@ -203,6 +195,15 @@ export default function OrdersCalendar() {
     setSelectedDate(null)
   }
 
+  const searchResults = searchQuery.trim().length === 0
+    ? []
+    : [...orders]
+        .filter(o => {
+          const q = searchQuery.toLowerCase()
+          return o.customerName.toLowerCase().includes(q) || o.description.toLowerCase().includes(q)
+        })
+        .sort((a, b) => b.dueDate.localeCompare(a.dueDate))
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', paddingBottom: '24px' }}>
 
@@ -222,23 +223,32 @@ export default function OrdersCalendar() {
         </div>
 
         {/* Sub-tab bar */}
-        <div style={{ display: 'flex', gap: '6px', marginTop: '12px' }}>
-          {(['log', 'advance'] as MainView[]).map(v => (
-            <button
-              key={v}
-              onClick={() => setMainView(v)}
-              style={{
-                padding: '6px 20px', borderRadius: '20px', border: 'none',
-                fontSize: '13px', fontWeight: mainView === v ? 700 : 500,
-                cursor: 'pointer',
-                background: mainView === v ? '#C9848A' : '#fff',
-                color: mainView === v ? '#fff' : '#6b7280',
-                boxShadow: mainView === v ? '0 2px 8px #C9848A33' : 'none',
-              }}
-            >
-              {v === 'log' ? 'Log' : 'Advance'}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px' }}>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {(['log', 'advance'] as MainView[]).map(v => (
+              <button
+                key={v}
+                onClick={() => setMainView(v)}
+                style={{
+                  padding: '6px 20px', borderRadius: '20px', border: 'none',
+                  fontSize: '13px', fontWeight: mainView === v ? 700 : 500,
+                  cursor: 'pointer',
+                  background: mainView === v ? '#C9848A' : '#fff',
+                  color: mainView === v ? '#fff' : '#6b7280',
+                  boxShadow: mainView === v ? '0 2px 8px #C9848A33' : 'none',
+                }}
+              >
+                {v === 'log' ? 'Log' : 'Advance'}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => { setSearchQuery(''); setSearchOpen(true) }}
+            aria-label="Search orders"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', padding: '4px 8px', color: '#6b7280' }}
+          >
+            🔍
+          </button>
         </div>
       </div>
 
@@ -261,17 +271,6 @@ export default function OrdersCalendar() {
             </div>
             <button onClick={() => stepLogDate(1)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex' }}>
               <ChevronRight size={18} color="#6b7280" />
-            </button>
-          </div>
-
-          {/* TEMP: remove after sheet seed */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
-            <button
-              onClick={handleExportToSheet}
-              disabled={exporting}
-              style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', background: '#f3f4f6', border: 'none', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer' }}
-            >
-              {exporting ? 'Exporting…' : 'Export to Sheet'}
             </button>
           </div>
 
@@ -719,6 +718,56 @@ export default function OrdersCalendar() {
           onClose={() => setShowForm(false)}
           onSaved={load}
         />
+      )}
+
+      {/* Search modal */}
+      {searchOpen && (
+        <div
+          onClick={() => setSearchOpen(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: '20px 20px 0 0', padding: '20px 16px', maxHeight: '80svh', display: 'flex', flexDirection: 'column' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <span style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D' }}>Search Orders</span>
+              <button onClick={() => setSearchOpen(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#6b7280', lineHeight: 1 }}>✕</button>
+            </div>
+            <input
+              autoFocus
+              placeholder="Customer name or description…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1.5px solid #e5e7eb', fontSize: '14px', marginBottom: '12px', boxSizing: 'border-box', outline: 'none' }}
+            />
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              {searchQuery.trim().length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#9ca3af', fontSize: '13px', marginTop: '16px' }}>Type to search…</p>
+              ) : searchResults.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#9ca3af', fontSize: '13px', marginTop: '16px' }}>No orders found</p>
+              ) : searchResults.map(o => (
+                <div
+                  key={o.id}
+                  onClick={() => { setSearchOpen(false); setPreviewOrder(o) }}
+                  style={{ padding: '12px', borderRadius: '12px', marginBottom: '8px', background: '#faf9f8', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <span style={{ fontWeight: 600, fontSize: '14px', color: '#2D2D2D' }}>{o.customerName}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: o.isDone ? '#10b981' : '#C9848A', background: o.isDone ? '#10b98118' : '#C9848A18', borderRadius: '5px', padding: '2px 7px' }}>
+                      {o.isDone ? 'Done' : 'Pending'}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>{o.description}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px' }}>
+                    <span style={{ fontSize: '11px', color: '#9ca3af' }}>Due {o.dueDate}</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: '#374151' }}>{fmt(o.totalAmount)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
