@@ -5,9 +5,10 @@ import type { Order, Payment, Customer } from '../../db/db'
 import PaymentForm from './PaymentForm'
 import { dbWrite } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
-import { logCustomer, deleteSheetRow } from '../../lib/sheets'
+import { logCustomer, deleteSheetRow, logPayment } from '../../lib/sheets'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
+import SwipeableItem from '../../components/SwipeableItem'
 
 type View = 'payments' | 'directory'
 type StatusFilter = 'all' | 'outstanding' | 'paid'
@@ -25,6 +26,10 @@ function getStatus(order: Order, orderPayments: Payment[]) {
   if (totalPaid <= 0) return { label: 'Unpaid', color: '#C9848A', bg: '#C9848A18', balance, totalPaid }
   if (orderPayments.length === 0) return { label: 'Deposit', color: '#E8A838', bg: '#E8A83818', balance, totalPaid }
   return { label: 'Partial', color: '#E8A838', bg: '#E8A83818', balance, totalPaid }
+}
+
+const TYPE_LABELS: Record<string, string> = {
+  deposit: 'Deposit', balance: 'Balance', full: 'Full Payment',
 }
 
 const input: React.CSSProperties = {
@@ -74,6 +79,10 @@ export default function CustomerPayments() {
   const [closingCustomerForm, setClosingCustomerForm] = useState(false)
   const handleCloseCustomerForm = () => setClosingCustomerForm(true)
 
+  const [activeSwipeId, setActiveSwipeId] = useState<number | null>(null)
+  const [pendingDeleteOrder, setPendingDeleteOrder] = useState<Order | null>(null)
+  const [pendingBalancePay, setPendingBalancePay] = useState<Order | null>(null)
+
   function load() {
     Promise.all([
       db.orders.orderBy('dueDate').reverse().toArray(),
@@ -91,6 +100,17 @@ export default function CustomerPayments() {
   }
 
   useEffect(() => { load() }, [syncVersion])
+
+  async function handleDeleteOrder(order: Order) {
+    if (order.supabaseId) {
+      deleteSheetRow('Orders', order.supabaseId)
+      await dbWrite('orders', 'delete', { eq: { id: order.supabaseId } })
+    }
+    await db.payments.where('orderId').equals(order.id!).delete()
+    await db.orders.delete(order.id!)
+    setPendingDeleteOrder(null)
+    load()
+  }
 
   function openCustomerForm(customer?: Customer) {
     setEditingCustomer(customer)
@@ -155,6 +175,37 @@ export default function CustomerPayments() {
     const list = paymentMap.get(p.orderId) ?? []
     list.push(p)
     paymentMap.set(p.orderId, list)
+  }
+
+  async function handleBalancePaid(order: Order) {
+    const s = getStatus(order, paymentMap.get(order.id!) ?? [])
+    if (s.balance <= 0) return
+    const loggedBy = getCurrentUser()
+    const today = new Date().toISOString().split('T')[0]
+    const localId = await db.payments.add({
+      orderId: order.id!, amount: s.balance, type: 'balance', paidAt: today,
+      pendingSync: true, loggedBy,
+    })
+    if (navigator.onLine && order.supabaseId) {
+      const { data: row, error } = await dbWrite<{ id: string }>('payments', 'insert', {
+        payload: {
+          order_id: order.supabaseId,
+          amount: s.balance, type: 'balance', paid_at: today,
+          notes: null, logged_by: loggedBy || null,
+        },
+        select: true, single: true,
+      })
+      if (!error && row) {
+        await db.payments.update(localId as number, { supabaseId: row.id, pendingSync: false })
+        logPayment({
+          customerName: order.customerName, orderDesc: order.description,
+          amount: s.balance, type: 'balance', paidAt: today, loggedBy,
+        }, row.id)
+      }
+    }
+    setPendingBalancePay(null)
+    setClosingPreviewOrder(true)
+    load()
   }
 
   const statusFilters: { key: StatusFilter; label: string }[] = [
@@ -305,46 +356,61 @@ export default function CustomerPayments() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {filteredOrders.map(o => {
               const s = getStatus(o, paymentMap.get(o.id!) ?? [])
+              const orderPmts = paymentMap.get(o.id!) ?? []
+              const lastPmt = [...orderPmts].sort((a, b) => b.paidAt.localeCompare(a.paidAt))[0]
               return (
-                <div
+                <SwipeableItem
                   key={o.id}
-                  onClick={() => setPreviewOrder(o)}
-                  style={{
-                    background: '#fff', borderRadius: '12px', padding: '14px',
-                    boxShadow: '0 1px 6px rgba(0,0,0,0.06)', cursor: 'pointer',
-                  }}
+                  id={o.id!}
+                  activeId={activeSwipeId}
+                  onActivate={setActiveSwipeId}
+                  onPreview={() => setPreviewOrder(o)}
+                  onEdit={() => setPreviewOrder(o)}
+                  onDelete={() => setPendingDeleteOrder(o)}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D' }}>{o.customerName}</p>
-                      <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {o.description}
-                      </p>
-                    </div>
-                    <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', marginBottom: '6px' }}>
-                        <span style={{ fontSize: '11px', color: '#9ca3af' }}>{formatDate(o.dueDate)}</span>
-                        <span style={{
-                          display: 'inline-block', fontSize: '11px', fontWeight: 700,
-                          color: s.color, background: s.bg,
-                          borderRadius: '5px', padding: '3px 8px',
-                        }}>
-                          {s.label}
-                        </span>
+                  <div
+                    style={{
+                      background: '#fff', borderRadius: '12px', padding: '14px',
+                      boxShadow: '0 1px 6px rgba(0,0,0,0.06)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D' }}>{o.customerName}</p>
+                        <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {o.description}
+                        </p>
                       </div>
-                      <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D' }}>{fmt(o.totalAmount)}</p>
+                      <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px', marginBottom: '6px' }}>
+                          <span style={{ fontSize: '11px', color: '#9ca3af' }}>{formatDate(o.dueDate)}</span>
+                          <span style={{
+                            display: 'inline-block', fontSize: '11px', fontWeight: 700,
+                            color: s.color, background: s.bg,
+                            borderRadius: '5px', padding: '3px 8px',
+                          }}>
+                            {s.label}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D' }}>{fmt(o.totalAmount)}</p>
+                      </div>
                     </div>
+                    {s.balance > 0 && (
+                      <div style={{
+                        marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6',
+                        display: 'flex', justifyContent: 'space-between',
+                      }}>
+                        <span style={{ fontSize: '12px', color: '#9ca3af' }}>Paid: {fmt(s.totalPaid)}</span>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#8B1A1A' }}>Balance: {fmt(s.balance)}</span>
+                      </div>
+                    )}
+                    {s.balance > 0 && lastPmt && (
+                      <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px' }}>
+                        Last: {fmt(lastPmt.amount)}{lastPmt.loggedBy ? ` · ${lastPmt.loggedBy}` : ''}
+                      </p>
+                    )}
                   </div>
-                  {s.balance > 0 && (
-                    <div style={{
-                      marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6',
-                      display: 'flex', justifyContent: 'space-between',
-                    }}>
-                      <span style={{ fontSize: '12px', color: '#9ca3af' }}>Paid: {fmt(s.totalPaid)}</span>
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: '#8B1A1A' }}>Balance: {fmt(s.balance)}</span>
-                    </div>
-                  )}
-                </div>
+                </SwipeableItem>
               )
             })}
           </div>
@@ -454,12 +520,52 @@ export default function CustomerPayments() {
                       )}
                     </div>
 
-                    <button
-                      onClick={() => { setClosingPreviewOrder(true); setSelectedOrder(previewOrder) }}
-                      style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#C9848A', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #C9848A44' }}
-                    >
-                      Record Payment
-                    </button>
+                    {(() => {
+                      const previewPmts = paymentMap.get(previewOrder.id!) ?? []
+                      const hasHistory = previewOrder.depositPaid > 0 || previewPmts.length > 0
+                      return hasHistory && (
+                        <div style={{ background: '#fff', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px' }}>
+                          <p style={{ fontSize: '13px', fontWeight: 700, color: '#6b7280', marginBottom: '8px' }}>Payment History</p>
+                          {previewOrder.depositPaid > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                              <div>
+                                <p style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>Initial Deposit</p>
+                                <p style={{ fontSize: '11px', color: '#9ca3af' }}>Recorded at order creation</p>
+                              </div>
+                              <p style={{ fontSize: '14px', fontWeight: 700, color: '#7A9E7E' }}>{fmt(previewOrder.depositPaid)}</p>
+                            </div>
+                          )}
+                          {previewPmts.map(p => (
+                            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                              <div>
+                                <p style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>{TYPE_LABELS[p.type]}</p>
+                                <p style={{ fontSize: '11px', color: '#9ca3af' }}>
+                                  {formatDate(p.paidAt)}{p.notes ? ` · ${p.notes}` : ''}{p.loggedBy ? ` · 👤 ${p.loggedBy}` : ''}
+                                </p>
+                              </div>
+                              <p style={{ fontSize: '14px', fontWeight: 700, color: '#7A9E7E' }}>{fmt(p.amount)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
+
+                    {s.balance > 0 && (
+                      <>
+                        <button
+                          onClick={() => { setClosingPreviewOrder(true); setSelectedOrder(previewOrder) }}
+                          style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#7A9E7E', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #7A9E7E44', marginBottom: '10px' }}
+                        >
+                          Log Payment
+                        </button>
+                        <button
+                          onClick={() => setPendingBalancePay(previewOrder)}
+                          style={{ width: '100%', padding: '14px', border: 'none', borderRadius: '12px', background: '#C9848A', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px #C9848A44' }}
+                        >
+                          Balance Paid
+                        </button>
+                      </>
+                    )}
                   </>
                 )
               })()}
@@ -640,6 +746,71 @@ export default function CustomerPayments() {
           </div>
         </div>
       )}
+      {/* Delete order confirmation */}
+      {pendingDeleteOrder && (
+        <div
+          onClick={() => setPendingDeleteOrder(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '320px', boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}
+          >
+            <p style={{ fontSize: '16px', fontWeight: 700, color: '#2D2D2D', marginBottom: '6px' }}>Delete order?</p>
+            <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '20px' }}>
+              "{pendingDeleteOrder.customerName}" will be permanently deleted.
+            </p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => setPendingDeleteOrder(null)}
+                style={{ flex: 1, padding: '12px', border: '1.5px solid #e5e0db', borderRadius: '10px', background: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer', color: '#6b7280' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { const o = pendingDeleteOrder; setPendingDeleteOrder(null); handleDeleteOrder(o) }}
+                style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '10px', background: '#C9848A', fontSize: '14px', fontWeight: 700, cursor: 'pointer', color: '#fff', boxShadow: '0 2px 8px #C9848A44' }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Balance paid confirmation */}
+      {pendingBalancePay && (
+        <div
+          onClick={() => setPendingBalancePay(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: '16px', padding: '24px', width: '100%', maxWidth: '320px', boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}
+          >
+            <p style={{ fontSize: '16px', fontWeight: 700, color: '#2D2D2D', marginBottom: '6px' }}>Confirm balance payment?</p>
+            <p style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '4px' }}>{pendingBalancePay.customerName}</p>
+            <p style={{ fontSize: '20px', fontWeight: 800, color: '#7A9E7E', marginBottom: '20px' }}>
+              {fmt(getStatus(pendingBalancePay, paymentMap.get(pendingBalancePay.id!) ?? []).balance)}
+            </p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => setPendingBalancePay(null)}
+                style={{ flex: 1, padding: '12px', border: '1.5px solid #e5e0db', borderRadius: '10px', background: '#fff', fontSize: '14px', fontWeight: 600, cursor: 'pointer', color: '#6b7280' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleBalancePaid(pendingBalancePay)}
+                style={{ flex: 1, padding: '12px', border: 'none', borderRadius: '10px', background: '#7A9E7E', fontSize: '14px', fontWeight: 700, cursor: 'pointer', color: '#fff', boxShadow: '0 2px 8px #7A9E7E44' }}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
