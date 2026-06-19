@@ -554,7 +554,7 @@ export default function CustomerPayments() {
                           {previewOrder.depositPaid > 0 && (
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                               <div>
-                                <p style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>Initial Deposit</p>
+                                <p style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>{previewOrder.depositPaid >= previewOrder.totalAmount ? 'Fully Paid' : 'Initial Deposit'}</p>
                                 <p style={{ fontSize: '11px', color: '#9ca3af' }}>Recorded at order creation</p>
                               </div>
                               <p style={{ fontSize: '14px', fontWeight: 700, color: '#7A9E7E' }}>{fmt(previewOrder.depositPaid)}</p>

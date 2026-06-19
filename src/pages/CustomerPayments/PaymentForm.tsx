@@ -13,7 +13,7 @@ interface Props {
   onSaved: () => void
 }
 
-const TYPES: Payment['type'][] = ['deposit', 'balance', 'full']
+const TYPES: Payment['type'][] = ['balance', 'full']
 const TYPE_LABELS: Record<Payment['type'], string> = {
   deposit: 'Deposit',
   balance: 'Balance',
@@ -69,6 +69,10 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
 
   const totalPaid = order.depositPaid + payments.reduce((s, p) => s + p.amount, 0)
   const balance = Math.max(0, order.totalAmount - totalPaid)
+
+  useEffect(() => {
+    if (type === 'full' && balance > 0) setAmount(balance.toString())
+  }, [type])
 
   async function handleSave() {
     if (savingRef.current) return
@@ -216,7 +220,7 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
           {order.depositPaid > 0 && (
             <div style={{ background: '#fff', borderRadius: '10px', padding: '12px 14px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <p style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>Initial Deposit</p>
+                <p style={{ fontSize: '13px', fontWeight: 600, color: '#2D2D2D' }}>{order.depositPaid >= order.totalAmount ? 'Fully Paid' : 'Initial Deposit'}</p>
                 <p style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>Recorded at order creation</p>
               </div>
               <p style={{ fontWeight: 700, fontSize: '14px', color: '#7A9E7E' }}>{fmt(order.depositPaid)}</p>

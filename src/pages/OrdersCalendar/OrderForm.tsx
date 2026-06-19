@@ -82,7 +82,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
       ? (isEdit ? totalAmt : 0)
       : paymentType === 'partial'
         ? (parseFloat(depositPaid) || 0)
-        : (isEdit ? order!.depositPaid : totalAmt)
+        : (isEdit ? order!.depositPaid : 0)
     const data: Omit<Order, 'id'> = {
       customerName: customerName.trim(),
       description: description.trim(),
@@ -129,11 +129,22 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
           if (mode === 'advance') {
             logAdvanceOrder(data, row.id)
             if (!isEdit && paymentType === 'full') {
-              logPayment({
-                customerName: data.customerName, orderDesc: data.description,
-                amount: totalAmt, type: 'deposit', paidAt: data.orderDate,
-                loggedBy: getCurrentUser(),
-              }, row.id + ':deposit')
+              const { data: payRow, error: payErr } = await dbWrite<{ id: string }>('payments', 'insert', {
+                payload: { order_id: row.id, amount: totalAmt, type: 'full', paid_at: data.orderDate, notes: null, logged_by: getCurrentUser() },
+                select: true, single: true,
+              })
+              if (!payErr && payRow) {
+                await db.payments.add({
+                  orderId: localId as number, amount: totalAmt, type: 'full', paidAt: data.orderDate,
+                  supabaseId: payRow.id, pendingSync: false, loggedBy: getCurrentUser(),
+                })
+                logPayment({ customerName: data.customerName, orderDesc: data.description, amount: totalAmt, type: 'full', paidAt: data.orderDate, loggedBy: getCurrentUser() }, payRow.id)
+              } else {
+                await db.payments.add({
+                  orderId: localId as number, amount: totalAmt, type: 'full', paidAt: data.orderDate,
+                  pendingSync: true, loggedBy: getCurrentUser(),
+                })
+              }
             }
           } else {
             logOrder(data, row.id)
