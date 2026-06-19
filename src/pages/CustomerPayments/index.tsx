@@ -5,7 +5,7 @@ import type { Order, Payment, Customer } from '../../db/db'
 import PaymentForm from './PaymentForm'
 import { dbWrite } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
-import { logCustomer, deleteSheetRow, logPayment, exportPaymentsToSheet } from '../../lib/sheets'
+import { logCustomer, deleteSheetRow, logPayment } from '../../lib/sheets'
 import { syncPendingItems } from '../../lib/sync'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
@@ -83,33 +83,7 @@ export default function CustomerPayments() {
   const [activeSwipeId, setActiveSwipeId] = useState<number | null>(null)
   const [pendingDeleteOrder, setPendingDeleteOrder] = useState<Order | null>(null)
   const [pendingBalancePay, setPendingBalancePay] = useState<Order | null>(null)
-  const [exporting, setExporting] = useState(false)
   const balancePaying = useRef(false)
-
-  async function handleExportToSheet() {
-    setExporting(true)
-    try {
-      if (navigator.onLine) await syncPendingItems()
-      const allPayments = await db.payments.toArray()
-      const allOrders = await db.orders.toArray()
-      const orderMap = new Map(allOrders.map(o => [o.id!, o]))
-      const rows = allPayments
-        .filter(p => p.supabaseId)
-        .sort((a, b) => a.paidAt.localeCompare(b.paidAt))
-        .flatMap(p => {
-          const order = orderMap.get(p.orderId)
-          if (!order) return []
-          return [{ customerName: order.customerName, orderDesc: order.description, amount: p.amount, type: p.type, paidAt: p.paidAt, notes: p.notes, loggedBy: p.loggedBy, appId: p.supabaseId! }]
-        })
-      const { added, skipped, failed } = await exportPaymentsToSheet(rows)
-      alert(`Export done: ${added} added, ${skipped} already in sheet, ${failed} failed.`)
-    } catch (err) {
-      console.error('[export-payments]', err)
-      alert('Export failed: ' + (err instanceof Error ? err.message : String(err)))
-    } finally {
-      setExporting(false)
-    }
-  }
 
   function load() {
     Promise.all([
@@ -347,15 +321,6 @@ export default function CustomerPayments() {
       {/* ─── PAYMENTS VIEW ─── */}
       {!loading && view === 'payments' && (
         <div style={{ padding: '12px 16px 0' }}>
-
-          {/* Temp export button */}
-          <button
-            onClick={handleExportToSheet}
-            disabled={exporting}
-            style={{ width: '100%', padding: '10px', border: '1.5px solid #e5e0db', borderRadius: '10px', background: '#fafaf9', color: '#6b7280', fontSize: '13px', fontWeight: 600, cursor: 'pointer', marginBottom: '10px', boxShadow: '0 1px 4px #0000000a' }}
-          >
-            {exporting ? 'Exporting...' : 'Export to Sheet'}
-          </button>
 
           {/* Outstanding banner */}
           {outstandingTotal > 0 && (
