@@ -1,11 +1,11 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Upload } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment } from '../../db/db'
 import OrderForm from './OrderForm'
 import PaymentForm from '../CustomerPayments/PaymentForm'
 import { dbWrite } from '../../lib/dbGateway'
-import { deleteSheetRow } from '../../lib/sheets'
+import { deleteSheetRow, logAdvanceOrder } from '../../lib/sheets'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
@@ -78,6 +78,9 @@ export default function OrdersCalendar() {
   const [editing, setEditing] = useState<Order | undefined>()
   const [formMode, setFormMode] = useState<'log' | 'advance'>('advance')
 
+  const [exporting, setExporting] = useState(false)
+  const [exportDone, setExportDone] = useState(false)
+
   const year = viewDate.getFullYear()
   const month = viewDate.getMonth()
   const today = todayStr()
@@ -90,6 +93,32 @@ export default function OrdersCalendar() {
   }
 
   useEffect(() => { load() }, [syncVersion])
+
+  async function handleExportToSheets() {
+    setExporting(true)
+    const pending = orders.filter(o => !o.isDone)
+    for (const o of pending) {
+      logAdvanceOrder(
+        {
+          customerName: o.customerName,
+          description: o.description,
+          quantity: o.quantity,
+          dueDate: o.dueDate,
+          time: o.time,
+          totalAmount: o.totalAmount,
+          depositPaid: o.depositPaid,
+          modeOfPayment: o.modeOfPayment,
+          notes: o.notes,
+          fulfillmentType: o.fulfillmentType,
+          loggedBy: o.loggedBy,
+        },
+        o.supabaseId ?? String(o.id ?? '')
+      )
+    }
+    setExporting(false)
+    setExportDone(true)
+    setTimeout(() => setExportDone(false), 3000)
+  }
 
   // Log tab: fulfilled orders for logDate with computed payment totals
   const logItems = useMemo(() => {
@@ -318,6 +347,27 @@ export default function OrdersCalendar() {
       {/* ===== ADVANCE (CALENDAR) VIEW ===== */}
       {mainView === 'advance' && (
         <>
+          {/* Export to Sheets */}
+          <div style={{ padding: '10px 16px 0', display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              onClick={handleExportToSheets}
+              disabled={exporting || orders.filter(o => !o.isDone).length === 0}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '7px 14px', border: 'none', borderRadius: '20px',
+                fontSize: '12px', fontWeight: 600, cursor: 'pointer',
+                background: exportDone ? '#7A9E7E' : '#fff',
+                color: exportDone ? '#fff' : '#6b7280',
+                boxShadow: '0 1px 6px rgba(0,0,0,0.08)',
+                opacity: exporting ? 0.6 : 1,
+                transition: 'background 0.2s, color 0.2s',
+              }}
+            >
+              <Upload size={13} />
+              {exportDone ? 'Exported!' : exporting ? 'Exporting…' : 'Export to Sheets'}
+            </button>
+          </div>
+
           {/* Calendar card */}
           <div style={{ margin: '12px 16px 0', background: '#fff', borderRadius: '16px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
 
