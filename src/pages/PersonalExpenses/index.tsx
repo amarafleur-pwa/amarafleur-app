@@ -92,7 +92,11 @@ export default function PersonalExpenses() {
   async function markPaid(expense: PersonalExpense) {
     const paidAmt = expense.amount
     if (expense.supabaseId) {
-      await dbWrite('personal_expenses', 'update', { payload: { is_paid: true, amount_paid: paidAmt }, eq: { id: expense.supabaseId } })
+      const { error } = await dbWrite('personal_expenses', 'update', { payload: { is_paid: true, amount_paid: paidAmt }, eq: { id: expense.supabaseId } })
+      if (!error) {
+        deleteSheetRow('Personal Expenses', expense.supabaseId)
+        logPersonalExpense({ ...expense, amountPaid: paidAmt }, expense.supabaseId)
+      }
     }
     await db.personalExpenses.update(expense.id!, { isPaid: true, amountPaid: paidAmt })
 
