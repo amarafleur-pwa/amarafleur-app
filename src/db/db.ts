@@ -51,6 +51,7 @@ export interface Order {
   isDone: boolean
   notes?: string
   fulfillmentType?: 'delivery' | 'pickup'
+  modeOfPayment?: string
   loggedBy?: string
 }
 

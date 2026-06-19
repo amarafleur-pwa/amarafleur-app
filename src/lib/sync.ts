@@ -66,7 +66,8 @@ export async function syncPendingItems(): Promise<void> {
       quantity: o.quantity ?? null, time: o.time ?? null,
       order_date: o.orderDate, due_date: o.dueDate,
       total_amount: o.totalAmount, deposit_paid: o.depositPaid,
-      is_done: o.isDone, notes: o.notes ?? null, logged_by: o.loggedBy ?? null,
+      is_done: o.isDone, notes: o.notes ?? null,
+      mode_of_payment: o.modeOfPayment ?? null, logged_by: o.loggedBy ?? null,
     }
     if (!o.supabaseId) {
       const { data: row, error } = await dbWrite<{ id: string }>('orders', 'insert', { payload, select: true, single: true })
@@ -164,6 +165,7 @@ export async function restoreFromSupabase(): Promise<void> {
         fulfillmentType: r.fulfillment_type ?? 'pickup',
         quantity: r.quantity, time: r.time, orderDate: r.order_date, dueDate: r.due_date,
         totalAmount: r.total_amount, depositPaid: r.deposit_paid, isDone: r.is_done, notes: r.notes,
+        modeOfPayment: r.mode_of_payment ?? undefined,
         loggedBy: r.logged_by ?? undefined,
       })
       supabaseToLocalOrderId.set(r.id, localId as number)

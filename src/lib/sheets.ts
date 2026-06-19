@@ -63,12 +63,12 @@ export function logBusinessExpense(e: {
 export function logOrder(o: {
   customerName: string; description: string; quantity?: number;
   dueDate: string; time?: string; totalAmount: number; depositPaid: number;
-  notes?: string; fulfillmentType?: 'delivery' | 'pickup'; loggedBy?: string
+  notes?: string; fulfillmentType?: 'delivery' | 'pickup'; modeOfPayment?: string; loggedBy?: string
 }, appId: string) {
   void appendRow('Orders', [
     o.customerName, o.description, o.quantity ?? 1,
     o.dueDate, o.time ?? '', o.totalAmount, o.depositPaid,
-    o.notes ?? '', o.fulfillmentType ?? '', o.loggedBy ?? '', now(), appId,
+    o.notes ?? '', o.fulfillmentType ?? '', o.modeOfPayment ?? '', o.loggedBy ?? '', now(), appId,
   ])
 }
 
@@ -113,11 +113,11 @@ export function updateBusinessExpense(e: {
 export function updateOrder(o: {
   customerName: string; description: string; quantity?: number;
   dueDate: string; time?: string; totalAmount: number; depositPaid: number;
-  notes?: string; fulfillmentType?: 'delivery' | 'pickup'; loggedBy?: string
+  notes?: string; fulfillmentType?: 'delivery' | 'pickup'; modeOfPayment?: string; loggedBy?: string
 }, appId: string) {
   void updateRow('Orders', [
     o.customerName, o.description, o.quantity ?? 1,
     o.dueDate, o.time ?? '', o.totalAmount, o.depositPaid,
-    o.notes ?? '', o.fulfillmentType ?? '', o.loggedBy ?? '', now(), appId,
+    o.notes ?? '', o.fulfillmentType ?? '', o.modeOfPayment ?? '', o.loggedBy ?? '', now(), appId,
   ], appId)
 }

@@ -63,6 +63,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
     const ta = order.totalAmount ?? 0
     return dp > 0 && dp < ta ? 'partial' : 'full'
   })
+  const [modeOfPayment, setModeOfPayment] = useState(order?.modeOfPayment ?? 'Cash')
   const [notes, setNotes] = useState(order?.notes ?? '')
   const [saving, setSaving] = useState(false)
   const [closing, setClosing] = useState(false)
@@ -94,6 +95,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
       depositPaid: depositAmt,
       isDone: mode === 'log' ? true : (order?.isDone ?? false),
       notes: notes.trim() || undefined,
+      modeOfPayment: mode === 'advance' ? modeOfPayment : undefined,
       loggedBy: isEdit ? order!.loggedBy : getCurrentUser(),
     }
     const supabasePayload = {
@@ -103,6 +105,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
       order_date: data.orderDate, due_date: data.dueDate,
       total_amount: data.totalAmount, deposit_paid: data.depositPaid,
       is_done: data.isDone, notes: data.notes ?? null,
+      mode_of_payment: data.modeOfPayment ?? null,
       logged_by: data.loggedBy ?? null,
     }
     if (isEdit) {
@@ -326,6 +329,21 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {mode === 'advance' && (
+              <div>
+                <span style={lbl}>Mode of Payment</span>
+                <select
+                  style={{ ...input, cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none' }}
+                  value={modeOfPayment}
+                  onChange={e => setModeOfPayment(e.target.value)}
+                >
+                  {['Cash', 'GCash', 'Bank Transfer', 'Credit Card', 'Cheque'].map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
               </div>
             )}
 
