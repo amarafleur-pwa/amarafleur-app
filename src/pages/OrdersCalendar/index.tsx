@@ -117,6 +117,15 @@ export default function OrdersCalendar() {
     return map
   }, [orders])
 
+  // Log picker: map dueDate → fulfilled (done) orders
+  const logOrderMap = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const o of orders.filter(o => o.isDone)) {
+      map.set(o.dueDate, (map.get(o.dueDate) ?? 0) + 1)
+    }
+    return map
+  }, [orders])
+
   const cells = useMemo(() => buildCells(year, month), [year, month])
   const selectedOrders = selectedDate ? (orderMap.get(selectedDate) ?? []) : []
   const monthLabel = viewDate.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })
@@ -724,8 +733,9 @@ export default function OrdersCalendar() {
                   const ds = dateStr(pickerYear, pickerMonth, day)
                   const isToday = ds === today
                   const isPicked = ds === logDate
+                  const hasLog = !!logOrderMap.get(ds)
                   return (
-                    <div key={ds} onClick={() => pickLogDate(ds)} style={{ display: 'flex', justifyContent: 'center', padding: '4px 2px', cursor: 'pointer' }}>
+                    <div key={ds} onClick={() => pickLogDate(ds)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '4px 2px', cursor: 'pointer' }}>
                       <div style={{
                         width: '34px', height: '34px', borderRadius: '50%',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -736,6 +746,10 @@ export default function OrdersCalendar() {
                           {day}
                         </span>
                       </div>
+                      {hasLog
+                        ? <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#C9848A', marginTop: '2px' }} />
+                        : <div style={{ width: '5px', height: '5px', marginTop: '2px' }} />
+                      }
                     </div>
                   )
                 })}
