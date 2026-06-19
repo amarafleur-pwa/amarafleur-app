@@ -8,6 +8,10 @@ async function getToken(email: string, key: string): Promise<string> {
   return result.token!
 }
 
+function colLetter(n: number): string {
+  return String.fromCharCode(64 + n)
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
@@ -32,12 +36,6 @@ export default async function handler(req: any, res: any) {
     const token = await getToken(clientEmail, privateKey)
     const hdrs = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 
-    const metaRes = await fetch(`${BASE}/${spreadsheetId}?fields=sheets.properties`, { headers: hdrs })
-    const meta = await metaRes.json() as { sheets?: { properties?: { title?: string; sheetId?: number } }[] }
-    const sheetMeta = meta.sheets?.find(s => s.properties?.title === sheet)
-    if (!sheetMeta) return res.status(200).json({ ok: true, skipped: 'sheet not found' })
-    const sheetId = sheetMeta.properties!.sheetId!
-
     const rangeRes = await fetch(
       `${BASE}/${spreadsheetId}/values/${encodeURIComponent(sheet + '!A:Z')}`,
       { headers: hdrs }
@@ -51,19 +49,20 @@ export default async function handler(req: any, res: any) {
     }
 
     if (rowIndex !== -1) {
-      await fetch(`${BASE}/${spreadsheetId}:batchUpdate`, {
-        method: 'POST',
-        headers: hdrs,
-        body: JSON.stringify({
-          requests: [{ deleteDimension: { range: { sheetId, dimension: 'ROWS', startIndex: rowIndex, endIndex: rowIndex + 1 } } }]
-        })
-      })
+      // Update in-place — row stays in its current position, order unchanged
+      const rowNum = rowIndex + 1
+      const endCol = colLetter(row.length)
+      await fetch(
+        `${BASE}/${spreadsheetId}/values/${encodeURIComponent(`${sheet}!A${rowNum}:${endCol}${rowNum}`)}?valueInputOption=USER_ENTERED`,
+        { method: 'PUT', headers: hdrs, body: JSON.stringify({ values: [row] }) }
+      )
+    } else {
+      // Fallback: row not found, append at bottom
+      await fetch(
+        `${BASE}/${spreadsheetId}/values/${encodeURIComponent(sheet + '!A1')}:append?valueInputOption=USER_ENTERED`,
+        { method: 'POST', headers: hdrs, body: JSON.stringify({ values: [row] }) }
+      )
     }
-
-    await fetch(
-      `${BASE}/${spreadsheetId}/values/${encodeURIComponent(sheet + '!A1')}:append?valueInputOption=USER_ENTERED`,
-      { method: 'POST', headers: hdrs, body: JSON.stringify({ values: [row] }) }
-    )
 
     return res.status(200).json({ ok: true })
   } catch (err: unknown) {

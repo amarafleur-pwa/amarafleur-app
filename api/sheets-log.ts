@@ -17,6 +17,10 @@ async function getToken(email: string, key: string): Promise<string> {
   return result.token!
 }
 
+function colLetter(n: number): string {
+  return String.fromCharCode(64 + n)
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
@@ -41,20 +45,52 @@ export default async function handler(req: any, res: any) {
     const token = await getToken(clientEmail, privateKey)
     const hdrs = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 
-    const checkRes = await fetch(
-      `${BASE}/${spreadsheetId}/values/${encodeURIComponent(sheet + '!A1')}`,
-      { headers: hdrs }
-    )
-    const checkData = await checkRes.json() as { values?: string[][] }
+    const [checkRes, metaRes] = await Promise.all([
+      fetch(`${BASE}/${spreadsheetId}/values/${encodeURIComponent(sheet + '!A1')}`, { headers: hdrs }),
+      fetch(`${BASE}/${spreadsheetId}?fields=sheets.properties`, { headers: hdrs })
+    ])
+    const [checkData, meta] = await Promise.all([
+      checkRes.json() as Promise<{ values?: string[][] }>,
+      metaRes.json() as Promise<{ sheets?: { properties?: { title?: string; sheetId?: number } }[] }>
+    ])
 
-    const values: (string | number)[][] = []
-    if (!checkData.values?.length && HEADERS[sheet]) values.push(HEADERS[sheet])
-    values.push(row)
+    const sheetMeta = meta.sheets?.find(s => s.properties?.title === sheet)
+    if (!sheetMeta) return res.status(200).json({ ok: true, skipped: 'sheet not found' })
+    const sheetId = sheetMeta.properties!.sheetId!
 
-    await fetch(
-      `${BASE}/${spreadsheetId}/values/${encodeURIComponent(sheet + '!A1')}:append?valueInputOption=USER_ENTERED`,
-      { method: 'POST', headers: hdrs, body: JSON.stringify({ values }) }
-    )
+    if (!checkData.values?.length) {
+      // Sheet is empty: write headers to A1 and data to A2 in one call
+      await fetch(`${BASE}/${spreadsheetId}/values:batchUpdate`, {
+        method: 'POST',
+        headers: hdrs,
+        body: JSON.stringify({
+          valueInputOption: 'USER_ENTERED',
+          data: [
+            { range: `${sheet}!A1`, values: [HEADERS[sheet] ?? []] },
+            { range: `${sheet}!A2`, values: [row] }
+          ]
+        })
+      })
+    } else {
+      // Insert a blank row at row 2 (after header), then write data there
+      await fetch(`${BASE}/${spreadsheetId}:batchUpdate`, {
+        method: 'POST',
+        headers: hdrs,
+        body: JSON.stringify({
+          requests: [{
+            insertDimension: {
+              range: { sheetId, dimension: 'ROWS', startIndex: 1, endIndex: 2 },
+              inheritFromBefore: false
+            }
+          }]
+        })
+      })
+      const endCol = colLetter(row.length)
+      await fetch(
+        `${BASE}/${spreadsheetId}/values/${encodeURIComponent(`${sheet}!A2:${endCol}2`)}?valueInputOption=USER_ENTERED`,
+        { method: 'PUT', headers: hdrs, body: JSON.stringify({ values: [row] }) }
+      )
+    }
 
     return res.status(200).json({ ok: true })
   } catch (err: unknown) {
