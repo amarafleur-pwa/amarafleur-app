@@ -45,14 +45,28 @@ export default async function handler(req: any, res: any) {
     const token = await getToken(clientEmail, privateKey)
     const hdrs = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 
-    const [checkRes, metaRes] = await Promise.all([
+    const lastColLetter = colLetter((HEADERS[sheet] ?? []).length)
+    const incomingAppId = typeof row[row.length - 1] === 'string' ? String(row[row.length - 1]) : ''
+
+    const [checkRes, metaRes, idColRes] = await Promise.all([
       fetch(`${BASE}/${spreadsheetId}/values/${encodeURIComponent(sheet + '!A1')}`, { headers: hdrs }),
-      fetch(`${BASE}/${spreadsheetId}?fields=sheets.properties`, { headers: hdrs })
+      fetch(`${BASE}/${spreadsheetId}?fields=sheets.properties`, { headers: hdrs }),
+      incomingAppId
+        ? fetch(`${BASE}/${spreadsheetId}/values/${encodeURIComponent(`${sheet}!${lastColLetter}:${lastColLetter}`)}`, { headers: hdrs })
+        : Promise.resolve(null),
     ])
-    const [checkData, meta] = await Promise.all([
+    const [checkData, meta, idColData] = await Promise.all([
       checkRes.json() as Promise<{ values?: string[][] }>,
-      metaRes.json() as Promise<{ sheets?: { properties?: { title?: string; sheetId?: number } }[] }>
+      metaRes.json() as Promise<{ sheets?: { properties?: { title?: string; sheetId?: number } }[] }>,
+      idColRes ? (idColRes.json() as Promise<{ values?: string[][] }>) : Promise.resolve({ values: [] }),
     ])
+
+    if (incomingAppId) {
+      const existingIds = ((idColData as { values?: string[][] }).values ?? []).flat()
+      if (existingIds.includes(incomingAppId)) {
+        return res.status(200).json({ ok: true, skipped: 'duplicate' })
+      }
+    }
 
     const sheetMeta = meta.sheets?.find(s => s.properties?.title === sheet)
     let sheetId: number
@@ -107,9 +121,8 @@ export default async function handler(req: any, res: any) {
           }]
         })
       })
-      const endCol = colLetter(row.length)
       await fetch(
-        `${BASE}/${spreadsheetId}/values/${encodeURIComponent(`${sheet}!A2:${endCol}2`)}?valueInputOption=USER_ENTERED`,
+        `${BASE}/${spreadsheetId}/values/${encodeURIComponent(`${sheet}!A2:${lastColLetter}2`)}?valueInputOption=USER_ENTERED`,
         { method: 'PUT', headers: hdrs, body: JSON.stringify({ values: [row] }) }
       )
     }
