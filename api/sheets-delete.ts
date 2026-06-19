@@ -33,6 +33,11 @@ export default async function handler(req: any, res: any) {
     const hdrs = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 
     const metaRes = await fetch(`${BASE}/${spreadsheetId}?fields=sheets.properties`, { headers: hdrs })
+    if (!metaRes.ok) {
+      const body = await metaRes.text()
+      console.error('[sheets-delete] meta fetch failed', metaRes.status, body.slice(0, 300))
+      return res.status(200).json({ ok: true, skipped: 'meta fetch failed' })
+    }
     const meta = await metaRes.json() as { sheets?: { properties?: { title?: string; sheetId?: number } }[] }
     const sheetMeta = meta.sheets?.find(s => s.properties?.title === sheet)
     if (!sheetMeta) return res.status(200).json({ ok: true, skipped: 'sheet not found' })
@@ -42,6 +47,11 @@ export default async function handler(req: any, res: any) {
       `${BASE}/${spreadsheetId}/values/${encodeURIComponent(sheet + '!A:Z')}`,
       { headers: hdrs }
     )
+    if (!rangeRes.ok) {
+      const body = await rangeRes.text()
+      console.error('[sheets-delete] range fetch failed', rangeRes.status, body.slice(0, 300))
+      return res.status(200).json({ ok: true, skipped: 'range fetch failed' })
+    }
     const rangeData = await rangeRes.json() as { values?: string[][] }
     const rows = rangeData.values ?? []
 
