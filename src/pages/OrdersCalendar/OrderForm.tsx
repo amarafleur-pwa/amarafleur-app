@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order } from '../../db/db'
-import { logOrder, logAdvanceOrder, updateAdvanceOrder, deleteSheetRow } from '../../lib/sheets'
+import { logOrder, logAdvanceOrder, updateOrder, updateAdvanceOrder, deleteSheetRow } from '../../lib/sheets'
 import { dbWrite } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
 
@@ -114,7 +114,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
         const { error } = await dbWrite('orders', 'update', { payload: supabasePayload, eq: { id: order!.supabaseId } })
         if (!error) {
           await db.orders.update(order!.id!, { pendingSync: false })
-          updateAdvanceOrder(data, order!.supabaseId)
+          mode === 'log' ? updateOrder(data, order!.supabaseId!) : updateAdvanceOrder(data, order!.supabaseId!)
         }
       }
     } else {
@@ -135,7 +135,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
   async function handleDelete() {
     if (!order?.id) return
     if (order.supabaseId) {
-      deleteSheetRow('Advance Orders', order.supabaseId)
+      deleteSheetRow(mode === 'log' ? 'Orders' : 'Advance Orders', order.supabaseId)
       await dbWrite('orders', 'delete', { eq: { id: order.supabaseId } })
     }
     await db.payments.where('orderId').equals(order.id).delete()
