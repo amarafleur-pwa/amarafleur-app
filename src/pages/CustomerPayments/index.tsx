@@ -212,10 +212,6 @@ export default function CustomerPayments() {
       if (s.balance <= 0) return
       const loggedBy = getCurrentUser()
       const today = new Date().toISOString().split('T')[0]
-      const localId = await db.payments.add({
-        orderId: order.id!, amount: s.balance, type: 'balance', paidAt: today,
-        pendingSync: true, loggedBy,
-      })
       if (navigator.onLine && order.supabaseId) {
         const { data: row, error } = await dbWrite<{ id: string }>('payments', 'insert', {
           payload: {
@@ -227,12 +223,25 @@ export default function CustomerPayments() {
         })
         console.log('[pay-balance] dbWrite', { data: row, error })
         if (!error && row) {
-          await db.payments.update(localId as number, { supabaseId: row.id, pendingSync: false })
+          await db.payments.add({
+            orderId: order.id!, amount: s.balance, type: 'balance', paidAt: today,
+            supabaseId: row.id, pendingSync: false, loggedBy,
+          })
           logPayment({
             customerName: order.customerName, orderDesc: order.description,
             amount: s.balance, type: 'balance', paidAt: today, loggedBy,
           }, row.id)
+        } else {
+          await db.payments.add({
+            orderId: order.id!, amount: s.balance, type: 'balance', paidAt: today,
+            pendingSync: true, loggedBy,
+          })
         }
+      } else {
+        await db.payments.add({
+          orderId: order.id!, amount: s.balance, type: 'balance', paidAt: today,
+          pendingSync: true, loggedBy,
+        })
       }
       setPendingBalancePay(null)
       setClosingPreviewOrder(true)

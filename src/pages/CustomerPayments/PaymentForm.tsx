@@ -73,33 +73,45 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
     if (!amt || amt <= 0) return
     setSaving(true)
     const loggedBy = getCurrentUser()
-    const localId = await db.payments.add({
-      orderId: order.id!, amount: amt, type, paidAt,
-      notes: notes.trim() || undefined, pendingSync: true, loggedBy,
-    })
+    const capturedType = type
+    const capturedPaidAt = paidAt
+    const capturedNotes = notes.trim() || undefined
     setAmount('')
     setNotes('')
     setShowForm(false)
-    loadPayments()
-    onSaved()
     if (navigator.onLine && order.supabaseId) {
       const { data: row, error } = await dbWrite<{ id: string }>('payments', 'insert', {
         payload: {
           order_id: order.supabaseId,
-          amount: amt, type, paid_at: paidAt,
-          notes: notes.trim() || null, logged_by: loggedBy || null,
+          amount: amt, type: capturedType, paid_at: capturedPaidAt,
+          notes: capturedNotes || null, logged_by: loggedBy || null,
         },
         select: true, single: true,
       })
       console.log('[pay-save] dbWrite', { data: row, error })
       if (!error && row) {
-        await db.payments.update(localId as number, { supabaseId: row.id, pendingSync: false })
+        await db.payments.add({
+          orderId: order.id!, amount: amt, type: capturedType, paidAt: capturedPaidAt,
+          notes: capturedNotes, supabaseId: row.id, pendingSync: false, loggedBy,
+        })
         logPayment({
           customerName: order.customerName, orderDesc: order.description,
-          amount: amt, type, paidAt, notes: notes.trim() || undefined, loggedBy,
+          amount: amt, type: capturedType, paidAt: capturedPaidAt, notes: capturedNotes, loggedBy,
         }, row.id)
+      } else {
+        await db.payments.add({
+          orderId: order.id!, amount: amt, type: capturedType, paidAt: capturedPaidAt,
+          notes: capturedNotes, pendingSync: true, loggedBy,
+        })
       }
+    } else {
+      await db.payments.add({
+        orderId: order.id!, amount: amt, type: capturedType, paidAt: capturedPaidAt,
+        notes: capturedNotes, pendingSync: true, loggedBy,
+      })
     }
+    loadPayments()
+    onSaved()
     setSaving(false)
   }
 
