@@ -46,16 +46,18 @@ function resolveType(e: PersonalExpense): 'one-time' | 'monthly' | 'instant' {
 function yesterdayStr() { return daysFromNowPH(-1) }
 function daysAgoStr(n: number) { return daysFromNowPH(-n) }
 
+let _peNav: { tab: ListTab; historyFilter: HistoryFilter; rangeFrom: string; rangeTo: string } | null = null
+
 export default function PersonalExpenses() {
   const syncVersion = useSyncVersion()
   const [expenses, setExpenses] = useState<PersonalExpense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<ListTab>('active')
+  const [tab, setTab] = useState<ListTab>(() => _peNav?.tab ?? 'active')
   const [search, setSearch] = useState('')
-  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>('7days')
-  const [rangeFrom, setRangeFrom] = useState('')
-  const [rangeTo, setRangeTo] = useState('')
+  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>(() => _peNav?.historyFilter ?? '7days')
+  const [rangeFrom, setRangeFrom] = useState(() => _peNav?.rangeFrom ?? '')
+  const [rangeTo, setRangeTo] = useState(() => _peNav?.rangeTo ?? '')
   const [activeSwipeId, setActiveSwipeId] = useState<number | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -78,6 +80,7 @@ export default function PersonalExpenses() {
   }
 
   useEffect(() => { load() }, [syncVersion])
+  useEffect(() => { _peNav = { tab, historyFilter, rangeFrom, rangeTo } }, [tab, historyFilter, rangeFrom, rangeTo])
 
   async function markPaid(expense: PersonalExpense) {
     const paidAmt = expense.amount

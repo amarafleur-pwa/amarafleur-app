@@ -33,6 +33,8 @@ const TYPE_LABELS: Record<string, string> = {
   deposit: 'Deposit', balance: 'Balance', full: 'Full Payment',
 }
 
+let _cpNav: { view: View; statusFilter: StatusFilter } | null = null
+
 const input: React.CSSProperties = {
   width: '100%',
   padding: '12px 14px',
@@ -60,8 +62,8 @@ export default function CustomerPayments() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [view, setView] = useState<View>('payments')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [view, setView] = useState<View>(() => _cpNav?.view ?? 'payments')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => _cpNav?.statusFilter ?? 'all')
   const [search, setSearch] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null)
@@ -102,6 +104,7 @@ export default function CustomerPayments() {
   }
 
   useEffect(() => { load() }, [syncVersion])
+  useEffect(() => { _cpNav = { view, statusFilter } }, [view, statusFilter])
 
   async function handleDeleteOrder(order: Order) {
     const linkedPayments = await db.payments.where('orderId').equals(order.id!).toArray()
