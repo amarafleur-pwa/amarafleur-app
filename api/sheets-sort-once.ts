@@ -23,9 +23,11 @@ async function getToken(email: string, key: string): Promise<string> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function handler(req: AnyObj, res: AnyObj) {
   const expectedSecret = process.env.SHEETS_API_SECRET
-  if (!expectedSecret || req.headers['x-app-secret'] !== expectedSecret) {
+  const providedSecret = req.headers['x-app-secret'] ?? req.query?.secret
+  if (!expectedSecret || providedSecret !== expectedSecret) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
+  res.setHeader('Access-Control-Allow-Origin', '*')
 
   const clientEmail = process.env.GOOGLE_CLIENT_EMAIL
   const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n')
