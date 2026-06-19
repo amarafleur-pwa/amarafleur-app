@@ -134,6 +134,13 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
           await db.orders.update(localId as number, { supabaseId: row.id, pendingSync: false })
           if (mode === 'advance') {
             logAdvanceOrder(data, row.id)
+            if (!isEdit && paymentType === 'full') {
+              logPayment({
+                customerName: data.customerName, orderDesc: data.description,
+                amount: totalAmt, type: 'deposit', paidAt: data.orderDate,
+                loggedBy: getCurrentUser(),
+              }, row.id + ':deposit')
+            }
           } else {
             logOrder(data, row.id)
             if (payLocalId !== undefined) {
@@ -157,14 +164,12 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
     if (!order?.id) return
     const linkedPayments = await db.payments.where('orderId').equals(order.id).toArray()
     for (const p of linkedPayments) {
-      if (p.supabaseId) {
-        deleteSheetRow('Payments', p.supabaseId)
-        await dbWrite('payments', 'delete', { eq: { id: p.supabaseId } })
-      }
+      if (p.supabaseId) deleteSheetRow('Payments', p.supabaseId)
     }
     if (order.supabaseId) {
       deleteSheetRow(mode === 'log' ? 'Orders' : 'Advance Orders', order.supabaseId)
-      await dbWrite('orders', 'delete', { eq: { id: order.supabaseId } })
+      const { error } = await dbWrite('orders', 'delete', { eq: { id: order.supabaseId } })
+      if (error) console.error('[delete-order]', error.message)
     }
     await db.payments.where('orderId').equals(order.id).delete()
     await db.orders.delete(order.id)

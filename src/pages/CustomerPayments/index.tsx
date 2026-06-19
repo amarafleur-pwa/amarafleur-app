@@ -6,7 +6,6 @@ import PaymentForm from './PaymentForm'
 import { dbWrite } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
 import { logCustomer, deleteSheetRow, logPayment } from '../../lib/sheets'
-import { syncPendingItems } from '../../lib/sync'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
@@ -106,14 +105,12 @@ export default function CustomerPayments() {
   async function handleDeleteOrder(order: Order) {
     const linkedPayments = await db.payments.where('orderId').equals(order.id!).toArray()
     for (const p of linkedPayments) {
-      if (p.supabaseId) {
-        deleteSheetRow('Payments', p.supabaseId)
-        await dbWrite('payments', 'delete', { eq: { id: p.supabaseId } })
-      }
+      if (p.supabaseId) deleteSheetRow('Payments', p.supabaseId)
     }
     if (order.supabaseId) {
-      deleteSheetRow('Orders', order.supabaseId)
-      await dbWrite('orders', 'delete', { eq: { id: order.supabaseId } })
+      deleteSheetRow(order.isDone ? 'Orders' : 'Advance Orders', order.supabaseId)
+      const { error } = await dbWrite('orders', 'delete', { eq: { id: order.supabaseId } })
+      if (error) console.error('[delete-order]', error.message)
     }
     await db.payments.where('orderId').equals(order.id!).delete()
     await db.orders.delete(order.id!)

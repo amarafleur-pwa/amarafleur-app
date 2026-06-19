@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { X, Plus } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment } from '../../db/db'
@@ -56,6 +56,7 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
   const [paidAt, setPaidAt] = useState(new Date().toISOString().split('T')[0])
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
   const [closing, setClosing] = useState(false)
   const handleClose = () => setClosing(true)
 
@@ -69,8 +70,10 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
   const balance = Math.max(0, order.totalAmount - totalPaid)
 
   async function handleSave() {
+    if (savingRef.current) return
     const amt = parseFloat(amount)
     if (!amt || amt <= 0) return
+    savingRef.current = true
     setSaving(true)
     const loggedBy = getCurrentUser()
     const capturedType = type
@@ -113,6 +116,7 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
     loadPayments()
     onSaved()
     setSaving(false)
+    savingRef.current = false
   }
 
   async function deletePayment(id: number) {
