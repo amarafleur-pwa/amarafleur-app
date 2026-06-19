@@ -94,6 +94,18 @@ export function logPayment(p: {
   ])
 }
 
+export async function exportPaymentsToSheet(rows: {
+  customerName: string; orderDesc: string; amount: number;
+  type: string; paidAt: string; notes?: string; loggedBy?: string; appId: string
+}[]) {
+  for (const p of rows) {
+    await appendRow('Payments', [
+      p.customerName, p.orderDesc, p.amount,
+      p.type, p.paidAt, p.notes ?? '', p.loggedBy ?? '', now(), p.appId,
+    ])
+  }
+}
+
 export function logCustomer(c: {
   name: string; phone?: string; notes?: string; loggedBy?: string
 }, appId: string) {
