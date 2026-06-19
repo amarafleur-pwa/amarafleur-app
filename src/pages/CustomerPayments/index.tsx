@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus, X, Phone, FileText, Search } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment, Customer } from '../../db/db'
@@ -83,6 +83,7 @@ export default function CustomerPayments() {
   const [pendingDeleteOrder, setPendingDeleteOrder] = useState<Order | null>(null)
   const [pendingBalancePay, setPendingBalancePay] = useState<Order | null>(null)
   const [exporting, setExporting] = useState(false)
+  const balancePaying = useRef(false)
 
   async function handleExportToSheet() {
     setExporting(true)
@@ -204,35 +205,41 @@ export default function CustomerPayments() {
   }
 
   async function handleBalancePaid(order: Order) {
-    const s = getStatus(order, paymentMap.get(order.id!) ?? [])
-    if (s.balance <= 0) return
-    const loggedBy = getCurrentUser()
-    const today = new Date().toISOString().split('T')[0]
-    const localId = await db.payments.add({
-      orderId: order.id!, amount: s.balance, type: 'balance', paidAt: today,
-      pendingSync: true, loggedBy,
-    })
-    if (navigator.onLine && order.supabaseId) {
-      const { data: row, error } = await dbWrite<{ id: string }>('payments', 'insert', {
-        payload: {
-          order_id: order.supabaseId,
-          amount: s.balance, type: 'balance', paid_at: today,
-          notes: null, logged_by: loggedBy || null,
-        },
-        select: true, single: true,
+    if (balancePaying.current) return
+    balancePaying.current = true
+    try {
+      const s = getStatus(order, paymentMap.get(order.id!) ?? [])
+      if (s.balance <= 0) return
+      const loggedBy = getCurrentUser()
+      const today = new Date().toISOString().split('T')[0]
+      const localId = await db.payments.add({
+        orderId: order.id!, amount: s.balance, type: 'balance', paidAt: today,
+        pendingSync: true, loggedBy,
       })
-      console.log('[pay-balance] dbWrite', { data: row, error })
-      if (!error && row) {
-        await db.payments.update(localId as number, { supabaseId: row.id, pendingSync: false })
-        logPayment({
-          customerName: order.customerName, orderDesc: order.description,
-          amount: s.balance, type: 'balance', paidAt: today, loggedBy,
-        }, row.id)
+      if (navigator.onLine && order.supabaseId) {
+        const { data: row, error } = await dbWrite<{ id: string }>('payments', 'insert', {
+          payload: {
+            order_id: order.supabaseId,
+            amount: s.balance, type: 'balance', paid_at: today,
+            notes: null, logged_by: loggedBy || null,
+          },
+          select: true, single: true,
+        })
+        console.log('[pay-balance] dbWrite', { data: row, error })
+        if (!error && row) {
+          await db.payments.update(localId as number, { supabaseId: row.id, pendingSync: false })
+          logPayment({
+            customerName: order.customerName, orderDesc: order.description,
+            amount: s.balance, type: 'balance', paidAt: today, loggedBy,
+          }, row.id)
+        }
       }
+      setPendingBalancePay(null)
+      setClosingPreviewOrder(true)
+      load()
+    } finally {
+      balancePaying.current = false
     }
-    setPendingBalancePay(null)
-    setClosingPreviewOrder(true)
-    load()
   }
 
   const statusFilters: { key: StatusFilter; label: string }[] = [
