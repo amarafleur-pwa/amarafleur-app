@@ -46,6 +46,13 @@ const fmt = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDi
 
 type MainView = 'log' | 'advance'
 
+let _nav: {
+  mainView: MainView
+  logDate: string
+  selectedDate: string | null
+  viewYear: number
+  viewMonth: number
+} | null = null
 
 export default function OrdersCalendar() {
   const syncVersion = useSyncVersion()
@@ -53,10 +60,10 @@ export default function OrdersCalendar() {
   const [allPayments, setAllPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [mainView, setMainView] = useState<MainView>('log')
+  const [mainView, setMainView] = useState<MainView>(() => _nav?.mainView ?? 'log')
 
   // Log tab
-  const [logDate, setLogDate] = useState(todayStr())
+  const [logDate, setLogDate] = useState(() => _nav?.logDate ?? todayStr())
   const [showLogPicker, setShowLogPicker] = useState(false)
   const [closingLogPicker, setClosingLogPicker] = useState(false)
   const [pickerViewDate, setPickerViewDate] = useState(() => new Date(logDate + 'T00:00:00'))
@@ -65,10 +72,10 @@ export default function OrdersCalendar() {
   // Advance (calendar) tab
   const [viewDate, setViewDate] = useState(() => {
     const d = new Date()
-    d.setDate(1)
+    if (_nav) { d.setFullYear(_nav.viewYear, _nav.viewMonth, 1) } else d.setDate(1)
     return d
   })
-  const [selectedDate, setSelectedDate] = useState<string | null>(todayStr())
+  const [selectedDate, setSelectedDate] = useState<string | null>(() => _nav?.selectedDate ?? todayStr())
   const [previewOrder, setPreviewOrder] = useState<Order | null>(null)
   const [previewIsLog, setPreviewIsLog] = useState(false)
   const [closingPreview, setClosingPreview] = useState(false)
@@ -98,6 +105,9 @@ export default function OrdersCalendar() {
   }
 
   useEffect(() => { load() }, [syncVersion])
+  useEffect(() => {
+    _nav = { mainView, logDate, selectedDate, viewYear: year, viewMonth: month }
+  }, [mainView, logDate, selectedDate, year, month])
 
   // Log tab: fulfilled orders for logDate with computed payment totals
   const logItems = useMemo(() => {
