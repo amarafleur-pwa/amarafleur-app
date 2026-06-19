@@ -221,6 +221,7 @@ export default function CustomerPayments() {
         },
         select: true, single: true,
       })
+      console.log('[pay-balance] dbWrite', { data: row, error })
       if (!error && row) {
         await db.payments.update(localId as number, { supabaseId: row.id, pendingSync: false })
         logPayment({

@@ -91,6 +91,7 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
         },
         select: true, single: true,
       })
+      console.log('[pay-save] dbWrite', { data: row, error })
       if (!error && row) {
         await db.payments.update(localId as number, { supabaseId: row.id, pendingSync: false })
         logPayment({

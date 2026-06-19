@@ -125,6 +125,14 @@ export async function restoreFromSupabase(): Promise<void> {
     throw new Error('Supabase fetch failed')
   }
 
+  // Capture any payments not yet synced to Supabase so restore doesn't wipe them
+  const unsyncedPayments: Array<{ p: import('../db/db').Payment; orderSupabaseId: string }> = []
+  const localPending = await db.payments.filter(p => !!p.pendingSync).toArray()
+  for (const p of localPending) {
+    const order = await db.orders.get(p.orderId)
+    if (order?.supabaseId) unsyncedPayments.push({ p, orderSupabaseId: order.supabaseId })
+  }
+
   await db.transaction('rw', [
     db.personalExpenses, db.businessExpenses,
     db.orders, db.payments, db.customers,
@@ -180,6 +188,16 @@ export async function restoreFromSupabase(): Promise<void> {
         notes: r.notes, loggedBy: r.logged_by ?? undefined,
       }))
     )
+
+    // Re-add any payments that were pending but not yet in Supabase
+    const inSupabase = new Set((pay.data ?? []).map(r => r.id))
+    for (const { p, orderSupabaseId } of unsyncedPayments) {
+      if (p.supabaseId && inSupabase.has(p.supabaseId)) continue
+      const newOrderId = supabaseToLocalOrderId.get(orderSupabaseId)
+      if (!newOrderId) continue
+      const { id: _id, ...rest } = p
+      await db.payments.add({ ...rest, orderId: newOrderId })
+    }
 
     await db.customers.bulkAdd(
       (cust.data ?? []).map(r => ({
