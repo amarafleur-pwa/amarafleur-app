@@ -1,5 +1,6 @@
 // Fire-and-forget: never awaited, never throws, never blocks the UI.
 // Sheet tab names must match exactly in the Google Spreadsheet.
+// All operations go through a serial queue so append+delete ordering is guaranteed.
 
 const now = () => new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' })
 
@@ -8,38 +9,52 @@ const API_HEADERS = {
   'x-app-secret': import.meta.env.VITE_SHEETS_API_SECRET ?? '',
 }
 
+let sheetQueue = Promise.resolve()
+function enqueue(fn: () => Promise<void>) {
+  sheetQueue = sheetQueue.then(fn).catch(() => {})
+}
+
 async function appendRow(sheet: string, row: (string | number)[]) {
-  try {
-    await fetch('/api/sheets-log', {
-      method: 'POST',
-      headers: API_HEADERS,
-      body: JSON.stringify({ sheet, row }),
-    })
-  } catch {
-    // Silently ignore — sheets logging is best-effort
-  }
+  enqueue(async () => {
+    try {
+      await fetch('/api/sheets-log', {
+        method: 'POST',
+        headers: API_HEADERS,
+        body: JSON.stringify({ sheet, row }),
+      })
+    } catch {
+      // best-effort
+    }
+  })
 }
 
 async function updateRow(sheet: string, row: (string | number)[], appId: string) {
-  try {
-    await fetch('/api/sheets-update', {
-      method: 'POST',
-      headers: API_HEADERS,
-      body: JSON.stringify({ sheet, row, appId }),
-    })
-  } catch {
-    // Silently ignore — sheets logging is best-effort
-  }
+  enqueue(async () => {
+    try {
+      await fetch('/api/sheets-update', {
+        method: 'POST',
+        headers: API_HEADERS,
+        body: JSON.stringify({ sheet, row, appId }),
+      })
+    } catch {
+      // best-effort
+    }
+  })
 }
 
 export function deleteSheetRow(sheet: string, appId: string) {
-  void fetch('/api/sheets-delete', {
-    method: 'POST',
-    headers: API_HEADERS,
-    body: JSON.stringify({ sheet, appId }),
-  }).then(async r => {
-    if (!r.ok) console.error('[sheets-delete]', sheet, appId, r.status, await r.text().catch(() => ''))
-  }).catch(err => console.error('[sheets-delete] network', sheet, appId, err))
+  enqueue(async () => {
+    try {
+      const r = await fetch('/api/sheets-delete', {
+        method: 'POST',
+        headers: API_HEADERS,
+        body: JSON.stringify({ sheet, appId }),
+      })
+      if (!r.ok) console.error('[sheets-delete]', sheet, appId, r.status, await r.text().catch(() => ''))
+    } catch (err) {
+      console.error('[sheets-delete] network', sheet, appId, err)
+    }
+  })
 }
 
 export function logPersonalExpense(e: {
