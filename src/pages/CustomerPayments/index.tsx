@@ -86,19 +86,27 @@ export default function CustomerPayments() {
 
   async function handleExportToSheet() {
     setExporting(true)
-    const allPayments = await db.payments.toArray()
-    const allOrders = await db.orders.toArray()
-    const orderMap = new Map(allOrders.map(o => [o.id!, o]))
-    const rows = allPayments
-      .filter(p => p.supabaseId)
-      .sort((a, b) => a.paidAt.localeCompare(b.paidAt))
-      .flatMap(p => {
-        const order = orderMap.get(p.orderId)
-        if (!order) return []
-        return [{ customerName: order.customerName, orderDesc: order.description, amount: p.amount, type: p.type, paidAt: p.paidAt, notes: p.notes, loggedBy: p.loggedBy, appId: p.supabaseId! }]
-      })
-    await exportPaymentsToSheet(rows)
-    setExporting(false)
+    try {
+      const allPayments = await db.payments.toArray()
+      const allOrders = await db.orders.toArray()
+      const orderMap = new Map(allOrders.map(o => [o.id!, o]))
+      const rows = allPayments
+        .filter(p => p.supabaseId)
+        .sort((a, b) => a.paidAt.localeCompare(b.paidAt))
+        .flatMap(p => {
+          const order = orderMap.get(p.orderId)
+          if (!order) return []
+          return [{ customerName: order.customerName, orderDesc: order.description, amount: p.amount, type: p.type, paidAt: p.paidAt, notes: p.notes, loggedBy: p.loggedBy, appId: p.supabaseId! }]
+        })
+      console.log('[export-payments] rows:', rows.length)
+      await exportPaymentsToSheet(rows)
+      alert(`Exported ${rows.length} payment${rows.length !== 1 ? 's' : ''} to sheet.`)
+    } catch (err) {
+      console.error('[export-payments]', err)
+      alert('Export failed: ' + (err instanceof Error ? err.message : String(err)))
+    } finally {
+      setExporting(false)
+    }
   }
 
   function load() {

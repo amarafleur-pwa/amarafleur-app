@@ -99,10 +99,18 @@ export async function exportPaymentsToSheet(rows: {
   type: string; paidAt: string; notes?: string; loggedBy?: string; appId: string
 }[]) {
   for (const p of rows) {
-    await appendRow('Payments', [
-      p.customerName, p.orderDesc, p.amount,
-      p.type, p.paidAt, p.notes ?? '', p.loggedBy ?? '', now(), p.appId,
-    ])
+    const res = await fetch('/api/sheets-log', {
+      method: 'POST',
+      headers: API_HEADERS,
+      body: JSON.stringify({ sheet: 'Payments', row: [
+        p.customerName, p.orderDesc, p.amount,
+        p.type, p.paidAt, p.notes ?? '', p.loggedBy ?? '', now(), p.appId,
+      ]}),
+    })
+    if (!res.ok) {
+      const body = await res.text().catch(() => `HTTP ${res.status}`)
+      throw new Error(`Sheets API error ${res.status}: ${body}`)
+    }
   }
 }
 
