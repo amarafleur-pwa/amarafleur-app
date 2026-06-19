@@ -5,7 +5,7 @@ import type { Order, Payment } from '../../db/db'
 import OrderForm from './OrderForm'
 import PaymentForm from '../CustomerPayments/PaymentForm'
 import { dbWrite } from '../../lib/dbGateway'
-import { deleteSheetRow } from '../../lib/sheets'
+import { deleteSheetRow, logOrder } from '../../lib/sheets'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
@@ -122,11 +122,27 @@ export default function OrdersCalendar() {
   const pickerMonthLabel = pickerViewDate.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' })
 
   async function toggleDone(order: Order) {
+    const newIsDone = !order.isDone
     if (order.supabaseId) {
-      await dbWrite('orders', 'update', { payload: { is_done: !order.isDone }, eq: { id: order.supabaseId } })
+      await dbWrite('orders', 'update', { payload: { is_done: newIsDone }, eq: { id: order.supabaseId } })
     }
-    await db.orders.update(order.id!, { isDone: !order.isDone })
+    await db.orders.update(order.id!, { isDone: newIsDone })
+    if (newIsDone && order.supabaseId) {
+      logOrder(order, order.supabaseId)
+    }
     load()
+  }
+
+  // TEMP: remove after sheet seed
+  const [exporting, setExporting] = useState(false)
+  async function handleExportToSheet() {
+    setExporting(true)
+    const doneOrders = orders.filter(o => o.isDone && o.supabaseId)
+    for (const o of doneOrders) {
+      logOrder(o, o.supabaseId!)
+    }
+    setExporting(false)
+    alert(`Exported ${doneOrders.length} orders to sheet.`)
   }
 
   async function handleDeleteAdvanceOrder(order: Order) {
@@ -245,6 +261,17 @@ export default function OrdersCalendar() {
             </div>
             <button onClick={() => stepLogDate(1)} style={{ background: '#f3f4f6', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', display: 'flex' }}>
               <ChevronRight size={18} color="#6b7280" />
+            </button>
+          </div>
+
+          {/* TEMP: remove after sheet seed */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+            <button
+              onClick={handleExportToSheet}
+              disabled={exporting}
+              style={{ fontSize: '12px', fontWeight: 600, color: '#6b7280', background: '#f3f4f6', border: 'none', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer' }}
+            >
+              {exporting ? 'Exporting…' : 'Export to Sheet'}
             </button>
           </div>
 

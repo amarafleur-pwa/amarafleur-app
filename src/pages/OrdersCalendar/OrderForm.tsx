@@ -93,7 +93,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
       depositPaid: depositAmt,
       isDone: mode === 'log' ? true : (order?.isDone ?? false),
       notes: notes.trim() || undefined,
-      modeOfPayment: mode === 'advance' ? modeOfPayment : undefined,
+      modeOfPayment: modeOfPayment,
       loggedBy: isEdit ? order!.loggedBy : getCurrentUser(),
     }
     const supabasePayload = {
@@ -216,7 +216,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
                 onChange={e => { setArrangementType(e.target.value); setArrangementVariant('') }}
               >
                 <option value="">Select type…</option>
-                {['Fresh flower bouquet', 'Dried flower bouquet', 'Flower dome', 'Kraft box', 'Balloon', 'Vase arrangement', 'Kraft box arrangement', 'Sympathy flowers', 'Money cake', 'Money bouquet', 'Limited Edition (Seasonal)', 'Custom Made']
+                {['Fresh flower bouquet', 'Dried flower bouquet', 'Flower dome', 'Kraft box', 'Balloon', 'Vase arrangement', 'Kraft box arrangement', 'Sympathy flowers', 'Money cake', 'Money bouquet', 'Limited Edition (Seasonal)', 'Bridal', 'Custom Made']
                   .map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
@@ -295,6 +295,19 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
               />
             </div>
 
+            <div>
+              <span style={lbl}>Mode of Payment</span>
+              <select
+                style={{ ...input, cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none' }}
+                value={modeOfPayment}
+                onChange={e => setModeOfPayment(e.target.value)}
+              >
+                {['Cash', 'GCash', 'Bank Transfer', 'Credit Card', 'Cheque', 'Mixed'].map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+
             {mode === 'advance' && (
               <div>
                 <span style={lbl}>Payment Type</span>
@@ -317,21 +330,6 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
                     </button>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {mode === 'advance' && (
-              <div>
-                <span style={lbl}>Mode of Payment</span>
-                <select
-                  style={{ ...input, cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none' }}
-                  value={modeOfPayment}
-                  onChange={e => setModeOfPayment(e.target.value)}
-                >
-                  {['Cash', 'GCash', 'Bank Transfer', 'Credit Card', 'Cheque'].map(m => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
               </div>
             )}
 
