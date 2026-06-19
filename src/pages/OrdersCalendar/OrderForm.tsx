@@ -119,13 +119,6 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
       }
     } else {
       const localId = await db.orders.add({ ...data, pendingSync: true })
-      const payLocalId = mode === 'log'
-        ? await db.payments.add({
-            orderId: localId as number, amount: totalAmt,
-            type: 'full', paidAt: dueDate,
-            pendingSync: true, loggedBy: getCurrentUser(),
-          })
-        : undefined
       onSaved()
       handleClose()
       if (navigator.onLine) {
@@ -143,18 +136,34 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
             }
           } else {
             logOrder(data, row.id)
-            if (payLocalId !== undefined) {
-              const { data: payRow, error: payErr } = await dbWrite<{ id: string }>('payments', 'insert', {
-                payload: { order_id: row.id, amount: totalAmt, type: 'full', paid_at: dueDate, notes: null, logged_by: getCurrentUser() },
-                select: true, single: true,
+            const { data: payRow, error: payErr } = await dbWrite<{ id: string }>('payments', 'insert', {
+              payload: { order_id: row.id, amount: totalAmt, type: 'full', paid_at: dueDate, notes: null, logged_by: getCurrentUser() },
+              select: true, single: true,
+            })
+            if (!payErr && payRow) {
+              await db.payments.add({
+                orderId: localId as number, amount: totalAmt, type: 'full', paidAt: dueDate,
+                supabaseId: payRow.id, pendingSync: false, loggedBy: getCurrentUser(),
               })
-              if (!payErr && payRow) {
-                await db.payments.update(payLocalId as number, { supabaseId: payRow.id, pendingSync: false })
-                logPayment({ customerName: data.customerName, orderDesc: data.description, amount: totalAmt, type: 'full', paidAt: dueDate, loggedBy: getCurrentUser() }, payRow.id)
-              }
+              logPayment({ customerName: data.customerName, orderDesc: data.description, amount: totalAmt, type: 'full', paidAt: dueDate, loggedBy: getCurrentUser() }, payRow.id)
+            } else {
+              await db.payments.add({
+                orderId: localId as number, amount: totalAmt, type: 'full', paidAt: dueDate,
+                pendingSync: true, loggedBy: getCurrentUser(),
+              })
             }
           }
+        } else if (mode === 'log') {
+          await db.payments.add({
+            orderId: localId as number, amount: totalAmt, type: 'full', paidAt: dueDate,
+            pendingSync: true, loggedBy: getCurrentUser(),
+          })
         }
+      } else if (mode === 'log') {
+        await db.payments.add({
+          orderId: localId as number, amount: totalAmt, type: 'full', paidAt: dueDate,
+          pendingSync: true, loggedBy: getCurrentUser(),
+        })
       }
     }
     setSaving(false)

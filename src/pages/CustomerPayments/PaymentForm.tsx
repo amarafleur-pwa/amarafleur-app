@@ -117,7 +117,6 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
       })
     }
     loadPayments()
-    onSaved()
     setSaving(false)
     savingRef.current = false
   }

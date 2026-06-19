@@ -747,7 +747,7 @@ export default function OrdersCalendar() {
       {previewOrder && showPayForm && (
         <PaymentForm
           order={previewOrder}
-          onClose={() => setShowPayForm(false)}
+          onClose={() => { setShowPayForm(false); load() }}
           onSaved={() => { setShowPayForm(false); load() }}
         />
       )}
