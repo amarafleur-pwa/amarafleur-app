@@ -127,6 +127,11 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
           orderId: localId as number, amount: totalAmt, type: 'full', paidAt: dueDate,
           pendingSync: true, loggedBy: getCurrentUser(),
         }) as number
+      } else if (mode === 'advance' && !isEdit && paymentType === 'full') {
+        localPaymentId = await db.payments.add({
+          orderId: localId as number, amount: totalAmt, type: 'full', paidAt: data.orderDate,
+          pendingSync: true, loggedBy: getCurrentUser(),
+        }) as number
       }
       onSaved()
       handleClose()
@@ -142,17 +147,10 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
                 select: true, single: true,
               })
               if (!payErr && payRow) {
-                await db.payments.add({
-                  orderId: localId as number, amount: totalAmt, type: 'full', paidAt: data.orderDate,
-                  supabaseId: payRow.id, pendingSync: false, loggedBy: getCurrentUser(),
-                })
+                await db.payments.update(localPaymentId!, { supabaseId: payRow.id, pendingSync: false })
                 logPayment({ customerName: data.customerName, orderDesc: data.description, amount: totalAmt, type: 'full', paidAt: data.orderDate, loggedBy: getCurrentUser() }, payRow.id)
-              } else {
-                await db.payments.add({
-                  orderId: localId as number, amount: totalAmt, type: 'full', paidAt: data.orderDate,
-                  pendingSync: true, loggedBy: getCurrentUser(),
-                })
               }
+              // else: localPaymentId already in Dexie with pendingSync: true — no action needed
             }
           } else {
             logOrder(data, row.id)
