@@ -756,7 +756,7 @@ export default function OrdersCalendar() {
         <OrderForm
           order={editing}
           defaultDate={mainView === 'log' ? logDate : (selectedDate ?? undefined)}
-          mode={editing ? 'advance' : formMode}
+          mode={editing ? (editing.isDone ? 'log' : 'advance') : formMode}
           onClose={() => setShowForm(false)}
           onSaved={load}
         />
