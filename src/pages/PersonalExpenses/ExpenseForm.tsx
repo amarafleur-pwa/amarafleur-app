@@ -51,7 +51,7 @@ async function compressImage(file: File): Promise<Blob> {
 }
 
 function deriveType(e?: PersonalExpense): ExpenseType {
-  if (!e) return 'one-time'
+  if (!e) return 'instant'
   if (e.expenseType) return e.expenseType
   if (e.isRecurring) return 'monthly'
   // old instant purchases had isPaid=true and no real due date context — use 'one-time' as safe default
@@ -69,7 +69,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   const [paymentType, setPaymentType] = useState<'full' | 'partial'>(
     expense?.amountPaid && expense.amountPaid > 0 && expense.amountPaid < expense.amount ? 'partial' : 'full'
   )
-  const [dueDate, setDueDate] = useState(expense?.dueDate ?? '')
+  const [dueDate, setDueDate] = useState(expense?.dueDate ?? new Date().toISOString().split('T')[0])
   const [mode, setMode] = useState(expense?.modeOfPayment ?? 'Cash')
   const [category, setCategory] = useState(expense?.category ?? 'Food')
   const [notes, setNotes] = useState(expense?.notes ?? '')
@@ -80,7 +80,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   const handleClose = () => setClosing(true)
 
   const needsDate = expenseType !== 'instant'
-  const canSave = name.trim() && amount && parseFloat(amount) > 0 && (!needsDate || dueDate) &&
+  const canSave = name.trim() && amount && parseFloat(amount) > 0 && !!dueDate &&
     (!needsDate || paymentType === 'full' || (amountPaid !== '' && parseFloat(amountPaid) >= 0))
 
   async function handleReceiptPick(e: React.ChangeEvent<HTMLInputElement>) {
@@ -104,19 +104,21 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     const isMonthly = expenseType === 'monthly'
     const isInstant = expenseType === 'instant'
     const totalAmt = parseFloat(amount)
-    const paidAmt = isInstant ? totalAmt : (
+    const today = new Date().toISOString().split('T')[0]
+    const autoMarkPaid = !isInstant && expenseType === 'one-time' && dueDate === today
+    const paidAmt = isInstant || autoMarkPaid ? totalAmt : (
       paymentType === 'partial' ? (parseFloat(amountPaid) || 0) :
       (isEdit ? (expense?.isPaid ? totalAmt : (expense?.amountPaid ?? 0)) : 0)
     )
     const data: Omit<PersonalExpense, 'id'> = {
       name: name.trim(),
       amount: totalAmt,
-      dueDate: isInstant ? new Date().toISOString().split('T')[0] : dueDate,
+      dueDate: dueDate,
       modeOfPayment: mode,
       category,
       notes: notes.trim() || undefined,
       isRecurring: isMonthly,
-      isPaid: isInstant ? true : paidAmt >= totalAmt,
+      isPaid: isInstant || autoMarkPaid ? true : paidAmt >= totalAmt,
       amountPaid: paidAmt,
       expenseType,
       receiptUrl: receiptUrl || undefined,
@@ -165,9 +167,9 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   }
 
   const typeOptions: { key: ExpenseType; icon: string; label: string }[] = [
+    { key: 'instant', icon: '🛒', label: 'Instant Purchase' },
     { key: 'one-time', icon: '📋', label: 'One-Time Bill' },
     { key: 'monthly', icon: '🔄', label: 'Monthly Bill' },
-    { key: 'instant', icon: '🛒', label: 'Instant Purchase' },
   ]
 
   return (
@@ -207,44 +209,28 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
         <div style={{ overflowY: 'auto', padding: '8px 20px 0', flex: 1 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-            {/* Type selector — hidden in edit mode */}
-            {!isEdit && (
-              <div style={{ display: 'flex', background: '#e5e0db', borderRadius: '10px', padding: '3px', gap: '3px' }}>
-                {typeOptions.map(t => (
-                  <button
-                    key={t.key}
-                    onClick={() => setExpenseType(t.key)}
-                    style={{
-                      flex: 1, padding: '8px 4px', border: 'none', borderRadius: '8px', cursor: 'pointer',
-                      fontSize: '11px', fontWeight: 600, textAlign: 'center', lineHeight: 1.3,
-                      background: expenseType === t.key ? '#fff' : 'transparent',
-                      color: expenseType === t.key ? '#2D2D2D' : '#9ca3af',
-                      boxShadow: expenseType === t.key ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    <div style={{ fontSize: '16px', marginBottom: '2px' }}>{t.icon}</div>
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {isEdit && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                background: '#fff', borderRadius: '10px', padding: '10px 14px',
-                border: '1.5px solid #e5e0db',
-              }}>
-                <span style={{ fontSize: '18px' }}>
-                  {typeOptions.find(t => t.key === expenseType)?.icon}
-                </span>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: '#6b7280' }}>
-                  {typeOptions.find(t => t.key === expenseType)?.label}
-                </span>
-                {expenseType === 'monthly' && <RefreshCw size={13} color="#C9848A" style={{ marginLeft: 'auto' }} />}
-              </div>
-            )}
+            <div style={{ display: 'flex', background: '#e5e0db', borderRadius: '10px', padding: '3px', gap: '3px' }}>
+              {typeOptions.map(t => (
+                <button
+                  key={t.key}
+                  onClick={() => {
+                    if (t.key === 'instant' && !dueDate) setDueDate(new Date().toISOString().split('T')[0])
+                    setExpenseType(t.key)
+                  }}
+                  style={{
+                    flex: 1, padding: '8px 4px', border: 'none', borderRadius: '8px', cursor: 'pointer',
+                    fontSize: '11px', fontWeight: 600, textAlign: 'center', lineHeight: 1.3,
+                    background: expenseType === t.key ? '#fff' : 'transparent',
+                    color: expenseType === t.key ? '#2D2D2D' : '#9ca3af',
+                    boxShadow: expenseType === t.key ? '0 1px 4px rgba(0,0,0,0.10)' : 'none',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <div style={{ fontSize: '16px', marginBottom: '2px' }}>{t.icon}</div>
+                  {t.label}
+                </button>
+              ))}
+            </div>
 
             <div>
               <span style={lbl}>Name *</span>
@@ -288,12 +274,10 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
               </div>
             )}
 
-            {needsDate && (
-              <div>
-                <span style={lbl}>Due Date *</span>
-                <input style={inp} type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
-              </div>
-            )}
+            <div>
+              <span style={lbl}>{expenseType === 'instant' ? 'Purchase Date *' : 'Due Date *'}</span>
+              <input style={inp} type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+            </div>
 
             <div>
               <span style={lbl}>Mode of Payment</span>

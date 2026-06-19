@@ -52,7 +52,7 @@ async function compressImage(file: File): Promise<Blob> {
 }
 
 function deriveType(e?: BusinessExpense): ExpenseType {
-  if (!e) return 'one-time'
+  if (!e) return 'instant'
   if (e.expenseType) return e.expenseType
   if (e.isRecurring) return 'monthly'
   return 'one-time'
@@ -69,7 +69,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   const [paymentType, setPaymentType] = useState<'full' | 'partial'>(
     expense?.amountPaid && expense.amountPaid > 0 && expense.amountPaid < expense.amount ? 'partial' : 'full'
   )
-  const [dueDate, setDueDate] = useState(expense?.dueDate ?? '')
+  const [dueDate, setDueDate] = useState(expense?.dueDate ?? new Date().toISOString().split('T')[0])
   const [mode, setMode] = useState(expense?.modeOfPayment ?? 'Cash')
   const [category, setCategory] = useState(expense?.category ?? 'Rent')
   const [isPaid, setIsPaid] = useState(expense?.isPaid ?? false)
@@ -81,7 +81,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   const handleClose = () => setClosing(true)
 
   const needsDate = expenseType !== 'instant'
-  const canSave = name.trim() && amount && parseFloat(amount) > 0 && (!needsDate || dueDate) &&
+  const canSave = name.trim() && amount && parseFloat(amount) > 0 && !!dueDate &&
     (!needsDate || paymentType === 'full' || (amountPaid !== '' && parseFloat(amountPaid) >= 0))
 
   async function handleReceiptPick(e: React.ChangeEvent<HTMLInputElement>) {
@@ -113,7 +113,7 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     const data: Omit<BusinessExpense, 'id'> = {
       name: name.trim(),
       amount: totalAmt,
-      dueDate: isInstant ? new Date().toISOString().split('T')[0] : dueDate,
+      dueDate: dueDate,
       modeOfPayment: mode,
       category,
       isPaid: derivedPaid,
@@ -177,9 +177,9 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
   }
 
   const typeOptions: { key: ExpenseType; icon: string; label: string }[] = [
+    { key: 'instant', icon: '🛒', label: 'Instant Purchase' },
     { key: 'one-time', icon: '📋', label: 'One-Time Bill' },
     { key: 'monthly', icon: '🔄', label: 'Monthly Bill' },
-    { key: 'instant', icon: '🛒', label: 'Instant Purchase' },
   ]
 
   return (
@@ -225,7 +225,10 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
                 {typeOptions.map(t => (
                   <button
                     key={t.key}
-                    onClick={() => setExpenseType(t.key)}
+                    onClick={() => {
+                      if (t.key === 'instant' && !dueDate) setDueDate(new Date().toISOString().split('T')[0])
+                      setExpenseType(t.key)
+                    }}
                     style={{
                       flex: 1, padding: '8px 4px', border: 'none', borderRadius: '8px', cursor: 'pointer',
                       fontSize: '11px', fontWeight: 600, textAlign: 'center', lineHeight: 1.3,
@@ -300,12 +303,10 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
               </div>
             )}
 
-            {needsDate && (
-              <div>
-                <span style={lbl}>Due Date *</span>
-                <input style={inp} type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
-              </div>
-            )}
+            <div>
+              <span style={lbl}>{expenseType === 'instant' ? 'Purchase Date *' : 'Due Date *'}</span>
+              <input style={inp} type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+            </div>
 
             <div>
               <span style={lbl}>Mode of Payment</span>
