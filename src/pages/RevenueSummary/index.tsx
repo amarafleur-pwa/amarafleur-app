@@ -147,7 +147,7 @@ export default function RevenueSummary() {
 
   const range = getPeriodRange(period)
 
-  const { revenue, txCount, expenseTotal, paidExpenses, net, maxBar, periodDeposits, periodPayments, periodExpenses } = useMemo(() => {
+  const { revenue, txCount, depositTotal, paymentTotal, expenseTotal, paidExpenses, net, maxBar, periodExpenses } = useMemo(() => {
     const pd = orders.filter(o => inRange(o.orderDate, range.start, range.end) && o.depositPaid > 0)
     const dt = pd.reduce((s, o) => s + o.depositPaid, 0)
     const pp = payments.filter(p => inRange(p.paidAt, range.start, range.end))
@@ -157,7 +157,7 @@ export default function RevenueSummary() {
     const et = pe.reduce((s, e) => s + e.amount, 0)
     const paid = pe.filter(e => e.isPaid).reduce((s, e) => s + e.amount, 0)
     return {
-      periodDeposits: pd, periodPayments: pp, periodExpenses: pe,
+      periodExpenses: pe, depositTotal: dt, paymentTotal: pt,
       revenue: rev, txCount: pd.length + pp.length,
       expenseTotal: et, paidExpenses: paid,
       net: rev - et, maxBar: Math.max(rev, et, 1),
