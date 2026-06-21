@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order } from '../../db/db'
@@ -66,6 +66,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
   const [modeOfPayment, setModeOfPayment] = useState(order?.modeOfPayment ?? 'Cash')
   const [notes, setNotes] = useState(order?.notes ?? '')
   const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
   const [closing, setClosing] = useState(false)
   const handleClose = () => setClosing(true)
 
@@ -75,7 +76,8 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
     (mode === 'log' || paymentType === 'full' || (depositPaid !== '' && parseFloat(depositPaid) >= 0))
 
   async function handleSave() {
-    if (!canSave) return
+    if (!canSave || savingRef.current) return
+    savingRef.current = true
     setSaving(true)
     const totalAmt = parseFloat(totalAmount) || 0
     const depositAmt = mode === 'log'
@@ -169,6 +171,7 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
       }
       // else (offline): localPaymentId already in Dexie with pendingSync: true
     }
+    savingRef.current = false
     setSaving(false)
   }
 
