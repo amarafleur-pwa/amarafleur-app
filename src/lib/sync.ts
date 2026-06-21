@@ -70,6 +70,8 @@ export async function syncPendingItems(): Promise<void> {
       mode_of_payment: o.modeOfPayment ?? null, logged_by: o.loggedBy ?? null,
     }
     if (!o.supabaseId) {
+      const freshO = await db.orders.get(o.id!)
+      if (!freshO || !freshO.pendingSync || freshO.supabaseId) continue
       const { data: row, error } = await dbWrite<{ id: string }>('orders', 'insert', { payload, select: true, single: true })
       if (!error && row) {
         await db.orders.update(o.id!, { supabaseId: row.id, pendingSync: false })
@@ -94,6 +96,8 @@ export async function syncPendingItems(): Promise<void> {
       type: p.type, paid_at: p.paidAt, notes: p.notes ?? null, logged_by: p.loggedBy ?? null,
     }
     if (!p.supabaseId) {
+      const freshP = await db.payments.get(p.id!)
+      if (!freshP || !freshP.pendingSync || freshP.supabaseId) continue
       const { data: row, error } = await dbWrite<{ id: string }>('payments', 'insert', { payload, select: true, single: true })
       if (!error && row) {
         await db.payments.update(p.id!, { supabaseId: row.id, pendingSync: false })
@@ -102,7 +106,7 @@ export async function syncPendingItems(): Promise<void> {
         if (totalPaid >= order.totalAmount) {
           logPayment({
             customerName: order.customerName, orderDesc: order.description,
-            amount: order.totalAmount, type: p.type, paidAt: p.paidAt, notes: p.notes,
+            amount: order.totalAmount, type: p.type, paidAt: p.paidAt, notes: p.notes, loggedBy: p.loggedBy,
           }, row.id)
         }
       } else {
