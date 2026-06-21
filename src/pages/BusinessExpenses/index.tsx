@@ -15,6 +15,8 @@ import { todayPH, daysFromNowPH } from '../../lib/dateUtils'
 type ListTab = 'active' | 'monthly' | 'instant' | 'history'
 type HistoryFilter = 'today' | 'yesterday' | '7days' | 'range'
 
+const PAGE_SIZE = 20
+
 function formatDate(d: string) {
   return new Date(d + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
 }
@@ -67,6 +69,7 @@ export default function BusinessExpenses() {
   const [pendingDelete, setPendingDelete] = useState<BusinessExpense | null>(null)
   const [previewEntry, setPreviewEntry] = useState<BusinessExpense | null>(null)
   const [closingPreview, setClosingPreview] = useState(false)
+  const [page, setPage] = useState(1)
   const [logPayEntry, setLogPayEntry] = useState<BusinessExpense | null>(null)
   const [logPayAmount, setLogPayAmount] = useState('')
   const [logPaySaving, setLogPaySaving] = useState(false)
@@ -84,6 +87,7 @@ export default function BusinessExpenses() {
 
   useEffect(() => { load() }, [syncVersion])
   useEffect(() => { _beNav = { tab, historyFilter, rangeFrom, rangeTo } }, [tab, historyFilter, rangeFrom, rangeTo])
+  useEffect(() => { setPage(1) }, [tab, search, historyFilter, rangeFrom, rangeTo])
 
   async function markPaid(expense: BusinessExpense) {
     const paidAmt = expense.amount
@@ -174,6 +178,8 @@ export default function BusinessExpenses() {
   })
 
   const historyTotal = tab === 'history' ? filtered.reduce((s, e) => s + e.amount, 0) : 0
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   const historyPills: { key: HistoryFilter; label: string }[] = [
     { key: 'today', label: 'Today' },
@@ -334,7 +340,7 @@ export default function BusinessExpenses() {
 
         {!loading && !error && filtered.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {filtered.map(e => {
+            {paginated.map(e => {
               const type = resolveType(e)
               const isInstant = type === 'instant'
               const fullyPaid = e.isPaid || (e.amountPaid ?? 0) >= e.amount
@@ -403,6 +409,26 @@ export default function BusinessExpenses() {
                 </SwipeableItem>
               )
             })}
+          </div>
+        )}
+
+        {!loading && !error && totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginTop: '14px' }}>
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #e5e0db', background: page === 1 ? '#f3f4f6' : '#fff', color: page === 1 ? '#d1ccc8' : '#2D2D2D', fontSize: '13px', fontWeight: 600, cursor: page === 1 ? 'default' : 'pointer' }}
+            >
+              Prev
+            </button>
+            <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 500 }}>{page} / {totalPages}</span>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #e5e0db', background: page === totalPages ? '#f3f4f6' : '#fff', color: page === totalPages ? '#d1ccc8' : '#2D2D2D', fontSize: '13px', fontWeight: 600, cursor: page === totalPages ? 'default' : 'pointer' }}
+            >
+              Next
+            </button>
           </div>
         )}
 
