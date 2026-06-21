@@ -6,7 +6,7 @@ import type { PersonalExpense } from '../../db/db'
 import ExpenseForm from './ExpenseForm'
 import { dbWrite } from '../../lib/dbGateway'
 import { updatePersonalExpense, logPersonalExpense, deleteSheetRow } from '../../lib/sheets'
-import { useSyncVersion } from '../../lib/SyncContext'
+import { useSyncVersion, useSyncActions } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
 import { todayPH, daysFromNowPH, toDateStrPH } from '../../lib/dateUtils'
@@ -50,6 +50,7 @@ let _peNav: { tab: ListTab; historyFilter: HistoryFilter; rangeFrom: string; ran
 
 export default function PersonalExpenses() {
   const syncVersion = useSyncVersion()
+  const { bumpSync } = useSyncActions()
   const [expenses, setExpenses] = useState<PersonalExpense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -114,7 +115,7 @@ export default function PersonalExpenses() {
       await db.personalExpenses.add({ ...newData, supabaseId: row?.id })
       if (row?.id) logPersonalExpense(newData, row.id)
     }
-    load()
+    load(); bumpSync()
   }
 
   async function confirmDelete() {
@@ -126,7 +127,7 @@ export default function PersonalExpenses() {
       await dbWrite('personal_expenses', 'delete', { eq: { id: e.supabaseId } })
     }
     await db.personalExpenses.delete(e.id!)
-    load()
+    load(); bumpSync()
   }
 
   async function handleLogPay() {
@@ -147,7 +148,7 @@ export default function PersonalExpenses() {
     setLogPayEntry(null)
     setLogPayAmount('')
     setLogPaySaving(false)
-    load()
+    load(); bumpSync()
   }
 
   async function handlePayAll() {
@@ -164,7 +165,7 @@ export default function PersonalExpenses() {
         updatePersonalExpense({ ...entry, amountPaid: entry.amount }, entry.supabaseId)
       }
     }
-    load()
+    load(); bumpSync()
     if (previewEntry) setClosingPreview(true)
   }
 
@@ -420,7 +421,7 @@ export default function PersonalExpenses() {
         <ExpenseForm
           expense={editing}
           onClose={() => setShowForm(false)}
-          onSaved={load}
+          onSaved={() => { load(); bumpSync() }}
         />
       )}
 

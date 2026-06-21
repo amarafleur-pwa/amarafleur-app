@@ -5,12 +5,14 @@ export const useSyncVersion = () => useContext(SyncContext)
 
 interface SyncActions {
   forceSync: () => Promise<void>
+  bumpSync: () => void
   isSyncing: boolean
   lastSyncedAt: Date | null
 }
 
 export const SyncActionsContext = createContext<SyncActions>({
   forceSync: async () => {},
+  bumpSync: () => {},
   isSyncing: false,
   lastSyncedAt: null,
 })

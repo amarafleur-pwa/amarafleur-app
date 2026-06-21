@@ -7,7 +7,7 @@ import ExpenseForm from './ExpenseForm'
 import { dbWrite } from '../../lib/dbGateway'
 import { deleteSheetRow, updateBusinessExpense } from '../../lib/sheets'
 import { createNextRecurringExpense } from './recurring'
-import { useSyncVersion } from '../../lib/SyncContext'
+import { useSyncVersion, useSyncActions } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
 import { todayPH, daysFromNowPH } from '../../lib/dateUtils'
@@ -51,6 +51,7 @@ let _beNav: { tab: ListTab; historyFilter: HistoryFilter; rangeFrom: string; ran
 
 export default function BusinessExpenses() {
   const syncVersion = useSyncVersion()
+  const { bumpSync } = useSyncActions()
   const [expenses, setExpenses] = useState<BusinessExpense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -95,7 +96,7 @@ export default function BusinessExpenses() {
     if (expense.isRecurring) {
       await createNextRecurringExpense(expense)
     }
-    load()
+    load(); bumpSync()
   }
 
   async function confirmDelete() {
@@ -107,7 +108,7 @@ export default function BusinessExpenses() {
       await dbWrite('business_expenses', 'delete', { eq: { id: e.supabaseId } })
     }
     await db.businessExpenses.delete(e.id!)
-    load()
+    load(); bumpSync()
   }
 
   async function handleLogPay() {
@@ -128,7 +129,7 @@ export default function BusinessExpenses() {
     setLogPayEntry(null)
     setLogPayAmount('')
     setLogPaySaving(false)
-    load()
+    load(); bumpSync()
   }
 
   async function handlePayAll() {
@@ -145,7 +146,7 @@ export default function BusinessExpenses() {
         updateBusinessExpense({ ...entry, amountPaid: entry.amount }, entry.supabaseId)
       }
     }
-    load()
+    load(); bumpSync()
     if (previewEntry) setClosingPreview(true)
   }
 
@@ -414,7 +415,7 @@ export default function BusinessExpenses() {
         <ExpenseForm
           expense={editing}
           onClose={() => setShowForm(false)}
-          onSaved={load}
+          onSaved={() => { load(); bumpSync() }}
         />
       )}
 

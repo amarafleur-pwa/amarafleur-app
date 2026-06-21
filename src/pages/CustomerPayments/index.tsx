@@ -6,7 +6,7 @@ import PaymentForm from './PaymentForm'
 import { dbWrite } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
 import { logCustomer, deleteSheetRow, logPayment } from '../../lib/sheets'
-import { useSyncVersion } from '../../lib/SyncContext'
+import { useSyncVersion, useSyncActions } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
 import { todayPH } from '../../lib/dateUtils'
@@ -57,6 +57,7 @@ const lbl: React.CSSProperties = {
 
 export default function CustomerPayments() {
   const syncVersion = useSyncVersion()
+  const { bumpSync } = useSyncActions()
   const [orders, setOrders] = useState<Order[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -121,7 +122,7 @@ export default function CustomerPayments() {
     await db.payments.where('orderId').equals(order.id!).delete()
     await db.orders.delete(order.id!)
     setPendingDeleteOrder(null)
-    load()
+    load(); bumpSync()
   }
 
   function openCustomerForm(customer?: Customer) {
@@ -230,7 +231,7 @@ export default function CustomerPayments() {
       }
       setPendingBalancePay(null)
       setClosingPreviewOrder(true)
-      load()
+      load(); bumpSync()
     } finally {
       balancePaying.current = false
     }
@@ -607,7 +608,7 @@ export default function CustomerPayments() {
         <PaymentForm
           order={selectedOrder}
           onClose={() => setSelectedOrder(null)}
-          onSaved={load}
+          onSaved={() => { load(); bumpSync() }}
         />
       )}
 

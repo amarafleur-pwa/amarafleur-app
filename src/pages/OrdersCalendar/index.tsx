@@ -6,7 +6,7 @@ import OrderForm from './OrderForm'
 import PaymentForm from '../CustomerPayments/PaymentForm'
 import { dbWrite } from '../../lib/dbGateway'
 import { deleteSheetRow, updateOrder } from '../../lib/sheets'
-import { useSyncVersion } from '../../lib/SyncContext'
+import { useSyncVersion, useSyncActions } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
 import { todayPH } from '../../lib/dateUtils'
@@ -56,6 +56,7 @@ let _nav: {
 
 export default function OrdersCalendar() {
   const syncVersion = useSyncVersion()
+  const { bumpSync } = useSyncActions()
   const [orders, setOrders] = useState<Order[]>([])
   const [allPayments, setAllPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(true)
@@ -773,7 +774,7 @@ export default function OrdersCalendar() {
         <PaymentForm
           order={previewOrder}
           onClose={() => { setShowPayForm(false); load() }}
-          onSaved={() => { setShowPayForm(false); load() }}
+          onSaved={() => { setShowPayForm(false); load(); bumpSync() }}
         />
       )}
 
@@ -783,7 +784,7 @@ export default function OrdersCalendar() {
           defaultDate={mainView === 'log' ? logDate : (selectedDate ?? undefined)}
           mode={editing ? (editing.isDone ? 'log' : 'advance') : formMode}
           onClose={() => setShowForm(false)}
-          onSaved={load}
+          onSaved={() => { load(); bumpSync() }}
         />
       )}
 

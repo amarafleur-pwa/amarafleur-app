@@ -373,6 +373,8 @@ export default function App() {
     }
   }, [authed])
 
+  const bumpSync = () => setSyncVersion(v => v + 1)
+
   async function forceSync() {
     if (isSyncing || !navigator.onLine) return
     setIsSyncing(true)
@@ -393,7 +395,7 @@ export default function App() {
   }
 
   return (
-    <SyncActionsContext.Provider value={{ forceSync, isSyncing, lastSyncedAt }}>
+    <SyncActionsContext.Provider value={{ forceSync, bumpSync, isSyncing, lastSyncedAt }}>
     <SyncContext.Provider value={syncVersion}>
     <BrowserRouter>
       <div style={{ display: 'flex', minHeight: '100svh' }}>
