@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Plus, X, Phone, FileText, Search } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment, Customer } from '../../db/db'
@@ -185,13 +185,15 @@ export default function CustomerPayments() {
     load()
   }
 
-  // Build per-order payment map
-  const paymentMap = new Map<number, Payment[]>()
-  for (const p of payments) {
-    const list = paymentMap.get(p.orderId) ?? []
-    list.push(p)
-    paymentMap.set(p.orderId, list)
-  }
+  const paymentMap = useMemo(() => {
+    const map = new Map<number, Payment[]>()
+    for (const p of payments) {
+      const list = map.get(p.orderId) ?? []
+      list.push(p)
+      map.set(p.orderId, list)
+    }
+    return map
+  }, [payments])
 
   async function handleBalancePaid(order: Order) {
     if (balancePaying.current) return
@@ -247,22 +249,21 @@ export default function CustomerPayments() {
   ]
 
   const q = search.toLowerCase()
-  const filteredOrders = orders.filter(o => {
+  const filteredOrders = useMemo(() => orders.filter(o => {
     const s = getStatus(o, paymentMap.get(o.id!) ?? [])
     if (statusFilter === 'outstanding' && s.balance <= 0) return false
     if (statusFilter === 'paid' && s.balance > 0) return false
     if (q && !o.customerName.toLowerCase().includes(q) && !o.description.toLowerCase().includes(q)) return false
     return true
-  })
+  }), [orders, paymentMap, statusFilter, q])
 
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE))
   const paginatedOrders = filteredOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  // Outstanding total
-  const outstandingTotal = orders.reduce((sum, o) => {
+  const outstandingTotal = useMemo(() => orders.reduce((sum, o) => {
     const s = getStatus(o, paymentMap.get(o.id!) ?? [])
     return sum + s.balance
-  }, 0)
+  }, 0), [orders, paymentMap])
 
   const detailOrders = detailCustomer
     ? orders.filter(o => o.customerName.toLowerCase() === detailCustomer.name.toLowerCase()).sort((a, b) => b.dueDate.localeCompare(a.dueDate))

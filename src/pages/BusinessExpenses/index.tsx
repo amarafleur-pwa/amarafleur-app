@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Plus, RefreshCw, Search } from 'lucide-react'
 import receiptIcon from '../../assets/receipt.svg'
 import { db } from '../../db/db'
@@ -156,7 +156,7 @@ export default function BusinessExpenses() {
 
   const q = search.toLowerCase()
 
-  const filtered = expenses.filter(e => {
+  const filtered = useMemo(() => expenses.filter(e => {
     if (q && !e.name.toLowerCase().includes(q) && !e.category.toLowerCase().includes(q)) return false
     const type = resolveType(e)
     if (tab === 'active') return !e.isPaid && (type === 'one-time' || type === 'monthly')
@@ -175,7 +175,7 @@ export default function BusinessExpenses() {
       return true
     }
     return true
-  })
+  }), [expenses, q, tab, historyFilter, rangeFrom, rangeTo])
 
   const historyTotal = tab === 'history' ? filtered.reduce((s, e) => s + e.amount, 0) : 0
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
@@ -188,13 +188,13 @@ export default function BusinessExpenses() {
     { key: 'range', label: '📅 Range' },
   ]
 
-  const totalUnpaid = expenses.filter(e => !e.isPaid).reduce((s, e) => s + e.amount, 0)
-  const unpaidCount = expenses.filter(e => !e.isPaid).length
+  const totalUnpaid = useMemo(() => expenses.filter(e => !e.isPaid).reduce((s, e) => s + e.amount, 0), [expenses])
+  const unpaidCount = useMemo(() => expenses.filter(e => !e.isPaid).length, [expenses])
 
-  const activeUnpaidCount = expenses.filter(e => {
+  const activeUnpaidCount = useMemo(() => expenses.filter(e => {
     const type = resolveType(e)
     return !e.isPaid && (type === 'one-time' || type === 'monthly')
-  }).length
+  }).length, [expenses])
 
   const tabs: { key: ListTab; label: string; badge?: number }[] = [
     { key: 'active', label: 'Active', badge: activeUnpaidCount > 0 ? activeUnpaidCount : undefined },

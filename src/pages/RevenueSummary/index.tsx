@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Download, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment, BusinessExpense } from '../../db/db'
@@ -147,32 +147,32 @@ export default function RevenueSummary() {
 
   const range = getPeriodRange(period)
 
-  // Revenue = deposits from orders placed in period + payment records in period
-  const periodDeposits = orders
-    .filter(o => inRange(o.orderDate, range.start, range.end) && o.depositPaid > 0)
-  const depositTotal = periodDeposits.reduce((s, o) => s + o.depositPaid, 0)
+  const { revenue, txCount, expenseTotal, paidExpenses, net, maxBar, periodDeposits, periodPayments, periodExpenses } = useMemo(() => {
+    const pd = orders.filter(o => inRange(o.orderDate, range.start, range.end) && o.depositPaid > 0)
+    const dt = pd.reduce((s, o) => s + o.depositPaid, 0)
+    const pp = payments.filter(p => inRange(p.paidAt, range.start, range.end))
+    const pt = pp.reduce((s, p) => s + p.amount, 0)
+    const rev = dt + pt
+    const pe = businessExpenses.filter(e => inRange(e.dueDate, range.start, range.end))
+    const et = pe.reduce((s, e) => s + e.amount, 0)
+    const paid = pe.filter(e => e.isPaid).reduce((s, e) => s + e.amount, 0)
+    return {
+      periodDeposits: pd, periodPayments: pp, periodExpenses: pe,
+      revenue: rev, txCount: pd.length + pp.length,
+      expenseTotal: et, paidExpenses: paid,
+      net: rev - et, maxBar: Math.max(rev, et, 1),
+    }
+  }, [orders, payments, businessExpenses, range.start, range.end])
 
-  const periodPayments = payments.filter(p => inRange(p.paidAt, range.start, range.end))
-  const paymentTotal = periodPayments.reduce((s, p) => s + p.amount, 0)
-
-  const revenue = depositTotal + paymentTotal
-  const txCount = periodDeposits.length + periodPayments.length
-
-  // Expenses = business expenses with dueDate in period
-  const periodExpenses = businessExpenses.filter(e => inRange(e.dueDate, range.start, range.end))
-  const expenseTotal = periodExpenses.reduce((s, e) => s + e.amount, 0)
-  const paidExpenses = periodExpenses.filter(e => e.isPaid).reduce((s, e) => s + e.amount, 0)
-
-  const net = revenue - expenseTotal
-  const maxBar = Math.max(revenue, expenseTotal, 1)
-
-  const trendMonths = getLast6Months().map(m => {
-    const rev = orders.filter(o => inRange(o.orderDate, m.start, m.end) && o.depositPaid > 0).reduce((s, o) => s + o.depositPaid, 0)
-      + payments.filter(p => inRange(p.paidAt, m.start, m.end)).reduce((s, p) => s + p.amount, 0)
-    const exp = businessExpenses.filter(e => inRange(e.dueDate, m.start, m.end)).reduce((s, e) => s + e.amount, 0)
-    return { label: m.label, rev, exp }
-  })
-  const trendMax = Math.max(...trendMonths.map(m => Math.max(m.rev, m.exp)), 1)
+  const { trendMonths, trendMax } = useMemo(() => {
+    const months = getLast6Months().map(m => {
+      const rev = orders.filter(o => inRange(o.orderDate, m.start, m.end) && o.depositPaid > 0).reduce((s, o) => s + o.depositPaid, 0)
+        + payments.filter(p => inRange(p.paidAt, m.start, m.end)).reduce((s, p) => s + p.amount, 0)
+      const exp = businessExpenses.filter(e => inRange(e.dueDate, m.start, m.end)).reduce((s, e) => s + e.amount, 0)
+      return { label: m.label, rev, exp }
+    })
+    return { trendMonths: months, trendMax: Math.max(...months.map(m => Math.max(m.rev, m.exp)), 1) }
+  }, [orders, payments, businessExpenses])
 
   const periodLabel = getPeriodLabel(period, range)
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Plus, RefreshCw, Search } from 'lucide-react'
 import receiptIcon from '../../assets/receipt.svg'
 import { db } from '../../db/db'
@@ -175,7 +175,7 @@ export default function PersonalExpenses() {
 
   const q = search.toLowerCase()
 
-  const filtered = expenses.filter(e => {
+  const filtered = useMemo(() => expenses.filter(e => {
     if (q && !e.name.toLowerCase().includes(q) && !(e.category ?? '').toLowerCase().includes(q)) return false
     const type = resolveType(e)
     if (tab === 'active') return !e.isPaid && (type === 'one-time' || type === 'monthly')
@@ -194,12 +194,12 @@ export default function PersonalExpenses() {
       return true
     }
     return true
-  })
+  }), [expenses, q, tab, historyFilter, rangeFrom, rangeTo])
 
-  const activeUnpaidCount = expenses.filter(e => {
+  const activeUnpaidCount = useMemo(() => expenses.filter(e => {
     const type = resolveType(e)
     return !e.isPaid && (type === 'one-time' || type === 'monthly')
-  }).length
+  }).length, [expenses])
 
   const tabs: { key: ListTab; label: string; badge?: number }[] = [
     { key: 'active', label: 'Active', badge: activeUnpaidCount > 0 ? activeUnpaidCount : undefined },

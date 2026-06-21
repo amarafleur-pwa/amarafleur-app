@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Wallet, ShoppingBag, CalendarDays, CreditCard, TrendingUp, MoreHorizontal, Settings as SettingsIcon, Package, X } from 'lucide-react'
 import NotificationBanner from './components/NotificationBanner'
@@ -8,14 +8,15 @@ import { restoreFromSupabase, syncPendingItems } from './lib/sync'
 import { SyncContext, SyncActionsContext } from './lib/SyncContext'
 import { supabase } from './lib/supabase'
 import Auth from './pages/Auth'
-import Dashboard from './pages/Dashboard'
-import PersonalExpenses from './pages/PersonalExpenses'
-import BusinessExpenses from './pages/BusinessExpenses'
-import OrdersCalendar from './pages/OrdersCalendar'
-import CustomerPayments from './pages/CustomerPayments'
-import RevenueSummary from './pages/RevenueSummary'
-import Settings from './pages/Settings'
-import Inventory from './pages/Inventory'
+
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const PersonalExpenses = lazy(() => import('./pages/PersonalExpenses'))
+const BusinessExpenses = lazy(() => import('./pages/BusinessExpenses'))
+const OrdersCalendar = lazy(() => import('./pages/OrdersCalendar'))
+const CustomerPayments = lazy(() => import('./pages/CustomerPayments'))
+const RevenueSummary = lazy(() => import('./pages/RevenueSummary'))
+const Settings = lazy(() => import('./pages/Settings'))
+const Inventory = lazy(() => import('./pages/Inventory'))
 
 function useMediaQuery(query: string) {
   const [matches, setMatches] = useState(() => window.matchMedia(query).matches)
@@ -390,12 +391,14 @@ export default function App() {
     }
   }
 
+  const syncActions = useMemo(() => ({ forceSync, bumpSync, isSyncing, lastSyncedAt }), [isSyncing, lastSyncedAt])
+
   if (!authed) {
     return <Auth onAuth={() => setAuthed(true)} />
   }
 
   return (
-    <SyncActionsContext.Provider value={{ forceSync, bumpSync, isSyncing, lastSyncedAt }}>
+    <SyncActionsContext.Provider value={syncActions}>
     <SyncContext.Provider value={syncVersion}>
     <BrowserRouter>
       <div style={{ display: 'flex', minHeight: '100svh' }}>
@@ -408,6 +411,7 @@ export default function App() {
             paddingBottom: isDesktop ? '24px' : 'calc(112px + env(safe-area-inset-bottom))',
             overflowY: 'auto',
           }}>
+            <Suspense fallback={null}>
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/personal" element={<PersonalExpenses />} />
@@ -418,6 +422,7 @@ export default function App() {
               <Route path="/settings" element={<Settings />} />
               <Route path="/inventory" element={<Inventory />} />
             </Routes>
+            </Suspense>
           </main>
         </div>
         {!isDesktop && <BottomNav />}
