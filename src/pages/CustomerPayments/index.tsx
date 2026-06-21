@@ -13,6 +13,7 @@ import { todayPH } from '../../lib/dateUtils'
 
 type View = 'payments' | 'directory'
 type StatusFilter = 'all' | 'outstanding' | 'paid'
+const PAGE_SIZE = 20
 
 const fmt = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2 })
 
@@ -83,6 +84,7 @@ export default function CustomerPayments() {
   const [closingCustomerForm, setClosingCustomerForm] = useState(false)
   const handleCloseCustomerForm = () => setClosingCustomerForm(true)
 
+  const [page, setPage] = useState(1)
   const [activeSwipeId, setActiveSwipeId] = useState<number | null>(null)
   const [pendingDeleteOrder, setPendingDeleteOrder] = useState<Order | null>(null)
   const [pendingBalancePay, setPendingBalancePay] = useState<Order | null>(null)
@@ -106,6 +108,7 @@ export default function CustomerPayments() {
 
   useEffect(() => { load() }, [syncVersion])
   useEffect(() => { _cpNav = { view, statusFilter } }, [view, statusFilter])
+  useEffect(() => { setPage(1) }, [statusFilter, search])
 
   async function handleDeleteOrder(order: Order) {
     const linkedPayments = await db.payments.where('orderId').equals(order.id!).toArray()
@@ -252,6 +255,9 @@ export default function CustomerPayments() {
     return true
   })
 
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE))
+  const paginatedOrders = filteredOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
   // Outstanding total
   const outstandingTotal = orders.reduce((sum, o) => {
     const s = getStatus(o, paymentMap.get(o.id!) ?? [])
@@ -383,7 +389,7 @@ export default function CustomerPayments() {
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {filteredOrders.map(o => {
+            {paginatedOrders.map(o => {
               const s = getStatus(o, paymentMap.get(o.id!) ?? [])
               const orderPmts = paymentMap.get(o.id!) ?? []
               const lastPmt = [...orderPmts].sort((a, b) => b.paidAt.localeCompare(a.paidAt))[0]
@@ -443,6 +449,26 @@ export default function CustomerPayments() {
               )
             })}
           </div>
+
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginTop: '14px' }}>
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #e5e0db', background: page === 1 ? '#f3f4f6' : '#fff', color: page === 1 ? '#d1ccc8' : '#2D2D2D', fontSize: '13px', fontWeight: 600, cursor: page === 1 ? 'default' : 'pointer' }}
+              >
+                Prev
+              </button>
+              <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 500 }}>{page} / {totalPages}</span>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #e5e0db', background: page === totalPages ? '#f3f4f6' : '#fff', color: page === totalPages ? '#d1ccc8' : '#2D2D2D', fontSize: '13px', fontWeight: 600, cursor: page === totalPages ? 'default' : 'pointer' }}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
 

@@ -15,6 +15,7 @@ interface Props {
 const SNAP_THRESHOLD = 60
 const REVEAL_WIDTH_3 = 168  // Paid + Edit + Delete
 const REVEAL_WIDTH_2 = 112  // Edit + Delete only
+const LOCK_THRESHOLD = 8    // px moved before locking direction
 
 export default function SwipeableItem({ id, activeId, onActivate, onPaid, paidLabel, onPreview, onEdit, onDelete, children }: Props) {
   const revealW = onPaid ? REVEAL_WIDTH_3 : REVEAL_WIDTH_2
@@ -22,9 +23,11 @@ export default function SwipeableItem({ id, activeId, onActivate, onPaid, paidLa
   const [isOpen, setIsOpen] = useState(false)
   const [isSnapped, setIsSnapped] = useState(false)
   const startX = useRef(0)
+  const startY = useRef(0)
   const startOffset = useRef(0)
   const dragging = useRef(false)
   const direction = useRef<'open' | 'close'>('close')
+  const axisLock = useRef<'none' | 'horizontal' | 'vertical'>('none')
 
   useEffect(() => {
     if (activeId !== id && isOpen) close()
@@ -33,19 +36,32 @@ export default function SwipeableItem({ id, activeId, onActivate, onPaid, paidLa
   function onTouchStart(e: React.TouchEvent) {
     onActivate(id)
     startX.current = e.touches[0].clientX
+    startY.current = e.touches[0].clientY
     startOffset.current = isOpen ? -revealW : 0
     dragging.current = true
+    axisLock.current = 'none'
   }
 
   function onTouchMove(e: React.TouchEvent) {
     if (!dragging.current) return
     const dx = e.touches[0].clientX - startX.current
+    const dy = e.touches[0].clientY - startY.current
+
+    if (axisLock.current === 'none') {
+      if (Math.abs(dx) < LOCK_THRESHOLD && Math.abs(dy) < LOCK_THRESHOLD) return
+      axisLock.current = Math.abs(dy) > Math.abs(dx) ? 'vertical' : 'horizontal'
+    }
+
+    if (axisLock.current === 'vertical') return
+
     const next = Math.max(-revealW, Math.min(0, startOffset.current + dx))
     setOffset(next)
   }
 
   function onTouchEnd() {
     dragging.current = false
+    if (axisLock.current === 'vertical') { axisLock.current = 'none'; return }
+    axisLock.current = 'none'
     const open = offset < -SNAP_THRESHOLD
     direction.current = open ? 'open' : 'close'
     setOffset(open ? -revealW : 0)
