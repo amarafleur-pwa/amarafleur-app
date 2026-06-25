@@ -9,9 +9,11 @@ import { deleteSheetRow, updateOrder } from '../../lib/sheets'
 import { useSyncVersion, useSyncActions } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
-import { todayPH } from '../../lib/dateUtils'
+import { todayPH, daysFromNowPH } from '../../lib/dateUtils'
 
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+
+const PAGE_SIZE = 20
 
 const TYPE_LABELS: Record<string, string> = {
   deposit: 'Deposit', balance: 'Balance', full: 'Full Payment',
@@ -22,6 +24,8 @@ function formatDate(d: string) {
 }
 
 function todayStr() { return todayPH() }
+function yesterdayStr() { return daysFromNowPH(-1) }
+function daysAgoStr(n: number) { return daysFromNowPH(-n) }
 
 function dateStr(year: number, month: number, day: number) {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
@@ -44,7 +48,8 @@ function formatTime(t: string) {
 
 const fmt = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2 })
 
-type MainView = 'log' | 'advance'
+type MainView = 'log' | 'advance' | 'history'
+type HistoryFilter = 'today' | 'yesterday' | '7days' | 'range'
 
 let _nav: {
   mainView: MainView
@@ -52,6 +57,9 @@ let _nav: {
   selectedDate: string | null
   viewYear: number
   viewMonth: number
+  historyFilter: HistoryFilter
+  rangeFrom: string
+  rangeTo: string
 } | null = null
 
 export default function OrdersCalendar() {
@@ -85,6 +93,13 @@ export default function OrdersCalendar() {
   // Log swipe
   const [activeLogSwipeId, setActiveLogSwipeId] = useState<number | null>(null)
 
+  // History tab
+  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>(() => _nav?.historyFilter ?? '7days')
+  const [rangeFrom, setRangeFrom] = useState(() => _nav?.rangeFrom ?? '')
+  const [rangeTo, setRangeTo] = useState(() => _nav?.rangeTo ?? '')
+  const [historyPage, setHistoryPage] = useState(1)
+  const [activeHistorySwipeId, setActiveHistorySwipeId] = useState<number | null>(null)
+
   // Advance swipe + delete
   const [activeSwipeId, setActiveSwipeId] = useState<number | null>(null)
   const [pendingDeleteOrder, setPendingDeleteOrder] = useState<Order | null>(null)
@@ -107,8 +122,9 @@ export default function OrdersCalendar() {
 
   useEffect(() => { load() }, [syncVersion])
   useEffect(() => {
-    _nav = { mainView, logDate, selectedDate, viewYear: year, viewMonth: month }
-  }, [mainView, logDate, selectedDate, year, month])
+    _nav = { mainView, logDate, selectedDate, viewYear: year, viewMonth: month, historyFilter, rangeFrom, rangeTo }
+  }, [mainView, logDate, selectedDate, year, month, historyFilter, rangeFrom, rangeTo])
+  useEffect(() => { setHistoryPage(1) }, [historyFilter, rangeFrom, rangeTo])
 
   // Log tab: fulfilled orders for logDate with computed payment totals
   const logItems = useMemo(() => {
@@ -116,6 +132,35 @@ export default function OrdersCalendar() {
       .filter(o => o.dueDate === logDate && o.isDone)
       .sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
   }, [orders, logDate])
+
+  // History tab: fulfilled orders across a date range, newest-first
+  const historyItems = useMemo(() => {
+    return orders
+      .filter(o => {
+        if (!o.isDone) return false
+        if (historyFilter === 'today') return o.dueDate === todayStr()
+        if (historyFilter === 'yesterday') return o.dueDate === yesterdayStr()
+        if (historyFilter === '7days') return o.dueDate >= daysAgoStr(7)
+        if (historyFilter === 'range') {
+          if (rangeFrom && o.dueDate < rangeFrom) return false
+          if (rangeTo && o.dueDate > rangeTo) return false
+          return true
+        }
+        return true
+      })
+      .sort((a, b) => b.dueDate.localeCompare(a.dueDate) || (b.time ?? '').localeCompare(a.time ?? ''))
+  }, [orders, historyFilter, rangeFrom, rangeTo])
+
+  const historyTotal = useMemo(() => historyItems.reduce((s, o) => s + o.totalAmount, 0), [historyItems])
+  const historyTotalPages = Math.max(1, Math.ceil(historyItems.length / PAGE_SIZE))
+  const historyPaginated = historyItems.slice((historyPage - 1) * PAGE_SIZE, historyPage * PAGE_SIZE)
+
+  const historyPills: { key: HistoryFilter; label: string }[] = [
+    { key: 'today', label: 'Today' },
+    { key: 'yesterday', label: 'Yesterday' },
+    { key: '7days', label: '7 Days' },
+    { key: 'range', label: '📅 Range' },
+  ]
 
   // Calendar: map dueDate → pending (undone) orders only
   const orderMap = useMemo(() => {
@@ -214,7 +259,7 @@ export default function OrdersCalendar() {
   }
 
   function openAdd() {
-    setFormMode(mainView)
+    setFormMode(mainView === 'advance' ? 'advance' : 'log')
     setEditing(undefined)
     setShowForm(true)
   }
@@ -259,12 +304,12 @@ export default function OrdersCalendar() {
         {/* Sub-tab bar */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '12px' }}>
           <div style={{ display: 'flex', gap: '6px' }}>
-            {(['log', 'advance'] as MainView[]).map(v => (
+            {(['log', 'advance', 'history'] as MainView[]).map(v => (
               <button
                 key={v}
                 onClick={() => setMainView(v)}
                 style={{
-                  padding: '6px 20px', borderRadius: '20px', border: 'none',
+                  padding: '6px 16px', borderRadius: '20px', border: 'none',
                   fontSize: '13px', fontWeight: mainView === v ? 700 : 500,
                   cursor: 'pointer',
                   background: mainView === v ? '#C9848A' : '#fff',
@@ -272,7 +317,7 @@ export default function OrdersCalendar() {
                   boxShadow: mainView === v ? '0 2px 8px #C9848A33' : 'none',
                 }}
               >
-                {v === 'log' ? 'Log' : 'Advance'}
+                {v === 'log' ? 'Log' : v === 'advance' ? 'Advance' : 'History'}
               </button>
             ))}
           </div>
@@ -539,6 +584,131 @@ export default function OrdersCalendar() {
           )}
 
         </>
+      )}
+
+      {/* ===== HISTORY VIEW ===== */}
+      {mainView === 'history' && (
+        <div style={{ flex: 1, padding: '12px 16px 0' }}>
+
+          {/* Filter pills */}
+          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none', marginBottom: '10px' }}>
+            {historyPills.map(p => (
+              <button
+                key={p.key}
+                onClick={() => setHistoryFilter(p.key)}
+                style={{
+                  padding: '5px 12px', borderRadius: '16px', border: 'none',
+                  fontSize: '12px', fontWeight: historyFilter === p.key ? 700 : 500,
+                  cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                  background: historyFilter === p.key ? '#2D2D2D' : '#fff',
+                  color: historyFilter === p.key ? '#fff' : '#6b7280',
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          {historyFilter === 'range' && (
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+              <input
+                type="date"
+                value={rangeFrom}
+                onChange={e => setRangeFrom(e.target.value)}
+                style={{ flex: 1, padding: '8px 10px', border: '1.5px solid #e5e0db', borderRadius: '8px', fontSize: '13px', color: '#2D2D2D', background: '#fff', outline: 'none', minWidth: 0 }}
+              />
+              <input
+                type="date"
+                value={rangeTo}
+                onChange={e => setRangeTo(e.target.value)}
+                style={{ flex: 1, padding: '8px 10px', border: '1.5px solid #e5e0db', borderRadius: '8px', fontSize: '13px', color: '#2D2D2D', background: '#fff', outline: 'none', minWidth: 0 }}
+              />
+            </div>
+          )}
+
+          {loading && <p style={{ textAlign: 'center', color: '#9ca3af', padding: '24px 0', fontSize: '14px' }}>Loading...</p>}
+          {error && <div style={{ background: '#fee2e2', color: '#991b1b', borderRadius: '12px', padding: '14px 16px', fontSize: '14px', marginBottom: '12px' }}>{error}</div>}
+
+          {!loading && !error && historyItems.length > 0 && (
+            <div style={{ background: '#fff', borderRadius: '10px', padding: '10px 14px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
+              <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 500 }}>Period Total</span>
+              <span style={{ fontSize: '16px', fontWeight: 700, color: '#2D2D2D' }}>{fmt(historyTotal)}</span>
+            </div>
+          )}
+
+          {!loading && !error && historyItems.length === 0 && (
+            <div style={{ background: '#fff', borderRadius: '12px', padding: '32px', textAlign: 'center', boxShadow: '0 1px 6px rgba(0,0,0,0.06)' }}>
+              <p style={{ fontSize: '14px', color: '#9ca3af' }}>No fulfilled orders in this period</p>
+            </div>
+          )}
+
+          {!loading && !error && historyItems.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {historyPaginated.map(o => {
+                const fulfillment = o.fulfillmentType ?? 'pickup'
+                return (
+                  <SwipeableItem
+                    key={o.id}
+                    id={o.id!}
+                    activeId={activeHistorySwipeId}
+                    onActivate={setActiveHistorySwipeId}
+                    onPreview={() => { setPreviewIsLog(true); setPreviewOrder(o) }}
+                    onEdit={() => openEdit(o)}
+                    onDelete={() => setPendingDeleteOrder(o)}
+                  >
+                    <div style={{ background: '#fff', padding: '14px', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', cursor: 'pointer' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ fontWeight: 700, fontSize: '15px', color: '#2D2D2D', margin: '0 0 2px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.customerName}</span>
+                            {o.loggedBy && <span style={{ fontSize: '11px', fontWeight: 500, color: '#9ca3af' }}>· 👤 {o.loggedBy}</span>}
+                          </p>
+                          <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>
+                            {o.description}{o.quantity && o.quantity > 1 ? ` × ${o.quantity}` : ''}
+                          </p>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', marginBottom: '4px' }}>
+                            <span style={{
+                              fontSize: '10px', fontWeight: 700, borderRadius: '5px', padding: '2px 6px',
+                              color: fulfillment === 'delivery' ? '#7A9E7E' : '#C9848A',
+                              background: fulfillment === 'delivery' ? '#7A9E7E18' : '#C9848A18',
+                            }}>
+                              {fulfillment === 'delivery' ? '🚚 Delivered' : '🌸 Picked up'}
+                            </span>
+                          </div>
+                          <p style={{ fontSize: '11px', color: '#9ca3af', margin: '0 0 2px' }}>{formatDate(o.dueDate)}</p>
+                          {o.totalAmount > 0 && (
+                            <p style={{ fontSize: '15px', fontWeight: 700, color: '#2D2D2D', margin: 0 }}>{fmt(o.totalAmount)}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </SwipeableItem>
+                )
+              })}
+            </div>
+          )}
+
+          {!loading && !error && historyTotalPages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginTop: '14px' }}>
+              <button
+                onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                disabled={historyPage === 1}
+                style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #e5e0db', background: historyPage === 1 ? '#f3f4f6' : '#fff', color: historyPage === 1 ? '#d1ccc8' : '#2D2D2D', fontSize: '13px', fontWeight: 600, cursor: historyPage === 1 ? 'default' : 'pointer' }}
+              >
+                Prev
+              </button>
+              <span style={{ fontSize: '12px', color: '#9ca3af', fontWeight: 500 }}>{historyPage} / {historyTotalPages}</span>
+              <button
+                onClick={() => setHistoryPage(p => Math.min(historyTotalPages, p + 1))}
+                disabled={historyPage === historyTotalPages}
+                style={{ padding: '6px 14px', borderRadius: '8px', border: '1.5px solid #e5e0db', background: historyPage === historyTotalPages ? '#f3f4f6' : '#fff', color: historyPage === historyTotalPages ? '#d1ccc8' : '#2D2D2D', fontSize: '13px', fontWeight: 600, cursor: historyPage === historyTotalPages ? 'default' : 'pointer' }}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Order preview sheet */}
