@@ -17,9 +17,38 @@ export async function requestPermission(): Promise<NotificationPermission> {
   return Notification.requestPermission()
 }
 
+export function notificationsEnabled(): boolean {
+  return getPermissionStatus() === 'granted' && localStorage.getItem('af-notif-enabled') !== '0'
+}
+
+export function setNotificationsEnabled(on: boolean) {
+  localStorage.setItem('af-notif-enabled', on ? '1' : '0')
+}
+
+export async function sendTestNotification(): Promise<'ok' | 'denied' | 'unsupported'> {
+  if (!('serviceWorker' in navigator) || !('Notification' in window)) return 'unsupported'
+  if (Notification.permission !== 'granted') return 'denied'
+  const reg = await navigator.serviceWorker.ready
+  await reg.showNotification('Test Notification 🌸', {
+    body: 'Notifications are working! You’ll get reminders here.',
+    icon: '/icons/icon-192.png',
+    tag: 'test-notif',
+  })
+  return 'ok'
+}
+
+// Trigger date (YYYY-MM-DD) for the month-end reminder: 3 days before the last
+// day of the current PH month.
+function monthEndReminderDate(): string {
+  const [y, m] = todayPH().split('-').map(Number)
+  const lastDay = new Date(y, m, 0).getDate()
+  const d = new Date(y, m - 1, lastDay - 3)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export async function checkAndFireReminders(): Promise<void> {
   if (!('serviceWorker' in navigator)) return
-  if (Notification.permission !== 'granted') return
+  if (!notificationsEnabled()) return
 
   const today = todayPH()
 
@@ -28,10 +57,12 @@ export async function checkAndFireReminders(): Promise<void> {
   if (lastCheck === today) return
 
   try {
-    const [expenses, orders] = await Promise.all([
+    const [expenses, allOrders, allPayments] = await Promise.all([
       db.personalExpenses.filter(e => !e.isPaid).toArray(),
-      db.orders.filter(o => !o.isDone).toArray(),
+      db.orders.toArray(),
+      db.payments.toArray(),
     ])
+    const orders = allOrders.filter(o => !o.isDone)
 
     const reg = await navigator.serviceWorker.ready
     // Only mark today as checked once the service worker is confirmed ready —
@@ -62,6 +93,33 @@ export async function checkAndFireReminders(): Promise<void> {
           body: `${o.customerName} · ${o.description}${o.time ? ` · ${o.time}` : ''}`,
           icon: '/icons/icon-192.png',
           tag: `order-tmrw-${o.id}`,
+        })
+      } else if (o.dueDate < today) {
+        await reg.showNotification('Advance Order Overdue ⚠️', {
+          body: `${o.customerName} · ${o.description} · was due ${shortDate(o.dueDate)}`,
+          icon: '/icons/icon-192.png',
+          tag: `order-overdue-${o.id}`,
+        })
+      }
+    }
+
+    // Month-end summary: 3 days before the last day of the month
+    if (today === monthEndReminderDate()) {
+      const unfulfilledCount = orders.length
+      let pendingCount = 0
+      let pendingTotal = 0
+      for (const o of allOrders) {
+        const paid = o.depositPaid + allPayments
+          .filter(p => p.orderId === o.id)
+          .reduce((s, p) => s + p.amount, 0)
+        const balance = o.totalAmount - paid
+        if (balance > 0) { pendingCount++; pendingTotal += balance }
+      }
+      if (unfulfilledCount > 0 || pendingCount > 0) {
+        await reg.showNotification('Month-End Reminder 🌸', {
+          body: `${unfulfilledCount} unfulfilled advance order(s) · ${pendingCount} pending payment(s) (₱${pendingTotal.toLocaleString('en-PH')})`,
+          icon: '/icons/icon-192.png',
+          tag: 'month-end-summary',
         })
       }
     }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Users, Trash2, Lock, RefreshCw, Camera } from 'lucide-react'
+import { Users, Trash2, Lock, RefreshCw, Camera, Bell } from 'lucide-react'
 import { db } from '../../db/db'
 import { NetworkPill } from '../../components/OfflineBanner'
 import { useSyncActions } from '../../lib/SyncContext'
@@ -8,6 +8,7 @@ import { deleteSheetRow } from '../../lib/sheets'
 import { getCurrentUser } from '../../lib/currentUser'
 import { clearSetupSecret } from '../../lib/setupSecret'
 import { dbWrite, uploadReceipt } from '../../lib/dbGateway'
+import { getPermissionStatus, requestPermission, notificationsEnabled, setNotificationsEnabled, sendTestNotification } from '../../lib/notifications'
 
 interface AppUser {
   id: string
@@ -56,6 +57,33 @@ export default function Settings() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
+  const notifSupported = getPermissionStatus() !== null
+  const [notifOn, setNotifOn] = useState(() => notificationsEnabled())
+  const [notifMsg, setNotifMsg] = useState<string | null>(null)
+
+  async function handleToggleNotif() {
+    if (notifOn) {
+      setNotificationsEnabled(false)
+      setNotifOn(false)
+      setNotifMsg(null)
+      return
+    }
+    const perm = await requestPermission()
+    if (perm === 'granted') {
+      setNotificationsEnabled(true)
+      setNotifOn(true)
+      setNotifMsg(null)
+    } else {
+      setNotifMsg('Blocked in browser settings — enable notifications for this site.')
+    }
+  }
+
+  async function handleTestNotif() {
+    const res = await sendTestNotification()
+    if (res === 'ok') setNotifMsg(null)
+    else if (res === 'denied') setNotifMsg('Enable notifications first.')
+    else setNotifMsg('Not supported on this device.')
+  }
 
   useEffect(() => {
     if (!currentUser) return
@@ -430,6 +458,81 @@ export default function Settings() {
             {isSyncing ? 'Syncing…' : 'Sync'}
           </button>
         </div>
+      </div>
+
+      {/* Notifications section */}
+      <div style={{
+        background: '#fff', borderRadius: '16px',
+        border: '1px solid #e5e0db',
+        marginBottom: '20px', overflow: 'hidden',
+      }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f0ed' }}>
+          <p style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
+            Notifications
+          </p>
+        </div>
+
+        <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '36px', height: '36px', borderRadius: '10px',
+              background: '#C9848A12', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <Bell size={17} color="#C9848A" />
+            </div>
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: 500, color: '#2D2D2D', margin: 0 }}>Enable Notifications</p>
+              <p style={{ fontSize: '12px', color: '#9ca3af', margin: '2px 0 0' }}>
+                Order &amp; payment reminders
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleToggleNotif}
+            disabled={!notifSupported}
+            aria-pressed={notifOn}
+            style={{
+              width: '48px', height: '28px', borderRadius: '999px',
+              border: 'none', position: 'relative', flexShrink: 0,
+              background: notifOn ? '#C9848A' : '#e5e0db',
+              cursor: notifSupported ? 'pointer' : 'not-allowed',
+              opacity: notifSupported ? 1 : 0.5,
+              boxShadow: notifOn ? '0 2px 8px #C9848A44' : 'none',
+              transition: 'background 0.15s',
+            }}
+          >
+            <span style={{
+              position: 'absolute', top: '3px', left: notifOn ? '23px' : '3px',
+              width: '22px', height: '22px', borderRadius: '50%',
+              background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+              transition: 'left 0.15s',
+            }} />
+          </button>
+        </div>
+
+        <div style={{ padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f3f0ed' }}>
+          <span style={{ fontSize: '14px', color: '#2D2D2D' }}>Test Notification</span>
+          <button
+            onClick={handleTestNotif}
+            disabled={!notifSupported}
+            style={{
+              padding: '8px 16px', borderRadius: '10px',
+              background: '#C9848A', color: '#fff',
+              border: 'none', fontSize: '13px', fontWeight: 600,
+              cursor: notifSupported ? 'pointer' : 'not-allowed',
+              opacity: notifSupported ? 1 : 0.5,
+              boxShadow: '0 3px 10px #C9848A44',
+            }}
+          >
+            Send Test
+          </button>
+        </div>
+
+        {(notifMsg || !notifSupported) && (
+          <p style={{ padding: '0 20px 14px', fontSize: '12px', color: '#9ca3af', margin: 0 }}>
+            {notifSupported ? notifMsg : 'Notifications are not supported on this device.'}
+          </p>
+        )}
       </div>
 
       {/* App info section */}
