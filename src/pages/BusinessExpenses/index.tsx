@@ -10,10 +10,11 @@ import { createNextRecurringExpense } from './recurring'
 import { useSyncVersion, useSyncActions } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
-import { todayPH, daysFromNowPH } from '../../lib/dateUtils'
+import DateFilterDropdown, { dateFilterRange } from '../../components/DateFilterDropdown'
+import type { DateFilterValue } from '../../components/DateFilterDropdown'
+import { todayPH } from '../../lib/dateUtils'
 
 type ListTab = 'active' | 'monthly' | 'instant' | 'history'
-type HistoryFilter = 'today' | 'yesterday' | '7days' | 'range'
 
 const PAGE_SIZE = 20
 
@@ -46,10 +47,7 @@ function resolveType(e: BusinessExpense): 'one-time' | 'monthly' | 'instant' {
   return 'one-time'
 }
 
-function yesterdayStr() { return daysFromNowPH(-1) }
-function daysAgoStr(n: number) { return daysFromNowPH(-n) }
-
-let _beNav: { tab: ListTab; historyFilter: HistoryFilter; rangeFrom: string; rangeTo: string } | null = null
+let _beNav: { tab: ListTab; historyFilter: DateFilterValue } | null = null
 
 export default function BusinessExpenses() {
   const syncVersion = useSyncVersion()
@@ -59,9 +57,7 @@ export default function BusinessExpenses() {
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<ListTab>(() => _beNav?.tab ?? 'active')
   const [search, setSearch] = useState('')
-  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>(() => _beNav?.historyFilter ?? '7days')
-  const [rangeFrom, setRangeFrom] = useState(() => _beNav?.rangeFrom ?? '')
-  const [rangeTo, setRangeTo] = useState(() => _beNav?.rangeTo ?? '')
+  const [historyFilter, setHistoryFilter] = useState<DateFilterValue>(() => _beNav?.historyFilter ?? '7days')
   const [activeSwipeId, setActiveSwipeId] = useState<number | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -86,8 +82,8 @@ export default function BusinessExpenses() {
   }
 
   useEffect(() => { load() }, [syncVersion])
-  useEffect(() => { _beNav = { tab, historyFilter, rangeFrom, rangeTo } }, [tab, historyFilter, rangeFrom, rangeTo])
-  useEffect(() => { setPage(1) }, [tab, search, historyFilter, rangeFrom, rangeTo])
+  useEffect(() => { _beNav = { tab, historyFilter } }, [tab, historyFilter])
+  useEffect(() => { setPage(1) }, [tab, search, historyFilter])
 
   async function markPaid(expense: BusinessExpense) {
     const paidAmt = expense.amount
@@ -164,29 +160,15 @@ export default function BusinessExpenses() {
     if (tab === 'instant') return type === 'instant'
     if (tab === 'history') {
       if (!e.isPaid) return false
-      if (historyFilter === 'today') return e.dueDate === todayStr()
-      if (historyFilter === 'yesterday') return e.dueDate === yesterdayStr()
-      if (historyFilter === '7days') return e.dueDate >= daysAgoStr(7)
-      if (historyFilter === 'range') {
-        if (rangeFrom && e.dueDate < rangeFrom) return false
-        if (rangeTo && e.dueDate > rangeTo) return false
-        return true
-      }
-      return true
+      const { from, to } = dateFilterRange(historyFilter)
+      return e.dueDate >= from && e.dueDate <= to
     }
     return true
-  }), [expenses, q, tab, historyFilter, rangeFrom, rangeTo])
+  }), [expenses, q, tab, historyFilter])
 
   const historyTotal = tab === 'history' ? filtered.reduce((s, e) => s + e.amount, 0) : 0
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-
-  const historyPills: { key: HistoryFilter; label: string }[] = [
-    { key: 'today', label: 'Today' },
-    { key: 'yesterday', label: 'Yesterday' },
-    { key: '7days', label: '7 Days' },
-    { key: 'range', label: '📅 Range' },
-  ]
 
   const totalUnpaid = useMemo(() => expenses.filter(e => !e.isPaid).reduce((s, e) => s + e.amount, 0), [expenses])
   const unpaidCount = useMemo(() => expenses.filter(e => !e.isPaid).length, [expenses])
@@ -274,42 +256,10 @@ export default function BusinessExpenses() {
           })}
         </div>
 
-        {/* History filters */}
+        {/* History filter */}
         {tab === 'history' && (
           <div style={{ marginTop: '8px' }}>
-            <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none' }}>
-              {historyPills.map(p => (
-                <button
-                  key={p.key}
-                  onClick={() => setHistoryFilter(p.key)}
-                  style={{
-                    padding: '5px 12px', borderRadius: '16px', border: 'none',
-                    fontSize: '12px', fontWeight: historyFilter === p.key ? 700 : 500,
-                    cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                    background: historyFilter === p.key ? '#2D2D2D' : '#fff',
-                    color: historyFilter === p.key ? '#fff' : '#6b7280',
-                  }}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-            {historyFilter === 'range' && (
-              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                <input
-                  type="date"
-                  value={rangeFrom}
-                  onChange={e => setRangeFrom(e.target.value)}
-                  style={{ flex: 1, padding: '8px 10px', border: '1.5px solid #e5e0db', borderRadius: '8px', fontSize: '13px', color: '#2D2D2D', background: '#fff', outline: 'none', minWidth: 0 }}
-                />
-                <input
-                  type="date"
-                  value={rangeTo}
-                  onChange={e => setRangeTo(e.target.value)}
-                  style={{ flex: 1, padding: '8px 10px', border: '1.5px solid #e5e0db', borderRadius: '8px', fontSize: '13px', color: '#2D2D2D', background: '#fff', outline: 'none', minWidth: 0 }}
-                />
-              </div>
-            )}
+            <DateFilterDropdown value={historyFilter} onChange={setHistoryFilter} accent="#7A9E7E" />
           </div>
         )}
       </div>
@@ -333,7 +283,7 @@ export default function BusinessExpenses() {
               {tab === 'active' ? 'No unpaid bills.' :
                tab === 'monthly' ? 'No monthly bills yet.' :
                tab === 'instant' ? 'No instant purchases yet.' :
-               'No paid expenses in this month.'}
+               'No paid expenses in this period.'}
             </p>
           </div>
         )}
