@@ -1,10 +1,20 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Download, TrendingUp, TrendingDown, ArrowRight } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Download, TrendingUp, TrendingDown, ArrowRight, Loader2, List } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment, BusinessExpense } from '../../db/db'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import { todayPH, toDateStrPH } from '../../lib/dateUtils'
+import BreakdownSheet, { type BreakdownRow } from './BreakdownSheet'
+
+const dayLabel = (d: string) =>
+  new Date(d.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
+
+const PAYMENT_TYPE_LABEL: Record<Payment['type'], string> = {
+  deposit: 'Deposit',
+  balance: 'Balance Payment',
+  full: 'Full Payment',
+}
 
 type Period = 'daily' | 'weekly' | 'monthly'
 
@@ -55,6 +65,19 @@ function getLast6Months() {
     const start = toDateStrPH(d)
     const end = toDateStrPH(new Date(d.getFullYear(), d.getMonth() + 1, 0))
     return { label: d.toLocaleDateString('en-PH', { month: 'short' }), start, end }
+  })
+}
+
+function getMonthOptions(count = 12) {
+  const now = new Date()
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    return {
+      value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+      label: d.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' }),
+      start: toDateStrPH(d),
+      end: toDateStrPH(new Date(d.getFullYear(), d.getMonth() + 1, 0)),
+    }
   })
 }
 
@@ -128,6 +151,10 @@ export default function RevenueSummary() {
   const [error, setError] = useState<string | null>(null)
   const [period, setPeriod] = useState<Period>('monthly')
   const [exporting, setExporting] = useState(false)
+  const monthOptions = useMemo(() => getMonthOptions(12), [])
+  const [monthValue, setMonthValue] = useState(monthOptions[0].value)
+  const [filtering, setFiltering] = useState(false)
+  const didMount = useRef(false)
 
   useEffect(() => {
     Promise.all([
@@ -145,9 +172,23 @@ export default function RevenueSummary() {
       .finally(() => setLoading(false))
   }, [syncVersion])
 
-  const range = getPeriodRange(period)
+  const range = useMemo(() => {
+    if (period === 'monthly') {
+      const m = monthOptions.find(o => o.value === monthValue) ?? monthOptions[0]
+      return { start: m.start, end: m.end }
+    }
+    return getPeriodRange(period)
+  }, [period, monthValue, monthOptions])
 
-  const { revenue, txCount, depositTotal, paymentTotal, expenseTotal, paidExpenses, net, maxBar, periodExpenses } = useMemo(() => {
+  // Brief loading animation whenever a filter changes
+  useEffect(() => {
+    if (!didMount.current) { didMount.current = true; return }
+    setFiltering(true)
+    const t = setTimeout(() => setFiltering(false), 350)
+    return () => clearTimeout(t)
+  }, [period, monthValue])
+
+  const { revenue, txCount, depositTotal, paymentTotal, expenseTotal, paidExpenses, net, maxBar, periodExpenses, depositOrders, rangePayments } = useMemo(() => {
     const pd = orders.filter(o => inRange(o.orderDate, range.start, range.end) && o.depositPaid > 0)
     const dt = pd.reduce((s, o) => s + o.depositPaid, 0)
     const pp = payments.filter(p => inRange(p.paidAt, range.start, range.end))
@@ -157,7 +198,8 @@ export default function RevenueSummary() {
     const et = pe.reduce((s, e) => s + e.amount, 0)
     const paid = pe.filter(e => e.isPaid).reduce((s, e) => s + e.amount, 0)
     return {
-      periodExpenses: pe, depositTotal: dt, paymentTotal: pt,
+      periodExpenses: pe, depositOrders: pd, rangePayments: pp,
+      depositTotal: dt, paymentTotal: pt,
       revenue: rev, txCount: pd.length + pp.length,
       expenseTotal: et, paidExpenses: paid,
       net: rev - et, maxBar: Math.max(rev, et, 1),
@@ -175,6 +217,39 @@ export default function RevenueSummary() {
   }, [orders, payments, businessExpenses])
 
   const periodLabel = getPeriodLabel(period, range)
+
+  const [sheet, setSheet] = useState<null | 'income' | 'expenses'>(null)
+
+  const incomeRows = useMemo<BreakdownRow[]>(() => {
+    const deposits = depositOrders.map(o => ({
+      id: `d-${o.id}`,
+      title: o.customerName,
+      subtitle: `${dayLabel(o.orderDate)} · Deposit`,
+      date: o.orderDate,
+      amount: o.depositPaid,
+      amountColor: '#7A9E7E',
+    }))
+    const pays = rangePayments.map(p => ({
+      id: `p-${p.id}`,
+      title: orders.find(o => o.id === p.orderId)?.customerName ?? 'Unknown',
+      subtitle: `${dayLabel(p.paidAt)} · ${PAYMENT_TYPE_LABEL[p.type]}`,
+      date: p.paidAt,
+      amount: p.amount,
+      amountColor: '#7A9E7E',
+    }))
+    return [...deposits, ...pays]
+  }, [depositOrders, rangePayments, orders])
+
+  const expenseRows = useMemo<BreakdownRow[]>(() =>
+    periodExpenses.map(e => ({
+      id: `e-${e.id}`,
+      title: e.name,
+      subtitle: `${dayLabel(e.dueDate)} · ${e.category}${e.isPaid ? '' : ' · Unpaid'}`,
+      date: e.dueDate,
+      amount: e.amount,
+      amountColor: e.isPaid ? '#2D2D2D' : '#E8A838',
+    })),
+  [periodExpenses])
 
   async function handleExport() {
     setExporting(true)
@@ -224,7 +299,32 @@ export default function RevenueSummary() {
           })}
         </div>
 
-        <p style={{ fontSize: '13px', color: '#9ca3af', marginTop: '10px' }}>{periodLabel}</p>
+        {period === 'monthly' ? (
+          <div style={{ position: 'relative', marginTop: '12px', maxWidth: '200px' }}>
+            <select
+              value={monthValue}
+              onChange={e => setMonthValue(e.target.value)}
+              style={{
+                appearance: 'none', WebkitAppearance: 'none',
+                width: '100%', padding: '10px 40px 10px 14px',
+                borderRadius: '12px', border: '1px solid #e5e0db',
+                background: '#fff', color: '#2D2D2D',
+                fontSize: '14px', fontWeight: 600, cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+              }}
+            >
+              {monthOptions.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            <ArrowRight
+              size={16} color="#9ca3af"
+              style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%) rotate(90deg)', pointerEvents: 'none' }}
+            />
+          </div>
+        ) : (
+          <p style={{ fontSize: '13px', color: '#9ca3af', marginTop: '10px' }}>{periodLabel}</p>
+        )}
       </div>
 
       {loading && <p style={{ textAlign: 'center', color: '#9ca3af', padding: '40px 0', fontSize: '14px' }}>Loading...</p>}
@@ -236,13 +336,32 @@ export default function RevenueSummary() {
       )}
 
       {!loading && !error && (
-        <div style={{ padding: '14px 16px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ position: 'relative', padding: '14px 16px 0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+          {filtering && (
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 5,
+              background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(1px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Loader2 size={34} color="#C9848A" className="animate-spin" />
+            </div>
+          )}
 
           {/* Revenue card */}
           <div style={{ background: '#fff', borderRadius: '14px', padding: '16px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-              <TrendingUp size={18} color="#7A9E7E" />
-              <span style={{ fontSize: '14px', fontWeight: 700, color: '#6b7280' }}>Income Collected</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <TrendingUp size={18} color="#7A9E7E" />
+                <span style={{ fontSize: '14px', fontWeight: 700, color: '#6b7280' }}>Income Collected</span>
+              </div>
+              <button
+                onClick={() => setSheet('income')}
+                aria-label="View income breakdown"
+                style={{ background: '#C9848A18', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+              >
+                <List size={16} color="#C9848A" />
+              </button>
             </div>
             <p style={{ fontSize: '32px', fontWeight: 800, color: '#2D2D2D', letterSpacing: '-0.5px' }}>{fmt(revenue)}</p>
             <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6', display: 'flex', gap: '20px' }}>
@@ -264,9 +383,18 @@ export default function RevenueSummary() {
 
           {/* Expenses card */}
           <div style={{ background: '#fff', borderRadius: '14px', padding: '16px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-              <TrendingDown size={18} color="#E8A838" />
-              <span style={{ fontSize: '14px', fontWeight: 700, color: '#6b7280' }}>Business Expenses</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <TrendingDown size={18} color="#E8A838" />
+                <span style={{ fontSize: '14px', fontWeight: 700, color: '#6b7280' }}>Business Expenses</span>
+              </div>
+              <button
+                onClick={() => setSheet('expenses')}
+                aria-label="View expense breakdown"
+                style={{ background: '#C9848A18', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+              >
+                <List size={16} color="#C9848A" />
+              </button>
             </div>
             <p style={{ fontSize: '32px', fontWeight: 800, color: '#2D2D2D', letterSpacing: '-0.5px' }}>{fmt(expenseTotal)}</p>
             <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6', display: 'flex', gap: '20px' }}>
@@ -385,6 +513,25 @@ export default function RevenueSummary() {
           </p>
         </div>
       )}
+
+      <BreakdownSheet
+        open={sheet === 'income'}
+        onClose={() => setSheet(null)}
+        title="Income Collected"
+        subtitle={periodLabel}
+        total={revenue}
+        accent="#7A9E7E"
+        rows={incomeRows}
+      />
+      <BreakdownSheet
+        open={sheet === 'expenses'}
+        onClose={() => setSheet(null)}
+        title="Business Expenses"
+        subtitle={periodLabel}
+        total={expenseTotal}
+        accent="#E8A838"
+        rows={expenseRows}
+      />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, Plus } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order, Payment } from '../../db/db'
 import OrderForm from './OrderForm'
@@ -49,7 +49,22 @@ function formatTime(t: string) {
 const fmt = (n: number) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2 })
 
 type MainView = 'log' | 'advance' | 'history'
-type HistoryFilter = 'today' | 'yesterday' | '7days' | 'range'
+type HistoryFilter = 'today' | 'yesterday' | '7days' | `m:${string}`
+type SalesFilter = 'all' | 'sm' | 'store'
+
+const isSmSales = (o: Order) => o.customerName.trim().toLowerCase().includes('sm sales')
+
+function historyMonths(count = 12): { value: HistoryFilter; label: string }[] {
+  const [y, m] = todayPH().split('-').map(Number) // m = 1..12
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(y, m - 1 - i, 1)
+    return {
+      value: `m:${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` as HistoryFilter,
+      label: d.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' }),
+    }
+  })
+}
+const currentMonthValue = (): HistoryFilter => `m:${todayPH().slice(0, 7)}`
 
 let _nav: {
   mainView: MainView
@@ -58,8 +73,7 @@ let _nav: {
   viewYear: number
   viewMonth: number
   historyFilter: HistoryFilter
-  rangeFrom: string
-  rangeTo: string
+  salesFilter: SalesFilter
 } | null = null
 
 export default function OrdersCalendar() {
@@ -94,9 +108,9 @@ export default function OrdersCalendar() {
   const [activeLogSwipeId, setActiveLogSwipeId] = useState<number | null>(null)
 
   // History tab
-  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>(() => _nav?.historyFilter ?? '7days')
-  const [rangeFrom, setRangeFrom] = useState(() => _nav?.rangeFrom ?? '')
-  const [rangeTo, setRangeTo] = useState(() => _nav?.rangeTo ?? '')
+  const [historyFilter, setHistoryFilter] = useState<HistoryFilter>(() => _nav?.historyFilter ?? currentMonthValue())
+  const [salesFilter, setSalesFilter] = useState<SalesFilter>(() => _nav?.salesFilter ?? 'all')
+  const monthOptions = useMemo(() => historyMonths(12), [])
   const [historyPage, setHistoryPage] = useState(1)
   const [activeHistorySwipeId, setActiveHistorySwipeId] = useState<number | null>(null)
 
@@ -122,9 +136,9 @@ export default function OrdersCalendar() {
 
   useEffect(() => { load() }, [syncVersion])
   useEffect(() => {
-    _nav = { mainView, logDate, selectedDate, viewYear: year, viewMonth: month, historyFilter, rangeFrom, rangeTo }
-  }, [mainView, logDate, selectedDate, year, month, historyFilter, rangeFrom, rangeTo])
-  useEffect(() => { setHistoryPage(1) }, [historyFilter, rangeFrom, rangeTo])
+    _nav = { mainView, logDate, selectedDate, viewYear: year, viewMonth: month, historyFilter, salesFilter }
+  }, [mainView, logDate, selectedDate, year, month, historyFilter, salesFilter])
+  useEffect(() => { setHistoryPage(1) }, [historyFilter, salesFilter])
 
   // Log tab: fulfilled orders for logDate with computed payment totals
   const logItems = useMemo(() => {
@@ -138,28 +152,27 @@ export default function OrdersCalendar() {
     return orders
       .filter(o => {
         if (!o.isDone) return false
-        if (historyFilter === 'today') return o.dueDate === todayStr()
-        if (historyFilter === 'yesterday') return o.dueDate === yesterdayStr()
-        if (historyFilter === '7days') return o.dueDate >= daysAgoStr(7)
-        if (historyFilter === 'range') {
-          if (rangeFrom && o.dueDate < rangeFrom) return false
-          if (rangeTo && o.dueDate > rangeTo) return false
-          return true
-        }
+        let dateOk = true
+        if (historyFilter === 'today') dateOk = o.dueDate === todayStr()
+        else if (historyFilter === 'yesterday') dateOk = o.dueDate === yesterdayStr()
+        else if (historyFilter === '7days') dateOk = o.dueDate >= daysAgoStr(7)
+        else if (historyFilter.startsWith('m:')) dateOk = o.dueDate.startsWith(historyFilter.slice(2))
+        if (!dateOk) return false
+        if (salesFilter === 'sm') return isSmSales(o)
+        if (salesFilter === 'store') return !isSmSales(o)
         return true
       })
       .sort((a, b) => b.dueDate.localeCompare(a.dueDate) || (b.time ?? '').localeCompare(a.time ?? ''))
-  }, [orders, historyFilter, rangeFrom, rangeTo])
+  }, [orders, historyFilter, salesFilter])
 
   const historyTotal = useMemo(() => historyItems.reduce((s, o) => s + o.totalAmount, 0), [historyItems])
   const historyTotalPages = Math.max(1, Math.ceil(historyItems.length / PAGE_SIZE))
   const historyPaginated = historyItems.slice((historyPage - 1) * PAGE_SIZE, historyPage * PAGE_SIZE)
 
-  const historyPills: { key: HistoryFilter; label: string }[] = [
-    { key: 'today', label: 'Today' },
-    { key: 'yesterday', label: 'Yesterday' },
-    { key: '7days', label: '7 Days' },
-    { key: 'range', label: '📅 Range' },
+  const salesPills: { key: SalesFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'sm', label: 'SM Sales' },
+    { key: 'store', label: 'Store Sales' },
   ]
 
   // Calendar: map dueDate → pending (undone) orders only
@@ -590,40 +603,55 @@ export default function OrdersCalendar() {
       {mainView === 'history' && (
         <div style={{ flex: 1, padding: '12px 16px 0' }}>
 
-          {/* Filter pills */}
+          {/* Date filter dropdown */}
+          <div style={{ position: 'relative', marginBottom: '10px', maxWidth: '200px' }}>
+            <select
+              value={historyFilter}
+              onChange={e => setHistoryFilter(e.target.value as HistoryFilter)}
+              style={{
+                appearance: 'none', WebkitAppearance: 'none',
+                width: '100%', padding: '10px 40px 10px 14px',
+                borderRadius: '12px', border: '1px solid #e5e0db',
+                background: '#fff', color: '#2D2D2D',
+                fontSize: '14px', fontWeight: 600, cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+              }}
+            >
+              <optgroup label="Quick">
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="7days">Last 7 Days</option>
+              </optgroup>
+              <optgroup label="By Month">
+                {monthOptions.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </optgroup>
+            </select>
+            <ChevronDown
+              size={18} color="#9ca3af"
+              style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+            />
+          </div>
+
+          {/* Sales channel pills */}
           <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none', marginBottom: '10px' }}>
-            {historyPills.map(p => (
+            {salesPills.map(p => (
               <button
                 key={p.key}
-                onClick={() => setHistoryFilter(p.key)}
+                onClick={() => setSalesFilter(p.key)}
                 style={{
                   padding: '5px 12px', borderRadius: '16px', border: 'none',
-                  fontSize: '12px', fontWeight: historyFilter === p.key ? 700 : 500,
+                  fontSize: '12px', fontWeight: salesFilter === p.key ? 700 : 500,
                   cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                  background: historyFilter === p.key ? '#2D2D2D' : '#fff',
-                  color: historyFilter === p.key ? '#fff' : '#6b7280',
+                  background: salesFilter === p.key ? '#2D2D2D' : '#fff',
+                  color: salesFilter === p.key ? '#fff' : '#6b7280',
                 }}
               >
                 {p.label}
               </button>
             ))}
           </div>
-          {historyFilter === 'range' && (
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
-              <input
-                type="date"
-                value={rangeFrom}
-                onChange={e => setRangeFrom(e.target.value)}
-                style={{ flex: 1, padding: '8px 10px', border: '1.5px solid #e5e0db', borderRadius: '8px', fontSize: '13px', color: '#2D2D2D', background: '#fff', outline: 'none', minWidth: 0 }}
-              />
-              <input
-                type="date"
-                value={rangeTo}
-                onChange={e => setRangeTo(e.target.value)}
-                style={{ flex: 1, padding: '8px 10px', border: '1.5px solid #e5e0db', borderRadius: '8px', fontSize: '13px', color: '#2D2D2D', background: '#fff', outline: 'none', minWidth: 0 }}
-              />
-            </div>
-          )}
 
           {loading && <p style={{ textAlign: 'center', color: '#9ca3af', padding: '24px 0', fontSize: '14px' }}>Loading...</p>}
           {error && <div style={{ background: '#fee2e2', color: '#991b1b', borderRadius: '12px', padding: '14px 16px', fontSize: '14px', marginBottom: '12px' }}>{error}</div>}
