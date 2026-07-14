@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react'
 import { todayPH, daysFromNowPH } from '../lib/dateUtils'
 
-export type DateFilterValue = 'today' | 'yesterday' | '3days' | '7days' | '15days' | '30days' | `d:${string}`
+export type DateFilterValue = 'today' | 'yesterday' | '3days' | '7days' | '15days' | '30days' | `d:${string}` | `r:${string}`
 
 const PRESETS: { key: DateFilterValue; label: string }[] = [
   { key: 'today', label: 'Today' },
@@ -14,6 +14,7 @@ const PRESETS: { key: DateFilterValue; label: string }[] = [
 ]
 
 export function dateFilterRange(v: DateFilterValue): { from: string; to: string } {
+  if (v.startsWith('r:')) { const [from, to] = v.slice(2).split(':'); return { from, to } }
   if (v.startsWith('d:')) { const d = v.slice(2); return { from: d, to: d } }
   if (v === 'today') { const t = todayPH(); return { from: t, to: t } }
   if (v === 'yesterday') { const y = daysFromNowPH(-1); return { from: y, to: y } }
@@ -24,7 +25,11 @@ export function dateFilterRange(v: DateFilterValue): { from: string; to: string 
 const toStr = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
+const fmtShort = (d: string) =>
+  new Date(d + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
+
 function labelFor(v: DateFilterValue): string {
+  if (v.startsWith('r:')) { const [from, to] = v.slice(2).split(':'); return `${fmtShort(from)} – ${fmtShort(to)}` }
   if (v.startsWith('d:'))
     return new Date(v.slice(2) + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
   return PRESETS.find(p => p.key === v)?.label ?? v
@@ -38,6 +43,7 @@ export default function DateFilterDropdown({ value, onChange, accent }: {
   accent: string
 }) {
   const [open, setOpen] = useState(false)
+  const [pendingStart, setPendingStart] = useState<string | null>(null)
   const [view, setView] = useState(() => {
     const [y, m] = dateFilterRange(value).to.split('-').map(Number)
     return { y, m: m - 1 }
@@ -49,13 +55,22 @@ export default function DateFilterDropdown({ value, onChange, accent }: {
     if (!open) {
       const [y, m] = dateFilterRange(value).to.split('-').map(Number)
       setView({ y, m: m - 1 })
+      setPendingStart(null)
     }
     setOpen(o => !o)
   }
 
   function pick(v: DateFilterValue) {
     onChange(v)
+    setPendingStart(null)
     setOpen(false)
+  }
+
+  function pickDay(d: string) {
+    if (!pendingStart) { setPendingStart(d); return }
+    if (d === pendingStart) { pick(`d:${d}`); return }
+    const [from, to] = d < pendingStart ? [d, pendingStart] : [pendingStart, d]
+    pick(`r:${from}:${to}`)
   }
 
   const gridStart = new Date(view.y, view.m, 1)
@@ -83,7 +98,7 @@ export default function DateFilterDropdown({ value, onChange, accent }: {
 
       {open && (
         <>
-          <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+          <div onClick={() => { setOpen(false); setPendingStart(null) }} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
           <div style={{
             position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 50,
             display: 'flex', gap: '4px', width: 'min(340px, calc(100vw - 32px))',
@@ -135,12 +150,12 @@ export default function DateFilterDropdown({ value, onChange, accent }: {
                   <span key={w} style={{ fontSize: '9px', fontWeight: 700, color: '#9ca3af', textAlign: 'center', padding: '2px 0' }}>{w}</span>
                 ))}
                 {cells.map(c => {
-                  const inRange = c.str >= range.from && c.str <= range.to
-                  const selected = c.str === range.to || c.str === range.from
+                  const inRange = !pendingStart && c.str >= range.from && c.str <= range.to
+                  const selected = pendingStart ? c.str === pendingStart : (c.str === range.to || c.str === range.from)
                   return (
                     <button
                       key={c.str}
-                      onClick={() => pick(`d:${c.str}`)}
+                      onClick={() => pickDay(c.str)}
                       style={{
                         aspectRatio: '1', border: 'none', borderRadius: '7px', cursor: 'pointer',
                         fontSize: '11px', fontWeight: selected ? 700 : 500, padding: 0,
@@ -153,6 +168,11 @@ export default function DateFilterDropdown({ value, onChange, accent }: {
                   )
                 })}
               </div>
+              {pendingStart && (
+                <p style={{ fontSize: '10px', color: '#9ca3af', textAlign: 'center', margin: '6px 0 0' }}>
+                  Tap another date to set a range
+                </p>
+              )}
             </div>
           </div>
         </>
