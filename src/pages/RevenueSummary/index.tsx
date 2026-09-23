@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Download, TrendingUp, TrendingDown, ArrowRight, Loader2, List } from 'lucide-react'
 import { db } from '../../db/db'
-import type { Order, Payment, BusinessExpense } from '../../db/db'
+import type { Order, Payment, BusinessExpense, PersonalExpense } from '../../db/db'
 import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import { todayPH, toDateStrPH } from '../../lib/dateUtils'
@@ -147,6 +147,7 @@ export default function RevenueSummary() {
   const [orders, setOrders] = useState<Order[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
   const [businessExpenses, setBusinessExpenses] = useState<BusinessExpense[]>([])
+  const [personalExpenses, setPersonalExpenses] = useState<PersonalExpense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [period, setPeriod] = useState<Period>('monthly')
@@ -161,11 +162,13 @@ export default function RevenueSummary() {
       db.orders.toArray(),
       db.payments.toArray(),
       db.businessExpenses.toArray(),
+      db.personalExpenses.toArray(),
     ])
-      .then(([o, p, b]) => {
+      .then(([o, p, b, pe]) => {
         setOrders(o)
         setPayments(p)
         setBusinessExpenses(b)
+        setPersonalExpenses(pe)
         setError(null)
       })
       .catch(err => setError(err.message ?? 'Failed to load'))
@@ -188,7 +191,7 @@ export default function RevenueSummary() {
     return () => clearTimeout(t)
   }, [period, monthValue])
 
-  const { revenue, txCount, depositTotal, paymentTotal, expenseTotal, paidExpenses, net, maxBar, periodExpenses, depositOrders, rangePayments } = useMemo(() => {
+  const { revenue, txCount, depositTotal, paymentTotal, expenseTotal, paidExpenses, personalTotal, paidPersonal, net, maxBar, periodExpenses, periodPersonal, depositOrders, rangePayments } = useMemo(() => {
     const pd = orders.filter(o => inRange(o.orderDate, range.start, range.end) && o.depositPaid > 0)
     const dt = pd.reduce((s, o) => s + o.depositPaid, 0)
     const pp = payments.filter(p => inRange(p.paidAt, range.start, range.end))
@@ -197,28 +200,32 @@ export default function RevenueSummary() {
     const pe = businessExpenses.filter(e => inRange(e.dueDate, range.start, range.end))
     const et = pe.reduce((s, e) => s + e.amount, 0)
     const paid = pe.filter(e => e.isPaid).reduce((s, e) => s + e.amount, 0)
+    const ppe = personalExpenses.filter(e => inRange(e.dueDate, range.start, range.end))
+    const pet = ppe.reduce((s, e) => s + e.amount, 0)
+    const pePaid = ppe.filter(e => e.isPaid).reduce((s, e) => s + e.amount, 0)
     return {
-      periodExpenses: pe, depositOrders: pd, rangePayments: pp,
+      periodExpenses: pe, periodPersonal: ppe, depositOrders: pd, rangePayments: pp,
       depositTotal: dt, paymentTotal: pt,
       revenue: rev, txCount: pd.length + pp.length,
       expenseTotal: et, paidExpenses: paid,
-      net: rev - et, maxBar: Math.max(rev, et, 1),
+      personalTotal: pet, paidPersonal: pePaid,
+      net: rev - et - pet, maxBar: Math.max(rev, et, pet, 1),
     }
-  }, [orders, payments, businessExpenses, range.start, range.end])
+  }, [orders, payments, businessExpenses, personalExpenses, range.start, range.end])
 
   const { trendMonths, trendMax } = useMemo(() => {
     const months = getLast6Months().map(m => {
       const rev = orders.filter(o => inRange(o.orderDate, m.start, m.end) && o.depositPaid > 0).reduce((s, o) => s + o.depositPaid, 0)
         + payments.filter(p => inRange(p.paidAt, m.start, m.end)).reduce((s, p) => s + p.amount, 0)
-      const exp = businessExpenses.filter(e => inRange(e.dueDate, m.start, m.end)).reduce((s, e) => s + e.amount, 0)
+      const exp = [...businessExpenses, ...personalExpenses].filter(e => inRange(e.dueDate, m.start, m.end)).reduce((s, e) => s + e.amount, 0)
       return { label: m.label, rev, exp }
     })
     return { trendMonths: months, trendMax: Math.max(...months.map(m => Math.max(m.rev, m.exp)), 1) }
-  }, [orders, payments, businessExpenses])
+  }, [orders, payments, businessExpenses, personalExpenses])
 
   const periodLabel = getPeriodLabel(period, range)
 
-  const [sheet, setSheet] = useState<null | 'income' | 'expenses'>(null)
+  const [sheet, setSheet] = useState<null | 'income' | 'expenses' | 'personal'>(null)
 
   const incomeRows = useMemo<BreakdownRow[]>(() => {
     const deposits = depositOrders.map(o => ({
@@ -240,16 +247,17 @@ export default function RevenueSummary() {
     return [...deposits, ...pays]
   }, [depositOrders, rangePayments, orders])
 
-  const expenseRows = useMemo<BreakdownRow[]>(() =>
-    periodExpenses.map(e => ({
+  const toExpenseRows = (list: (BusinessExpense | PersonalExpense)[]): BreakdownRow[] =>
+    list.map(e => ({
       id: `e-${e.id}`,
       title: e.name,
       subtitle: `${dayLabel(e.dueDate)} · ${e.category}${e.isPaid ? '' : ' · Unpaid'}`,
       date: e.dueDate,
       amount: e.amount,
       amountColor: e.isPaid ? '#2D2D2D' : '#E8A838',
-    })),
-  [periodExpenses])
+    }))
+  const expenseRows = useMemo(() => toExpenseRows(periodExpenses), [periodExpenses])
+  const personalRows = useMemo(() => toExpenseRows(periodPersonal), [periodPersonal])
 
   async function handleExport() {
     setExporting(true)
@@ -413,6 +421,38 @@ export default function RevenueSummary() {
             </div>
           </div>
 
+          {/* Personal expenses card */}
+          <div style={{ background: '#fff', borderRadius: '14px', padding: '16px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <TrendingDown size={18} color="#C9848A" />
+                <span style={{ fontSize: '14px', fontWeight: 700, color: '#6b7280' }}>Personal Expenses</span>
+              </div>
+              <button
+                onClick={() => setSheet('personal')}
+                aria-label="View personal expense breakdown"
+                style={{ background: '#C9848A18', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+              >
+                <List size={16} color="#C9848A" />
+              </button>
+            </div>
+            <p style={{ fontSize: '32px', fontWeight: 800, color: '#2D2D2D', letterSpacing: '-0.5px' }}>{fmt(personalTotal)}</p>
+            <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6', display: 'flex', gap: '20px' }}>
+              <div>
+                <p style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>Paid</p>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: '#7A9E7E' }}>{fmt(paidPersonal)}</p>
+              </div>
+              <div>
+                <p style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>Unpaid</p>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: '#E8A838' }}>{fmt(personalTotal - paidPersonal)}</p>
+              </div>
+              <div style={{ marginLeft: 'auto' }}>
+                <p style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>Count</p>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D' }}>{periodPersonal.length}</p>
+              </div>
+            </div>
+          </div>
+
           {/* Net income card */}
           <div style={{
             background: net >= 0 ? '#7A9E7E18' : '#C9848A12',
@@ -425,7 +465,7 @@ export default function RevenueSummary() {
             </p>
 
             {/* Comparison bars */}
-            {(revenue > 0 || expenseTotal > 0) && (
+            {(revenue > 0 || expenseTotal > 0 || personalTotal > 0) && (
               <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{ fontSize: '11px', fontWeight: 600, color: '#7A9E7E', width: '60px', textAlign: 'right' }}>Income</span>
@@ -440,7 +480,7 @@ export default function RevenueSummary() {
                   <span style={{ fontSize: '11px', fontWeight: 700, color: '#2D2D2D', width: '70px' }}>{fmt(revenue)}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#E8A838', width: '60px', textAlign: 'right' }}>Expenses</span>
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#E8A838', width: '60px', textAlign: 'right' }}>Business</span>
                   <div style={{ flex: 1, height: '10px', background: '#e5e0db', borderRadius: '5px', overflow: 'hidden' }}>
                     <div style={{
                       height: '100%', borderRadius: '5px',
@@ -450,6 +490,18 @@ export default function RevenueSummary() {
                     }} />
                   </div>
                   <span style={{ fontSize: '11px', fontWeight: 700, color: '#2D2D2D', width: '70px' }}>{fmt(expenseTotal)}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#C9848A', width: '60px', textAlign: 'right' }}>Personal</span>
+                  <div style={{ flex: 1, height: '10px', background: '#e5e0db', borderRadius: '5px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%', borderRadius: '5px',
+                      background: '#C9848A',
+                      width: `${(personalTotal / maxBar) * 100}%`,
+                      transition: 'width 0.4s ease',
+                    }} />
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#2D2D2D', width: '70px' }}>{fmt(personalTotal)}</span>
                 </div>
               </div>
             )}
@@ -531,6 +583,15 @@ export default function RevenueSummary() {
         total={expenseTotal}
         accent="#E8A838"
         rows={expenseRows}
+      />
+      <BreakdownSheet
+        open={sheet === 'personal'}
+        onClose={() => setSheet(null)}
+        title="Personal Expenses"
+        subtitle={periodLabel}
+        total={personalTotal}
+        accent="#C9848A"
+        rows={personalRows}
       />
     </div>
   )

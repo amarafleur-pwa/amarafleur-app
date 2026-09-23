@@ -80,8 +80,9 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
     savingRef.current = true
     setSaving(true)
     const totalAmt = parseFloat(totalAmount) || 0
+    // Log orders are paid via a 'full' payment record — depositPaid must stay 0 or income double-counts
     const depositAmt = mode === 'log'
-      ? (isEdit ? totalAmt : 0)
+      ? 0
       : paymentType === 'partial'
         ? (parseFloat(depositPaid) || 0)
         : (isEdit ? order!.depositPaid : 0)
@@ -111,6 +112,10 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
     }
     if (isEdit) {
       await db.orders.update(order!.id!, { ...data, pendingSync: true })
+      const fullPmt = mode === 'log'
+        ? await db.payments.where('orderId').equals(order!.id!).filter(p => p.type === 'full').first()
+        : undefined
+      if (fullPmt) await db.payments.update(fullPmt.id!, { amount: totalAmt, paidAt: dueDate })
       onSaved()
       handleClose()
       if (navigator.onLine && order!.supabaseId) {
@@ -118,6 +123,10 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
         if (!error) {
           await db.orders.update(order!.id!, { pendingSync: false })
           mode === 'log' ? updateOrder(data, order!.supabaseId!) : updateAdvanceOrder(data, order!.supabaseId!)
+        }
+        if (fullPmt?.supabaseId) {
+          const { error: payErr } = await dbWrite('payments', 'update', { payload: { amount: totalAmt, paid_at: dueDate }, eq: { id: fullPmt.supabaseId } })
+          if (payErr) console.error('[OrderForm] log payment update failed', payErr)
         }
       }
     } else {
