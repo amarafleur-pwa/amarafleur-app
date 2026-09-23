@@ -186,13 +186,19 @@ export default function RevenueSummary() {
     return () => clearTimeout(t)
   }, [period, monthValue])
 
-  const { sales, smTotal, projected, salesOrders, expenseTotal, paidExpenses, personalTotal, paidPersonal, net, maxBar, periodExpenses, periodPersonal } = useMemo(() => {
-    // Sales = done orders by due date (matches Orders › History); Projected = cash received in range
+  const { sales, smTotal, cashReceived, advanceCash, salesOrders, expenseTotal, paidExpenses, personalTotal, paidPersonal, net, maxBar, periodExpenses, periodPersonal } = useMemo(() => {
+    // Sales = done orders by due date (matches Orders › History); Cash received = deposits + payments dated in range
     const so = orders.filter(o => o.isDone && inRange(o.dueDate, range.start, range.end))
     const st = so.reduce((s, o) => s + o.totalAmount, 0)
     const sm = so.filter(isSmSales).reduce((s, o) => s + o.totalAmount, 0)
-    const cash = orders.filter(o => inRange(o.orderDate, range.start, range.end)).reduce((s, o) => s + o.depositPaid, 0)
-      + payments.filter(p => inRange(p.paidAt, range.start, range.end)).reduce((s, p) => s + p.amount, 0)
+    const soIds = new Set(so.map(o => o.id))
+    const cashIn = [
+      ...orders.filter(o => inRange(o.orderDate, range.start, range.end)).map(o => ({ orderId: o.id, amount: o.depositPaid })),
+      ...payments.filter(p => inRange(p.paidAt, range.start, range.end)),
+    ]
+    const cash = cashIn.reduce((s, c) => s + c.amount, 0)
+    // Cash for orders not yet delivered in this period
+    const adv = cashIn.filter(c => !soIds.has(c.orderId)).reduce((s, c) => s + c.amount, 0)
     const pe = businessExpenses.filter(e => inRange(e.dueDate, range.start, range.end))
     const et = pe.reduce((s, e) => s + e.amount, 0)
     const paid = pe.filter(e => e.isPaid).reduce((s, e) => s + e.amount, 0)
@@ -201,7 +207,7 @@ export default function RevenueSummary() {
     const pePaid = ppe.filter(e => e.isPaid).reduce((s, e) => s + e.amount, 0)
     return {
       periodExpenses: pe, periodPersonal: ppe, salesOrders: so,
-      sales: st, smTotal: sm, projected: cash,
+      sales: st, smTotal: sm, cashReceived: cash, advanceCash: adv,
       expenseTotal: et, paidExpenses: paid,
       personalTotal: pet, paidPersonal: pePaid,
       net: st - et - pet, maxBar: Math.max(st, et, pet, 1),
@@ -367,9 +373,9 @@ export default function RevenueSummary() {
                 <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D' }}>{fmt(sales - smTotal)}</p>
               </div>
               <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                <p style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>Projected</p>
-                <p style={{ fontSize: '14px', fontWeight: 700, color: '#7A9E7E' }}>{fmt(projected)}</p>
-                <p style={{ fontSize: '10px', color: '#9ca3af' }}>cash received</p>
+                <p style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>Cash received</p>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: '#7A9E7E' }}>{fmt(cashReceived)}</p>
+                {advanceCash > 0 && <p style={{ fontSize: '10px', color: '#9ca3af' }}>{fmt(advanceCash)} for later orders</p>}
               </div>
             </div>
           </div>
