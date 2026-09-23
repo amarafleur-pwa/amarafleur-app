@@ -10,6 +10,7 @@ import { useSyncVersion, useSyncActions } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import SwipeableItem from '../../components/SwipeableItem'
 import { todayPH, daysFromNowPH } from '../../lib/dateUtils'
+import { isSmSales } from '../../lib/sales'
 
 const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
@@ -52,7 +53,6 @@ type MainView = 'log' | 'advance' | 'history'
 type HistoryFilter = 'today' | 'yesterday' | '7days' | `m:${string}`
 type SalesFilter = 'all' | 'sm' | 'store'
 
-const isSmSales = (o: Order) => o.customerName.trim().toLowerCase().includes('sm sales')
 
 function historyMonths(count = 12): { value: HistoryFilter; label: string }[] {
   const [y, m] = todayPH().split('-').map(Number) // m = 1..12

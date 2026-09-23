@@ -6,15 +6,10 @@ import { useSyncVersion } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
 import { todayPH, toDateStrPH } from '../../lib/dateUtils'
 import BreakdownSheet, { type BreakdownRow } from './BreakdownSheet'
+import { isSmSales } from '../../lib/sales'
 
 const dayLabel = (d: string) =>
   new Date(d.slice(0, 10) + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
-
-const PAYMENT_TYPE_LABEL: Record<Payment['type'], string> = {
-  deposit: 'Deposit',
-  balance: 'Balance Payment',
-  full: 'Full Payment',
-}
 
 type Period = 'daily' | 'weekly' | 'monthly'
 
@@ -191,12 +186,13 @@ export default function RevenueSummary() {
     return () => clearTimeout(t)
   }, [period, monthValue])
 
-  const { revenue, txCount, depositTotal, paymentTotal, expenseTotal, paidExpenses, personalTotal, paidPersonal, net, maxBar, periodExpenses, periodPersonal, depositOrders, rangePayments } = useMemo(() => {
-    const pd = orders.filter(o => inRange(o.orderDate, range.start, range.end) && o.depositPaid > 0)
-    const dt = pd.reduce((s, o) => s + o.depositPaid, 0)
-    const pp = payments.filter(p => inRange(p.paidAt, range.start, range.end))
-    const pt = pp.reduce((s, p) => s + p.amount, 0)
-    const rev = dt + pt
+  const { sales, smTotal, projected, salesOrders, expenseTotal, paidExpenses, personalTotal, paidPersonal, net, maxBar, periodExpenses, periodPersonal } = useMemo(() => {
+    // Sales = done orders by due date (matches Orders › History); Projected = cash received in range
+    const so = orders.filter(o => o.isDone && inRange(o.dueDate, range.start, range.end))
+    const st = so.reduce((s, o) => s + o.totalAmount, 0)
+    const sm = so.filter(isSmSales).reduce((s, o) => s + o.totalAmount, 0)
+    const cash = orders.filter(o => inRange(o.orderDate, range.start, range.end)).reduce((s, o) => s + o.depositPaid, 0)
+      + payments.filter(p => inRange(p.paidAt, range.start, range.end)).reduce((s, p) => s + p.amount, 0)
     const pe = businessExpenses.filter(e => inRange(e.dueDate, range.start, range.end))
     const et = pe.reduce((s, e) => s + e.amount, 0)
     const paid = pe.filter(e => e.isPaid).reduce((s, e) => s + e.amount, 0)
@@ -204,48 +200,37 @@ export default function RevenueSummary() {
     const pet = ppe.reduce((s, e) => s + e.amount, 0)
     const pePaid = ppe.filter(e => e.isPaid).reduce((s, e) => s + e.amount, 0)
     return {
-      periodExpenses: pe, periodPersonal: ppe, depositOrders: pd, rangePayments: pp,
-      depositTotal: dt, paymentTotal: pt,
-      revenue: rev, txCount: pd.length + pp.length,
+      periodExpenses: pe, periodPersonal: ppe, salesOrders: so,
+      sales: st, smTotal: sm, projected: cash,
       expenseTotal: et, paidExpenses: paid,
       personalTotal: pet, paidPersonal: pePaid,
-      net: rev - et - pet, maxBar: Math.max(rev, et, pet, 1),
+      net: st - et - pet, maxBar: Math.max(st, et, pet, 1),
     }
   }, [orders, payments, businessExpenses, personalExpenses, range.start, range.end])
 
   const { trendMonths, trendMax } = useMemo(() => {
     const months = getLast6Months().map(m => {
-      const rev = orders.filter(o => inRange(o.orderDate, m.start, m.end) && o.depositPaid > 0).reduce((s, o) => s + o.depositPaid, 0)
-        + payments.filter(p => inRange(p.paidAt, m.start, m.end)).reduce((s, p) => s + p.amount, 0)
+      const rev = orders.filter(o => o.isDone && inRange(o.dueDate, m.start, m.end)).reduce((s, o) => s + o.totalAmount, 0)
       const exp = [...businessExpenses, ...personalExpenses].filter(e => inRange(e.dueDate, m.start, m.end)).reduce((s, e) => s + e.amount, 0)
       return { label: m.label, rev, exp }
     })
     return { trendMonths: months, trendMax: Math.max(...months.map(m => Math.max(m.rev, m.exp)), 1) }
-  }, [orders, payments, businessExpenses, personalExpenses])
+  }, [orders, businessExpenses, personalExpenses])
 
   const periodLabel = getPeriodLabel(period, range)
 
   const [sheet, setSheet] = useState<null | 'income' | 'expenses' | 'personal'>(null)
 
-  const incomeRows = useMemo<BreakdownRow[]>(() => {
-    const deposits = depositOrders.map(o => ({
-      id: `d-${o.id}`,
+  const incomeRows = useMemo<BreakdownRow[]>(() =>
+    salesOrders.map(o => ({
+      id: `o-${o.id}`,
       title: o.customerName,
-      subtitle: `${dayLabel(o.orderDate)} · Deposit`,
-      date: o.orderDate,
-      amount: o.depositPaid,
+      subtitle: `${dayLabel(o.dueDate)} · ${isSmSales(o) ? 'SM Sales' : 'Store Sales'}`,
+      date: o.dueDate,
+      amount: o.totalAmount,
       amountColor: '#7A9E7E',
-    }))
-    const pays = rangePayments.map(p => ({
-      id: `p-${p.id}`,
-      title: orders.find(o => o.id === p.orderId)?.customerName ?? 'Unknown',
-      subtitle: `${dayLabel(p.paidAt)} · ${PAYMENT_TYPE_LABEL[p.type]}`,
-      date: p.paidAt,
-      amount: p.amount,
-      amountColor: '#7A9E7E',
-    }))
-    return [...deposits, ...pays]
-  }, [depositOrders, rangePayments, orders])
+    })),
+  [salesOrders])
 
   const toExpenseRows = (list: (BusinessExpense | PersonalExpense)[]): BreakdownRow[] =>
     list.map(e => ({
@@ -361,30 +346,30 @@ export default function RevenueSummary() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <TrendingUp size={18} color="#7A9E7E" />
-                <span style={{ fontSize: '14px', fontWeight: 700, color: '#6b7280' }}>Income Collected</span>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: '#6b7280' }}>Sales</span>
               </div>
               <button
                 onClick={() => setSheet('income')}
-                aria-label="View income breakdown"
+                aria-label="View sales breakdown"
                 style={{ background: '#C9848A18', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
               >
                 <List size={16} color="#C9848A" />
               </button>
             </div>
-            <p style={{ fontSize: '32px', fontWeight: 800, color: '#2D2D2D', letterSpacing: '-0.5px' }}>{fmt(revenue)}</p>
+            <p style={{ fontSize: '32px', fontWeight: 800, color: '#2D2D2D', letterSpacing: '-0.5px' }}>{fmt(sales)}</p>
             <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f3f4f6', display: 'flex', gap: '20px' }}>
               <div>
-                <p style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>Deposits</p>
-                <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D' }}>{fmt(depositTotal)}</p>
+                <p style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>SM Sales</p>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D' }}>{fmt(smTotal)}</p>
               </div>
-              <ArrowRight size={14} color="#d1ccc8" style={{ alignSelf: 'center' }} />
               <div>
-                <p style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>Balance Payments</p>
-                <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D' }}>{fmt(paymentTotal)}</p>
+                <p style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>Store Sales</p>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D' }}>{fmt(sales - smTotal)}</p>
               </div>
-              <div style={{ marginLeft: 'auto' }}>
-                <p style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>Transactions</p>
-                <p style={{ fontSize: '14px', fontWeight: 700, color: '#2D2D2D' }}>{txCount}</p>
+              <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                <p style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 500 }}>Projected</p>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: '#7A9E7E' }}>{fmt(projected)}</p>
+                <p style={{ fontSize: '10px', color: '#9ca3af' }}>cash received</p>
               </div>
             </div>
           </div>
@@ -465,7 +450,7 @@ export default function RevenueSummary() {
             </p>
 
             {/* Comparison bars */}
-            {(revenue > 0 || expenseTotal > 0 || personalTotal > 0) && (
+            {(sales > 0 || expenseTotal > 0 || personalTotal > 0) && (
               <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{ fontSize: '11px', fontWeight: 600, color: '#7A9E7E', width: '60px', textAlign: 'right' }}>Income</span>
@@ -473,11 +458,11 @@ export default function RevenueSummary() {
                     <div style={{
                       height: '100%', borderRadius: '5px',
                       background: '#7A9E7E',
-                      width: `${(revenue / maxBar) * 100}%`,
+                      width: `${(sales / maxBar) * 100}%`,
                       transition: 'width 0.4s ease',
                     }} />
                   </div>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#2D2D2D', width: '70px' }}>{fmt(revenue)}</span>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#2D2D2D', width: '70px' }}>{fmt(sales)}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <span style={{ fontSize: '11px', fontWeight: 600, color: '#E8A838', width: '60px', textAlign: 'right' }}>Business</span>
@@ -569,9 +554,9 @@ export default function RevenueSummary() {
       <BreakdownSheet
         open={sheet === 'income'}
         onClose={() => setSheet(null)}
-        title="Income Collected"
+        title="Sales"
         subtitle={periodLabel}
-        total={revenue}
+        total={sales}
         accent="#7A9E7E"
         rows={incomeRows}
       />
