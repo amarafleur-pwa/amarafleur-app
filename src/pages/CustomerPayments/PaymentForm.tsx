@@ -4,6 +4,7 @@ import { db } from '../../db/db'
 import type { Order, Payment } from '../../db/db'
 import { logPayment, deleteSheetRow } from '../../lib/sheets'
 import { dbWrite } from '../../lib/dbGateway'
+import { withSyncLock } from '../../lib/sync'
 import { getCurrentUser } from '../../lib/currentUser'
 import { todayPH } from '../../lib/dateUtils'
 
@@ -87,14 +88,15 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
     setAmount('')
     setNotes('')
     setShowForm(false)
-    if (navigator.onLine && order.supabaseId) {
-      const { data: row, error } = await dbWrite<{ id: string }>('payments', 'insert', {
-        payload: {
-          order_id: order.supabaseId,
-          amount: amt, type: capturedType, paid_at: capturedPaidAt,
-          notes: capturedNotes || null, logged_by: loggedBy || null,
-        },
-        select: true, single: true,
+    await withSyncLock(async () => {
+      if (navigator.onLine && order.supabaseId) {
+        const { data: row, error } = await dbWrite<{ id: string }>('payments', 'insert', {
+          payload: {
+            order_id: order.supabaseId,
+            amount: amt, type: capturedType, paid_at: capturedPaidAt,
+            notes: capturedNotes || null, logged_by: loggedBy || null,
+          },
+          select: true, single: true,
       })
       console.log('[pay-save] dbWrite', { data: row, error })
       if (!error && row) {
@@ -121,6 +123,7 @@ export default function PaymentForm({ order, onClose, onSaved }: Props) {
         notes: capturedNotes, pendingSync: true, loggedBy,
       })
     }
+    })
     loadPayments()
     setSaving(false)
     savingRef.current = false

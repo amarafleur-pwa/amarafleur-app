@@ -2,7 +2,8 @@ import { useState, useRef } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { db } from '../../db/db'
 import type { Order } from '../../db/db'
-import { logOrder, logAdvanceOrder, updateOrder, updateAdvanceOrder, deleteSheetRow, logPayment } from '../../lib/sheets'
+import { updateOrder, updateAdvanceOrder, deleteSheetRow } from '../../lib/sheets'
+import { runSync, withSyncLock } from '../../lib/sync'
 import { dbWrite } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
 import { todayPH } from '../../lib/dateUtils'
@@ -118,67 +119,36 @@ export default function OrderForm({ order, defaultDate, mode = 'advance', onClos
       if (fullPmt) await db.payments.update(fullPmt.id!, { amount: totalAmt, paidAt: dueDate })
       onSaved()
       handleClose()
-      if (navigator.onLine && order!.supabaseId) {
-        const { error } = await dbWrite('orders', 'update', { payload: supabasePayload, eq: { id: order!.supabaseId } })
+      const sid = order!.supabaseId
+      if (navigator.onLine && sid) await withSyncLock(async () => {
+        const { error } = await dbWrite('orders', 'update', { payload: supabasePayload, eq: { id: sid } })
         if (!error) {
           await db.orders.update(order!.id!, { pendingSync: false })
-          mode === 'log' ? updateOrder(data, order!.supabaseId!) : updateAdvanceOrder(data, order!.supabaseId!)
+          mode === 'log' ? updateOrder(data, sid) : updateAdvanceOrder(data, sid)
         }
         if (fullPmt?.supabaseId) {
           const { error: payErr } = await dbWrite('payments', 'update', { payload: { amount: totalAmt, paid_at: dueDate }, eq: { id: fullPmt.supabaseId } })
           if (payErr) console.error('[OrderForm] log payment update failed', payErr)
         }
-      }
+      })
     } else {
       const localId = await db.orders.add({ ...data, pendingSync: true })
       // Pre-add payment to Dexie before onSaved() so load() sees it immediately
-      let localPaymentId: number | undefined
       if (mode === 'log') {
-        localPaymentId = await db.payments.add({
+        await db.payments.add({
           orderId: localId as number, amount: totalAmt, type: 'full', paidAt: dueDate,
           pendingSync: true, loggedBy: getCurrentUser(),
-        }) as number
+        })
       } else if (mode === 'advance' && !isEdit && paymentType === 'full') {
-        localPaymentId = await db.payments.add({
+        await db.payments.add({
           orderId: localId as number, amount: totalAmt, type: 'full', paidAt: data.orderDate,
           pendingSync: true, loggedBy: getCurrentUser(),
-        }) as number
+        })
       }
       onSaved()
       handleClose()
-      if (navigator.onLine) {
-        const { data: row, error } = await dbWrite<{ id: string }>('orders', 'insert', { payload: supabasePayload, select: true, single: true })
-        if (!error && row) {
-          await db.orders.update(localId as number, { supabaseId: row.id, pendingSync: false })
-          if (mode === 'advance') {
-            logAdvanceOrder(data, row.id)
-            if (!isEdit && paymentType === 'full') {
-              const { data: payRow, error: payErr } = await dbWrite<{ id: string }>('payments', 'insert', {
-                payload: { order_id: row.id, amount: totalAmt, type: 'full', paid_at: data.orderDate, notes: null, logged_by: getCurrentUser() },
-                select: true, single: true,
-              })
-              if (!payErr && payRow) {
-                await db.payments.update(localPaymentId!, { supabaseId: payRow.id, pendingSync: false })
-                logPayment({ customerName: data.customerName, orderDesc: data.description, amount: totalAmt, type: 'full', paidAt: data.orderDate, loggedBy: getCurrentUser() }, payRow.id)
-              }
-              // else: localPaymentId already in Dexie with pendingSync: true — no action needed
-            }
-          } else {
-            logOrder(data, row.id)
-            const { data: payRow, error: payErr } = await dbWrite<{ id: string }>('payments', 'insert', {
-              payload: { order_id: row.id, amount: totalAmt, type: 'full', paid_at: dueDate, notes: null, logged_by: getCurrentUser() },
-              select: true, single: true,
-            })
-            if (!payErr && payRow) {
-              await db.payments.update(localPaymentId!, { supabaseId: payRow.id, pendingSync: false })
-              logPayment({ customerName: data.customerName, orderDesc: data.description, amount: totalAmt, type: 'full', paidAt: dueDate, loggedBy: getCurrentUser() }, payRow.id)
-            }
-            // else: localPaymentId already in Dexie with pendingSync: true — no action needed
-          }
-        }
-        // else (order insert failed): localPaymentId already in Dexie with pendingSync: true
-      }
-      // else (offline): localPaymentId already in Dexie with pendingSync: true
+      // Sync inserts the order then its payment and logs both to the sheet — one path, so no double insert
+      if (navigator.onLine) runSync().catch(console.warn)
     }
     savingRef.current = false
     setSaving(false)

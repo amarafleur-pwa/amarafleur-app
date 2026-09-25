@@ -2,7 +2,8 @@ import { useRef, useState } from 'react'
 import { X, Trash2, Camera, RefreshCw } from 'lucide-react'
 import { db } from '../../db/db'
 import type { PersonalExpense } from '../../db/db'
-import { logPersonalExpense, updatePersonalExpense, deleteSheetRow } from '../../lib/sheets'
+import { updatePersonalExpense, deleteSheetRow } from '../../lib/sheets'
+import { runSync, withSyncLock } from '../../lib/sync'
 import { dbWrite, uploadReceipt } from '../../lib/dbGateway'
 import { getCurrentUser } from '../../lib/currentUser'
 import { todayPH } from '../../lib/dateUtils'
@@ -136,23 +137,19 @@ export default function ExpenseForm({ expense, onClose, onSaved }: Props) {
     if (isEdit) {
       await db.personalExpenses.update(expense!.id!, { ...data, pendingSync: true })
       onSaved(); handleClose()
-      if (navigator.onLine && expense!.supabaseId) {
-        const { error } = await dbWrite('personal_expenses', 'update', { payload: supabasePayload, eq: { id: expense!.supabaseId } })
+      const sid = expense!.supabaseId
+      if (navigator.onLine && sid) await withSyncLock(async () => {
+        const { error } = await dbWrite('personal_expenses', 'update', { payload: supabasePayload, eq: { id: sid } })
         if (!error) {
           await db.personalExpenses.update(expense!.id!, { pendingSync: false })
-          updatePersonalExpense(data, expense!.supabaseId)
+          updatePersonalExpense(data, sid)
         }
-      }
+      })
     } else {
-      const localId = await db.personalExpenses.add({ ...data, pendingSync: true })
+      await db.personalExpenses.add({ ...data, pendingSync: true })
       onSaved(); handleClose()
-      if (navigator.onLine) {
-        const { data: row, error } = await dbWrite<{ id: string }>('personal_expenses', 'insert', { payload: supabasePayload, select: true, single: true })
-        if (!error && row) {
-          await db.personalExpenses.update(localId as number, { supabaseId: row.id, pendingSync: false })
-          logPersonalExpense(data, row.id)
-        }
-      }
+      // Sync uploads it and logs it to the sheet — one path, so no double insert
+      if (navigator.onLine) runSync().catch(console.warn)
     }
     setSaving(false)
   }

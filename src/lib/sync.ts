@@ -1,9 +1,29 @@
 import { supabase } from './supabase'
 import { dbWrite } from './dbGateway'
 import { db } from '../db/db'
-import { logPersonalExpense, logBusinessExpense, logOrder, logPayment } from './sheets'
+import { logPersonalExpense, logBusinessExpense, logOrder, logAdvanceOrder, logPayment } from './sheets'
 
-export async function syncPendingItems(): Promise<void> {
+// Every insert of an order/payment and every sync+restore runs through this queue one at a time,
+// so a form's insert can't race syncPendingItems (double insert) or restore (row wiped/duplicated).
+let lock: Promise<unknown> = Promise.resolve()
+export function withSyncLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = lock.then(fn, fn)
+  lock = run.catch(() => {})
+  return run
+}
+
+let queuedSync: Promise<void> | null = null
+export function runSync(): Promise<void> {
+  if (queuedSync) return queuedSync
+  queuedSync = withSyncLock(async () => {
+    queuedSync = null
+    await syncPendingItems()
+    await restoreFromSupabase()
+  })
+  return queuedSync
+}
+
+async function syncPendingItems(): Promise<void> {
   if (!navigator.onLine) return
 
   // Personal expenses
@@ -75,7 +95,8 @@ export async function syncPendingItems(): Promise<void> {
       const { data: row, error } = await dbWrite<{ id: string }>('orders', 'insert', { payload, select: true, single: true })
       if (!error && row) {
         await db.orders.update(o.id!, { supabaseId: row.id, pendingSync: false })
-        logOrder(o, row.id)
+        if (o.isDone) logOrder(o, row.id)
+        else logAdvanceOrder(o, row.id)
       } else {
         console.warn('[sync] orders insert failed', o.id, error?.message)
       }
@@ -133,28 +154,27 @@ export async function restoreFromSupabase(): Promise<void> {
     throw new Error('Supabase fetch failed')
   }
 
-  // Capture any payments not yet synced to Supabase so restore doesn't wipe them
-  const unsyncedPayments: Array<{ p: import('../db/db').Payment; orderSupabaseId: string }> = []
-  const localPending = await db.payments.filter(p => !!p.pendingSync).toArray()
-  for (const p of localPending) {
-    const order = await db.orders.get(p.orderId)
-    if (order?.supabaseId) unsyncedPayments.push({ p, orderSupabaseId: order.supabaseId })
-  }
-
   await db.transaction('rw', [
     db.personalExpenses, db.businessExpenses,
     db.orders, db.payments, db.customers,
   ], async () => {
+    // Keep local IDs stable (open forms hold them) and keep rows not yet in Supabase
+    const orderIdBySid = new Map((await db.orders.toArray()).filter(o => o.supabaseId).map(o => [o.supabaseId!, o.id!]))
+    const paymentIdBySid = new Map((await db.payments.toArray()).filter(p => p.supabaseId).map(p => [p.supabaseId!, p.id!]))
+    const peIdBySid = new Map((await db.personalExpenses.toArray()).filter(e => e.supabaseId).map(e => [e.supabaseId!, e.id!]))
+    const beIdBySid = new Map((await db.businessExpenses.toArray()).filter(e => e.supabaseId).map(e => [e.supabaseId!, e.id!]))
+
     await Promise.all([
-      db.personalExpenses.clear(),
-      db.businessExpenses.clear(),
-      db.orders.clear(),
-      db.payments.clear(),
+      db.personalExpenses.filter(e => !!e.supabaseId).delete(),
+      db.businessExpenses.filter(e => !!e.supabaseId).delete(),
+      db.orders.filter(o => !!o.supabaseId).delete(),
+      db.payments.filter(p => !!p.supabaseId).delete(),
       db.customers.clear(),
     ])
 
     await db.personalExpenses.bulkAdd(
       (pe.data ?? []).map(r => ({
+        ...(peIdBySid.has(r.id) ? { id: peIdBySid.get(r.id) } : {}),
         supabaseId: r.id, name: r.name, amount: r.amount, dueDate: r.due_date,
         modeOfPayment: r.mode_of_payment ?? undefined,
         category: r.category, isPaid: r.is_paid, isRecurring: r.is_recurring, notes: r.notes,
@@ -165,6 +185,7 @@ export async function restoreFromSupabase(): Promise<void> {
 
     await db.businessExpenses.bulkAdd(
       (be.data ?? []).map(r => ({
+        ...(beIdBySid.has(r.id) ? { id: beIdBySid.get(r.id) } : {}),
         supabaseId: r.id, name: r.name, amount: r.amount, dueDate: r.due_date,
         modeOfPayment: r.mode_of_payment, isPaid: r.is_paid, isRecurring: r.is_recurring ?? false,
         category: r.category, notes: r.notes,
@@ -173,39 +194,35 @@ export async function restoreFromSupabase(): Promise<void> {
       }))
     )
 
-    // Insert orders one-by-one to capture generated local IDs for payment FK mapping
-    const supabaseToLocalOrderId = new Map<string, number>()
-    for (const r of (ord.data ?? [])) {
-      const localId = await db.orders.add({
+    const orderRows = ord.data ?? []
+    const orderKeys = await db.orders.bulkAdd(
+      orderRows.map(r => ({
+        ...(orderIdBySid.has(r.id) ? { id: orderIdBySid.get(r.id) } : {}),
         supabaseId: r.id, customerName: r.customer_name, description: r.description,
         fulfillmentType: r.fulfillment_type ?? 'pickup',
         quantity: r.quantity, time: r.time, orderDate: r.order_date, dueDate: r.due_date,
         totalAmount: r.total_amount, depositPaid: r.deposit_paid, isDone: r.is_done, notes: r.notes,
         modeOfPayment: r.mode_of_payment ?? undefined,
         loggedBy: r.logged_by ?? undefined,
-      })
-      supabaseToLocalOrderId.set(r.id, localId as number)
-    }
+      })),
+      { allKeys: true },
+    )
+    const localOrderIdBySid = new Map(orderRows.map((r, i) => [r.id, orderKeys[i] as number]))
 
     await db.payments.bulkAdd(
       (pay.data ?? []).map(r => ({
+        ...(paymentIdBySid.has(r.id) ? { id: paymentIdBySid.get(r.id) } : {}),
         supabaseId: r.id,
-        orderId: supabaseToLocalOrderId.get(r.order_id) ?? 0,
+        orderId: localOrderIdBySid.get(r.order_id) ?? 0,
         amount: r.amount, paidAt: r.paid_at,
         type: r.type as 'deposit' | 'balance' | 'full',
         notes: r.notes, loggedBy: r.logged_by ?? undefined,
       }))
     )
 
-    // Re-add any payments that were pending but not yet in Supabase
-    const inSupabase = new Set((pay.data ?? []).map(r => r.id))
-    for (const { p, orderSupabaseId } of unsyncedPayments) {
-      if (p.supabaseId && inSupabase.has(p.supabaseId)) continue
-      const newOrderId = supabaseToLocalOrderId.get(orderSupabaseId)
-      if (!newOrderId) continue
-      const { id: _id, ...rest } = p
-      await db.payments.add({ ...rest, orderId: newOrderId })
-    }
+    // Drop payments whose order no longer exists (deleted elsewhere)
+    const orderIds = new Set(await db.orders.toCollection().primaryKeys())
+    await db.payments.filter(p => !orderIds.has(p.orderId)).delete()
 
     await db.customers.bulkAdd(
       (cust.data ?? []).map(r => ({

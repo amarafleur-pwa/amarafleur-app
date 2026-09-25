@@ -4,6 +4,7 @@ import { db } from '../../db/db'
 import type { Order, Payment, Customer } from '../../db/db'
 import PaymentForm from './PaymentForm'
 import { dbWrite } from '../../lib/dbGateway'
+import { withSyncLock } from '../../lib/sync'
 import { getCurrentUser } from '../../lib/currentUser'
 import { logCustomer, deleteSheetRow, logPayment } from '../../lib/sheets'
 import { useSyncVersion, useSyncActions } from '../../lib/SyncContext'
@@ -203,14 +204,15 @@ export default function CustomerPayments() {
       if (s.balance <= 0) return
       const loggedBy = getCurrentUser()
       const today = todayPH()
-      if (navigator.onLine && order.supabaseId) {
-        const { data: row, error } = await dbWrite<{ id: string }>('payments', 'insert', {
-          payload: {
-            order_id: order.supabaseId,
-            amount: s.balance, type: 'balance', paid_at: today,
-            notes: null, logged_by: loggedBy || null,
-          },
-          select: true, single: true,
+      await withSyncLock(async () => {
+        if (navigator.onLine && order.supabaseId) {
+          const { data: row, error } = await dbWrite<{ id: string }>('payments', 'insert', {
+            payload: {
+              order_id: order.supabaseId,
+              amount: s.balance, type: 'balance', paid_at: today,
+              notes: null, logged_by: loggedBy || null,
+            },
+            select: true, single: true,
         })
         console.log('[pay-balance] dbWrite', { data: row, error })
         if (!error && row) {
@@ -234,6 +236,7 @@ export default function CustomerPayments() {
           pendingSync: true, loggedBy,
         })
       }
+      })
       setPendingBalancePay(null)
       setClosingPreviewOrder(true)
       load(); bumpSync()

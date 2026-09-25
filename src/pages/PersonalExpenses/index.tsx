@@ -5,6 +5,7 @@ import { db } from '../../db/db'
 import type { PersonalExpense } from '../../db/db'
 import ExpenseForm from './ExpenseForm'
 import { dbWrite } from '../../lib/dbGateway'
+import { withSyncLock } from '../../lib/sync'
 import { updatePersonalExpense, logPersonalExpense, deleteSheetRow } from '../../lib/sheets'
 import { useSyncVersion, useSyncActions } from '../../lib/SyncContext'
 import { NetworkPill } from '../../components/OfflineBanner'
@@ -103,17 +104,20 @@ export default function PersonalExpenses() {
         modeOfPayment: expense.modeOfPayment,
         isRecurring: true, isPaid: false, expenseType: 'monthly' as const,
       }
-      const { data: row } = await dbWrite<{ id: string }>('personal_expenses', 'insert', {
-        payload: {
-          name: newData.name, amount: newData.amount, due_date: newData.dueDate,
-          category: newData.category ?? null, notes: newData.notes ?? null,
-          mode_of_payment: newData.modeOfPayment ?? null,
-          is_paid: false, is_recurring: true, expense_type: 'monthly',
-        },
-        select: true, single: true,
+      await withSyncLock(async () => {
+        const { data: row } = await dbWrite<{ id: string }>('personal_expenses', 'insert', {
+          payload: {
+            name: newData.name, amount: newData.amount, due_date: newData.dueDate,
+            category: newData.category ?? null, notes: newData.notes ?? null,
+            mode_of_payment: newData.modeOfPayment ?? null,
+            is_paid: false, is_recurring: true, expense_type: 'monthly',
+          },
+          select: true, single: true,
+        })
+        // No row = upload failed; pendingSync lets the next sync retry it
+        await db.personalExpenses.add({ ...newData, supabaseId: row?.id, pendingSync: !row?.id })
+        if (row?.id) logPersonalExpense(newData, row.id)
       })
-      await db.personalExpenses.add({ ...newData, supabaseId: row?.id })
-      if (row?.id) logPersonalExpense(newData, row.id)
     }
     load(); bumpSync()
   }

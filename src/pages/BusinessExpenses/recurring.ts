@@ -3,6 +3,7 @@ import type { BusinessExpense } from '../../db/db'
 import { dbWrite } from '../../lib/dbGateway'
 import { logBusinessExpense } from '../../lib/sheets'
 import { toDateStrPH } from '../../lib/dateUtils'
+import { withSyncLock } from '../../lib/sync'
 
 // When a monthly bill is marked paid, auto-create next month's entry —
 // shared by the list view's quick-toggle and the edit form's toggle so
@@ -17,15 +18,18 @@ export async function createNextRecurringExpense(expense: BusinessExpense) {
     isRecurring: true, isPaid: false, modeOfPayment: expense.modeOfPayment,
     expenseType: 'monthly' as const,
   }
-  const { data: row } = await dbWrite<{ id: string }>('business_expenses', 'insert', {
-    payload: {
-      name: newData.name, amount: newData.amount, due_date: newData.dueDate,
-      category: newData.category, notes: newData.notes ?? null,
-      is_paid: false, is_recurring: true, mode_of_payment: newData.modeOfPayment ?? null,
-      expense_type: 'monthly',
-    },
-    select: true, single: true,
+  await withSyncLock(async () => {
+    const { data: row } = await dbWrite<{ id: string }>('business_expenses', 'insert', {
+      payload: {
+        name: newData.name, amount: newData.amount, due_date: newData.dueDate,
+        category: newData.category, notes: newData.notes ?? null,
+        is_paid: false, is_recurring: true, mode_of_payment: newData.modeOfPayment ?? null,
+        expense_type: 'monthly',
+      },
+      select: true, single: true,
+    })
+    // No row = upload failed; pendingSync lets the next sync retry it
+    await db.businessExpenses.add({ ...newData, supabaseId: row?.id, pendingSync: !row?.id })
+    if (row?.id) logBusinessExpense(newData, row.id)
   })
-  await db.businessExpenses.add({ ...newData, supabaseId: row?.id })
-  if (row?.id) logBusinessExpense(newData, row.id)
 }

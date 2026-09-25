@@ -4,7 +4,7 @@ import { LayoutDashboard, Wallet, ShoppingBag, CalendarDays, CreditCard, Trendin
 import NotificationBanner from './components/NotificationBanner'
 import InstallBanner from './components/InstallBanner'
 import { checkAndFireReminders } from './lib/notifications'
-import { restoreFromSupabase, syncPendingItems } from './lib/sync'
+import { runSync } from './lib/sync'
 import { SyncContext, SyncActionsContext } from './lib/SyncContext'
 import { supabase } from './lib/supabase'
 import Auth from './pages/Auth'
@@ -337,15 +337,15 @@ export default function App() {
     if (!authed) return
     checkAndFireReminders()
     const bump = () => { setSyncVersion(v => v + 1); setLastSyncedAt(new Date()) }
-    syncPendingItems().then(() => restoreFromSupabase()).then(bump).catch(console.warn)
+    runSync().then(bump).catch(console.warn)
 
     const handleOnline = () =>
-      syncPendingItems().then(() => restoreFromSupabase()).then(bump).catch(console.warn)
+      runSync().then(bump).catch(console.warn)
     window.addEventListener('online', handleOnline)
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
-        syncPendingItems().then(() => restoreFromSupabase()).then(bump).catch(console.warn)
+        runSync().then(bump).catch(console.warn)
       }
     }
     document.addEventListener('visibilitychange', handleVisibility)
@@ -354,7 +354,7 @@ export default function App() {
     const debouncedRestore = () => {
       clearTimeout(restoreTimer)
       restoreTimer = setTimeout(() => {
-        syncPendingItems().then(() => restoreFromSupabase()).then(bump).catch(console.warn)
+        runSync().then(bump).catch(console.warn)
       }, 1500)
     }
 
@@ -380,8 +380,7 @@ export default function App() {
     if (isSyncing || !navigator.onLine) return
     setIsSyncing(true)
     try {
-      await syncPendingItems()
-      await restoreFromSupabase()
+      await runSync()
       setSyncVersion(v => v + 1)
       setLastSyncedAt(new Date())
     } catch (e) {
